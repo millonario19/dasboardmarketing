@@ -50,7 +50,7 @@ function niceTicks(max: number, count = 5): number[] {
 }
 
 export function FunnelWaterfall({
-  title = "Payments",
+  title = "Métricas",
   stages,
   initialActive = 2,
 }: {

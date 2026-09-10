@@ -49,7 +49,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <h1 className="text-4xl md:text-5xl font-semibold text-ink-primary tracking-tight">
-            Sistema Automatizado de Ventas y Métricas
+            Marketing y Ventas
           </h1>
           <span className="w-10 h-10 rounded-full border border-gridline bg-surface flex items-center justify-center text-ink-muted text-lg shrink-0">
             🔗
