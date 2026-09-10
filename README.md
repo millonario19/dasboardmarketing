@@ -12,6 +12,35 @@ Dashboard de métricas por agente y oficina para la subcuenta de GoHighLevel
 - **Dashboard**: Next.js, junta ambas fuentes en `/api/metrics` y las muestra
   en `app/page.tsx`.
 
+## Historial de etiquetas
+
+GHL guarda **qué** etiquetas tiene un contacto, nunca **cuándo** se le pusieron.
+Sin ese dato no se puede medir velocidad de primera respuesta ni leads
+estancados, así que el dashboard lleva su propio cuaderno.
+
+Un cron en el server llama cada 5 minutos a `/api/cron/tag-snapshot`
+([deploy/tag-snapshot.sh](deploy/tag-snapshot.sh)). El sondeo pide a GHL los
+contactos que cambiaron desde la última corrida y anota en `tag_history`
+(ver [sql/002_tag_history.sql](sql/002_tag_history.sql)) las etiquetas que no
+tenía registradas. El volumen real es de ~3 contactos por ventana: una sola
+petición por vuelta.
+
+La columna `source` marca si el tiempo es confiable:
+
+- `poll` — la etiqueta se detectó en vivo, sobre un lead creado dentro de la
+  ventana o un contacto que ya se venía siguiendo. **Sirve para medir tiempos.**
+- `backfill` — ya existía cuando el sondeo vio al contacto por primera vez.
+  `occurred_at` es solo una cota superior. **No sirve para medir tiempos.**
+
+Sin esa distinción, un contacto viejo que hoy recibe una etiqueta arrastraría
+las otras que ya tenía y quedarían registradas como recién ocurridas,
+inventando tiempos de respuesta que nunca existieron.
+
+A futuro esto se puede reemplazar por un webhook de GHL disparado al agregar
+una etiqueta, que daría precisión al segundo en vez de la del intervalo de
+sondeo. Requiere crear el workflow a mano en la interfaz de GHL: la API no
+permite crearlos.
+
 ## Configuración
 
 1. Copiá `.env.example` a `.env.local` si no existe ya, y completá:
@@ -23,6 +52,9 @@ Dashboard de métricas por agente y oficina para la subcuenta de GoHighLevel
      tu custom field en GHL (Configuración → Campos personalizados).
    - `DATABASE_URL` — connection string de tu Postgres (mismo server de n8n).
    - `DASHBOARD_PASSWORD` — contraseña para entrar al dashboard.
+   - `CRON_SECRET` — token con el que el cron del server llama al sondeo de
+     etiquetas. `/api/cron` queda fuera del middleware de sesión porque lo
+     llama una máquina, no una persona.
 
 2. Instalar dependencias:
 
