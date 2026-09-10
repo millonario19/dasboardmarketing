@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { AgentDetail } from "@/components/AgentDetail";
 import { FunnelStepChart } from "@/components/FunnelStepChart";
 import { FunnelWaterfall } from "@/components/FunnelWaterfall";
@@ -12,6 +13,19 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const router = useRouter();
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch("/api/logout", { method: "POST" });
+      router.push("/login");
+      router.refresh();
+    } finally {
+      setLoggingOut(false);
+    }
+  }
 
   const load = useCallback(() => {
     setLoading(true);
@@ -41,13 +55,22 @@ export default function DashboardPage() {
             🔗
           </span>
         </div>
-        <button
-          onClick={load}
-          disabled={loading}
-          className="flex items-center gap-2 bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-primary hover:bg-page disabled:opacity-50 shrink-0"
-        >
-          📅 {loading ? "Actualizando…" : "Actualizar"} ⌄
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-2 bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-primary hover:bg-page disabled:opacity-50 shrink-0"
+          >
+            📅 {loading ? "Actualizando…" : "Actualizar"} ⌄
+          </button>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex items-center gap-2 bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary disabled:opacity-50 shrink-0"
+          >
+            {loggingOut ? "Saliendo…" : "Cerrar sesión"}
+          </button>
+        </div>
       </div>
 
       {error && (
