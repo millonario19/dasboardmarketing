@@ -8,6 +8,14 @@ import {
   contactDisplayName,
   type GhlContact,
 } from "./ghl";
+import {
+  estadoDeLead,
+  interactuoAuto,
+  conteoVacio,
+  TAG_CONFIABLE_DESDE,
+  TAG_INTERACCION_AUTO,
+  type EstadoLead,
+} from "./leadStates";
 
 // Colombia no tiene horario de verano: UTC-5 todo el año.
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
@@ -103,6 +111,26 @@ export type AgentProductionRow = {
   ftdMes: number;
 };
 
+export type Alerta = {
+  id: string;
+  tipo: "pauta" | "agente" | "productividad";
+  severidad: "alta" | "media";
+  titulo: string;
+  detalle: string;
+};
+
+export type PanelEstados = {
+  hoy: Record<EstadoLead, number>;
+  mes: Record<EstadoLead, number>;
+  interaccion: {
+    tasaHoy: number | null; // % sobre leads maduros de hoy, solo tag automático
+    madurosHoy: number;
+    baseline: number | null; // mediana de los días válidos anteriores
+    diasValidos: number;
+  };
+  alertas: Alerta[];
+};
+
 export type AgentProduction = {
   rows: AgentProductionRow[];
   totals: {
@@ -113,8 +141,169 @@ export type AgentProduction = {
     registrosMes: number;
     ftdMes: number;
   };
+  panel: PanelEstados;
   range: { today: { from: string; to: string }; month: { from: string; to: string } };
 };
+
+// Un lead recién entrado todavía no tuvo tiempo de responder. Si se lo contara
+// en la tasa de interacción, a primera hora del día la tasa siempre daría por
+// el piso y la alerta de pauta sonaría todas las mañanas.
+const MADUREZ_MS = 60 * 60 * 1000;
+
+function mediana(valores: number[]): number | null {
+  if (valores.length === 0) return null;
+  const orden = [...valores].sort((a, b) => a - b);
+  const medio = Math.floor(orden.length / 2);
+  return orden.length % 2 ? orden[medio] : (orden[medio - 1] + orden[medio]) / 2;
+}
+
+function diaBogota(iso: string): string {
+  return new Date(new Date(iso).getTime() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * Estados, tasas de interacción y alertas, todo sobre los contactos que ya se
+ * trajeron para contar leads. No agrega ni una llamada a GHL.
+ */
+function calcularPanel(
+  leadContacts: GhlContact[],
+  registroContacts: GhlContact[],
+  nombrePorAgente: Map<string, string>,
+  ahoraMs: number,
+  todayFromMs: number,
+  todayToMs: number
+): PanelEstados {
+  const hoy = conteoVacio();
+  const mes = conteoVacio();
+  const hoyStr = diaBogota(new Date(ahoraMs).toISOString());
+  const desdeConfiable = TAG_CONFIABLE_DESDE[TAG_INTERACCION_AUTO];
+
+  // Tasa de interacción automática por día, para el baseline histórico.
+  const porDia = new Map<string, { leads: number; auto: number }>();
+  // Por agente, solo lo de hoy y ya filtrado a leads maduros.
+  const porAgente = new Map<string, { maduros: number; auto: number }>();
+
+  for (const contacto of leadContacts) {
+    const estado = estadoDeLead(contacto);
+    mes[estado] += 1;
+
+    const t = new Date(contacto.dateAdded).getTime();
+    const dia = diaBogota(contacto.dateAdded);
+
+    if (!porDia.has(dia)) porDia.set(dia, { leads: 0, auto: 0 });
+    const d = porDia.get(dia)!;
+    d.leads += 1;
+    if (interactuoAuto(contacto)) d.auto += 1;
+
+    if (t >= todayFromMs && t < todayToMs) {
+      hoy[estado] += 1;
+      if (ahoraMs - t >= MADUREZ_MS) {
+        const id = contacto.assignedTo ?? "sin-asignar";
+        if (!porAgente.has(id)) porAgente.set(id, { maduros: 0, auto: 0 });
+        const a = porAgente.get(id)!;
+        a.maduros += 1;
+        if (interactuoAuto(contacto)) a.auto += 1;
+      }
+    }
+  }
+
+  const madurosHoy = [...porAgente.values()].reduce((s, a) => s + a.maduros, 0);
+  const autoHoy = [...porAgente.values()].reduce((s, a) => s + a.auto, 0);
+  const tasaHoy = madurosHoy > 0 ? (autoHoy / madurosHoy) * 100 : null;
+
+  // Solo días completos anteriores a hoy y posteriores al encendido del tag.
+  const tasasPrevias = [...porDia.entries()]
+    .filter(([dia, d]) => dia < hoyStr && dia >= desdeConfiable && d.leads >= 10)
+    .map(([, d]) => (d.auto / d.leads) * 100);
+  const baseline = tasasPrevias.length >= 3 ? mediana(tasasPrevias) : null;
+
+  const alertas: Alerta[] = [];
+
+  // 1. Pauta sospechosa: cae la oficina entera, no un agente.
+  if (baseline !== null && tasaHoy !== null && madurosHoy >= 20 && tasaHoy < baseline * 0.6) {
+    alertas.push({
+      id: "pauta",
+      tipo: "pauta",
+      severidad: "alta",
+      titulo: "La pauta de hoy no está respondiendo",
+      detalle:
+        `${tasaHoy.toFixed(0)}% de interacción sobre ${madurosHoy} leads maduros, contra ` +
+        `${baseline.toFixed(0)}% habitual. Cuando cae la oficina entera y no un agente suelto, ` +
+        `el sospechoso es la segmentación del público.`,
+    });
+  }
+
+  const tresDiasMs = ahoraMs - 3 * 24 * 60 * 60 * 1000;
+
+  // 2. Agente muy por debajo del histórico de la oficina.
+  //
+  //    La ventana es de 3 días, no de hoy: cada agente recibe unos 8 leads
+  //    diarios, y sobre 6 leads sacar 1 sola interacción pasa por puro azar
+  //    más del 10% de las veces. Con ~24 leads la señal ya es real y la
+  //    alerta deja de sonar en falso.
+  if (baseline !== null) {
+    const por3d = new Map<string, { maduros: number; auto: number }>();
+    for (const c of leadContacts) {
+      const t = new Date(c.dateAdded).getTime();
+      if (t < tresDiasMs) continue;
+      if (ahoraMs - t < MADUREZ_MS) continue;
+      if (diaBogota(c.dateAdded) < desdeConfiable) continue;
+      const id = c.assignedTo ?? "sin-asignar";
+      if (!por3d.has(id)) por3d.set(id, { maduros: 0, auto: 0 });
+      const a = por3d.get(id)!;
+      a.maduros += 1;
+      if (interactuoAuto(c)) a.auto += 1;
+    }
+    for (const [id, a] of por3d) {
+      if (id === "sin-asignar" || a.maduros < 15) continue;
+      const tasa = (a.auto / a.maduros) * 100;
+      if (tasa >= baseline * 0.5) continue;
+      alertas.push({
+        id: `agente-${id}`,
+        tipo: "agente",
+        severidad: "media",
+        titulo: `${nombrePorAgente.get(id) ?? id} casi no está interactuando`,
+        detalle:
+          `${tasa.toFixed(0)}% sobre ${a.maduros} leads de los últimos 3 días, contra ` +
+          `${baseline.toFixed(0)}% de la oficina. El resto del equipo está normal, así que no es la pauta.`,
+      });
+    }
+  }
+
+  // 3. Volumen sin resultado: se mira a 3 días porque los registros son
+  //    escasos (~4 por día en toda la oficina) y a un día no dice nada.
+  const leads3d = new Map<string, number>();
+  for (const c of leadContacts) {
+    if (new Date(c.dateAdded).getTime() < tresDiasMs) continue;
+    const id = c.assignedTo ?? "sin-asignar";
+    leads3d.set(id, (leads3d.get(id) ?? 0) + 1);
+  }
+  const registros3d = new Set<string>();
+  for (const c of registroContacts) {
+    if (new Date(c.dateAdded).getTime() < tresDiasMs) continue;
+    if (!hasOwnAffiliateLink(c)) continue;
+    if (c.assignedTo) registros3d.add(c.assignedTo);
+  }
+  for (const [id, n] of leads3d) {
+    if (id === "sin-asignar" || n < 20 || registros3d.has(id)) continue;
+    alertas.push({
+      id: `sin-registros-${id}`,
+      tipo: "productividad",
+      severidad: "media",
+      titulo: `${nombrePorAgente.get(id) ?? id} sin registros en 3 días`,
+      detalle: `${n} leads recibidos y ningún registro. Revisar si el problema es el cierre o la bajada.`,
+    });
+  }
+
+  alertas.sort((a, b) => (a.severidad === b.severidad ? 0 : a.severidad === "alta" ? -1 : 1));
+
+  return {
+    hoy,
+    mes,
+    interaccion: { tasaHoy, madurosHoy, baseline, diasValidos: tasasPrevias.length },
+    alertas,
+  };
+}
 
 type MutableRow = Omit<AgentProductionRow, "agentId"> & { agentId: string | null };
 
@@ -198,8 +387,23 @@ export async function computeAgentProduction(): Promise<AgentProduction> {
 
   const rows = [...counts.values()].sort((a, b) => b.leadsHoy - a.leadsHoy || b.ftdMes - a.ftdMes);
 
+  // Los nombres ya se resolvieron arriba al atribuir cada contacto, así que el
+  // panel los reusa en vez de volver a pegarle a /users de GHL.
+  const nombrePorAgente = new Map<string, string>();
+  for (const r of rows) if (r.agentId) nombrePorAgente.set(r.agentId, r.agent);
+
+  const panel = calcularPanel(
+    leadContacts,
+    registroContacts,
+    nombrePorAgente,
+    now,
+    todayFromMs,
+    todayToMs
+  );
+
   return {
     rows,
+    panel,
     totals: {
       leadsHoy: rows.reduce((s, r) => s + r.leadsHoy, 0),
       leadsMes: rows.reduce((s, r) => s + r.leadsMes, 0),

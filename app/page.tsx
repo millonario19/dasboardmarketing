@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AgentDetail } from "@/components/AgentDetail";
 import { FunnelStepChart } from "@/components/FunnelStepChart";
 import { FunnelWaterfall } from "@/components/FunnelWaterfall";
+import { PanelEstados } from "@/components/PanelEstados";
 import { CustomRangeQuery } from "@/components/CustomRangeQuery";
 import type { AgentProduction } from "@/lib/metrics";
 
@@ -96,6 +97,8 @@ export default function DashboardPage() {
               ]}
             />
           </div>
+
+          <PanelEstados datos={data.panel} />
 
           <div className="bg-surface border border-gridline rounded-lg overflow-hidden">
             <table className="w-full text-sm">
