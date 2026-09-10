@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useState } from "react";
 import { AgentDetail } from "@/components/AgentDetail";
 import { FunnelStepChart } from "@/components/FunnelStepChart";
+import { FunnelWaterfall } from "@/components/FunnelWaterfall";
 import { CustomRangeQuery } from "@/components/CustomRangeQuery";
 import type { AgentProduction } from "@/lib/metrics";
 
@@ -61,20 +62,14 @@ export default function DashboardPage() {
 
       {!error && data && (
         <>
-          <div className="flex flex-col gap-6 mb-8">
-            <FunnelStepChart
-              title="Hoy"
+          <div className="mb-8">
+            <FunnelWaterfall
               stages={[
-                { label: "Leads", value: data.totals.leadsHoy },
-                { label: "FTD", value: data.totals.ftdHoy },
-              ]}
-            />
-            <FunnelStepChart
-              title="Este mes"
-              stages={[
-                { label: "Leads", value: data.totals.leadsMes },
-                { label: "Registros", value: data.totals.registrosMes },
-                { label: "FTD", value: data.totals.ftdMes },
+                { label: "Total leads mes", value: data.totals.leadsMes },
+                { label: "Total ftds del mes", value: data.totals.ftdMes },
+                { label: "Nuevo leads", value: data.totals.leadsHoy },
+                { label: "Registros Hoy", value: data.totals.registrosHoy },
+                { label: "FTDS de hoy", value: data.totals.ftdHoy },
               ]}
             />
           </div>
