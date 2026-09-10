@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth";
 
 export const config = {
-  matcher: ["/((?!login|api/login|_next/static|_next/image|favicon.ico).*)"],
+  // /api/cron queda fuera de la cookie de sesión: lo llama el cron del server,
+  // no una persona, y se autentica con su propio token (CRON_SECRET).
+  matcher: ["/((?!login|api/login|api/cron|_next/static|_next/image|favicon.ico).*)"],
 };
 
 export async function middleware(req: NextRequest) {
