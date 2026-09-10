@@ -36,9 +36,9 @@ export type EstadoLead = "frio" | "tibio" | "caliente" | "fuego" | "venta";
 export const ESTADOS: EstadoLead[] = ["frio", "tibio", "caliente", "fuego", "venta"];
 
 export const ESTADO_META: Record<EstadoLead, { nombre: string; emoji: string; color: string; que: string }> = {
-  frio: { nombre: "Frío", emoji: "🔵", color: "#7C8AA5", que: "Entró y nunca respondió" },
-  tibio: { nombre: "Tibio", emoji: "🟡", color: "#E0A800", que: "Una señal de interés" },
-  caliente: { nombre: "Caliente", emoji: "🟠", color: "#E8720C", que: "Dos señales, o bajó a WhatsApp" },
+  frio: { nombre: "Frío", emoji: "🔵", color: "#7C8AA5", que: "No hizo nada" },
+  tibio: { nombre: "Tibio", emoji: "🟡", color: "#E0A800", que: "Hizo una sola cosa" },
+  caliente: { nombre: "Caliente", emoji: "🟠", color: "#E8720C", que: "Hizo dos, o bajó a WhatsApp" },
   fuego: { nombre: "Fuego", emoji: "🔥", color: "#D93A2B", que: "Se registró en el broker" },
   venta: { nombre: "Venta", emoji: "🟢", color: "#158F5B", que: "Hizo su primer depósito" },
 };
@@ -79,6 +79,31 @@ export function estadoDeLead(contacto: GhlContact): EstadoLead {
 
 export function conteoVacio(): Record<EstadoLead, number> {
   return { frio: 0, tibio: 0, caliente: 0, fuego: 0, venta: 0 };
+}
+
+/**
+ * Qué hizo concretamente el lead, en orden del embudo.
+ *
+ * El estado por sí solo esconde información: dos leads Tibios pueden ser uno
+ * que respondió y otro que solo entró al canal, y son situaciones distintas
+ * que piden acciones distintas. Esto devuelve las acciones reales para poder
+ * desglosar cada estado en pantalla.
+ */
+export function accionesDeLead(contacto: GhlContact): string[] {
+  const conLinkPropio = hasOwnAffiliateLink(contacto);
+  const acciones: string[] = [];
+  if (interactuo(contacto)) acciones.push("Respondió");
+  if (tiene(contacto, TAG_CANAL_FREE)) acciones.push("Entró al canal");
+  if (tiene(contacto, TAG_BUSINESS)) acciones.push("Bajó a WhatsApp");
+  if (isRegistrado(contacto) && conLinkPropio) acciones.push("Se registró");
+  if (isFtdEfectuado(contacto) && conLinkPropio) acciones.push("Depositó");
+  return acciones;
+}
+
+// Etiqueta legible del recorrido de un lead: "Respondió + Entró al canal".
+export function recorridoDeLead(contacto: GhlContact): string {
+  const acciones = accionesDeLead(contacto);
+  return acciones.length === 0 ? "Solo entró, sin responder" : acciones.join(" + ");
 }
 
 /**

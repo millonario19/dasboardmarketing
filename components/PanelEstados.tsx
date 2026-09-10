@@ -12,6 +12,7 @@ const SEVERIDAD = {
 export function PanelEstados({ datos }: { datos: Datos }) {
   const [ventana, setVentana] = useState<"hoy" | "mes">("hoy");
   const conteos = datos[ventana];
+  const desglose = ventana === "hoy" ? datos.desgloseHoy : datos.desgloseMes;
   const total = ESTADOS.reduce((s, e) => s + conteos[e], 0);
 
   const { tasaHoy, madurosHoy, baseline, diasValidos } = datos.interaccion;
@@ -51,7 +52,13 @@ export function PanelEstados({ datos }: { datos: Datos }) {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-4">
         {ESTADOS.map((estado) => (
-          <Tarjeta key={estado} estado={estado} valor={conteos[estado]} total={total} />
+          <Tarjeta
+            key={estado}
+            estado={estado}
+            valor={conteos[estado]}
+            total={total}
+            desglose={desglose[estado] ?? []}
+          />
         ))}
       </div>
 
@@ -106,23 +113,50 @@ export function PanelEstados({ datos }: { datos: Datos }) {
   );
 }
 
-function Tarjeta({ estado, valor, total }: { estado: EstadoLead; valor: number; total: number }) {
+function Tarjeta({
+  estado,
+  valor,
+  total,
+  desglose,
+}: {
+  estado: EstadoLead;
+  valor: number;
+  total: number;
+  desglose: { etiqueta: string; valor: number }[];
+}) {
   const meta = ESTADO_META[estado];
   const pct = total > 0 ? (valor / total) * 100 : 0;
 
   return (
     <div
-      className="rounded-xl border border-gridline bg-surface p-4 border-t-4"
+      className="rounded-xl border border-gridline bg-surface p-4 border-t-4 flex flex-col"
       style={{ borderTopColor: meta.color }}
-      title={accionSugerida(estado)}
     >
       <div className="flex items-center gap-1.5 mb-2">
         <span aria-hidden>{meta.emoji}</span>
         <span className="text-[13px] font-medium text-ink-primary">{meta.nombre}</span>
       </div>
       <p className="text-3xl font-semibold text-ink-primary tabular-nums leading-none mb-1">{valor}</p>
-      <p className="text-[12px] text-ink-muted tabular-nums mb-2">{pct.toFixed(1)}%</p>
-      <p className="text-[11px] text-ink-secondary leading-snug">{meta.que}</p>
+      <p className="text-[12px] text-ink-muted tabular-nums mb-3">
+        {pct.toFixed(1)}% · {meta.que}
+      </p>
+
+      {/* Qué hizo cada uno. Sin esto el estado es una caja negra: dos leads
+          Tibios pueden ser uno que respondió y otro que solo entró al canal. */}
+      {desglose.length > 0 && (
+        <ul className="flex flex-col gap-1 mb-3">
+          {desglose.map((d) => (
+            <li key={d.etiqueta} className="flex items-baseline justify-between gap-2 text-[11px]">
+              <span className="text-ink-secondary leading-snug">{d.etiqueta}</span>
+              <span className="text-ink-primary font-medium tabular-nums shrink-0">{d.valor}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="text-[11px] text-ink-muted leading-snug mt-auto pt-2 border-t border-gridline">
+        {accionSugerida(estado)}
+      </p>
     </div>
   );
 }

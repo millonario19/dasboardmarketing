@@ -10,8 +10,10 @@ import {
 } from "./ghl";
 import {
   estadoDeLead,
+  recorridoDeLead,
   interactuoAuto,
   conteoVacio,
+  ESTADOS,
   TAG_CONFIABLE_DESDE,
   TAG_INTERACCION_AUTO,
   type EstadoLead,
@@ -119,9 +121,15 @@ export type Alerta = {
   detalle: string;
 };
 
+// Qué hizo la gente dentro de cada estado, para que "Tibio: 16" no sea una
+// caja negra sino "11 respondieron, 5 entraron al canal".
+export type Desglose = { etiqueta: string; valor: number }[];
+
 export type PanelEstados = {
   hoy: Record<EstadoLead, number>;
   mes: Record<EstadoLead, number>;
+  desgloseHoy: Record<EstadoLead, Desglose>;
+  desgloseMes: Record<EstadoLead, Desglose>;
   interaccion: {
     tasaHoy: number | null; // % sobre leads maduros de hoy, solo tag automático
     madurosHoy: number;
@@ -175,6 +183,8 @@ function calcularPanel(
 ): PanelEstados {
   const hoy = conteoVacio();
   const mes = conteoVacio();
+  const recorridosHoy = new Map<EstadoLead, Map<string, number>>();
+  const recorridosMes = new Map<EstadoLead, Map<string, number>>();
   const hoyStr = diaBogota(new Date(ahoraMs).toISOString());
   const desdeConfiable = TAG_CONFIABLE_DESDE[TAG_INTERACCION_AUTO];
 
@@ -183,9 +193,17 @@ function calcularPanel(
   // Por agente, solo lo de hoy y ya filtrado a leads maduros.
   const porAgente = new Map<string, { maduros: number; auto: number }>();
 
+  function anotarRecorrido(mapa: Map<EstadoLead, Map<string, number>>, estado: EstadoLead, recorrido: string) {
+    if (!mapa.has(estado)) mapa.set(estado, new Map());
+    const m = mapa.get(estado)!;
+    m.set(recorrido, (m.get(recorrido) ?? 0) + 1);
+  }
+
   for (const contacto of leadContacts) {
     const estado = estadoDeLead(contacto);
+    const recorrido = recorridoDeLead(contacto);
     mes[estado] += 1;
+    anotarRecorrido(recorridosMes, estado, recorrido);
 
     const t = new Date(contacto.dateAdded).getTime();
     const dia = diaBogota(contacto.dateAdded);
@@ -197,6 +215,7 @@ function calcularPanel(
 
     if (t >= todayFromMs && t < todayToMs) {
       hoy[estado] += 1;
+      anotarRecorrido(recorridosHoy, estado, recorrido);
       if (ahoraMs - t >= MADUREZ_MS) {
         const id = contacto.assignedTo ?? "sin-asignar";
         if (!porAgente.has(id)) porAgente.set(id, { maduros: 0, auto: 0 });
@@ -297,9 +316,24 @@ function calcularPanel(
 
   alertas.sort((a, b) => (a.severidad === b.severidad ? 0 : a.severidad === "alta" ? -1 : 1));
 
+  function aDesglose(mapa: Map<EstadoLead, Map<string, number>>): Record<EstadoLead, Desglose> {
+    const salida = {} as Record<EstadoLead, Desglose>;
+    for (const estado of ESTADOS) {
+      const m = mapa.get(estado);
+      salida[estado] = m
+        ? [...m.entries()]
+            .map(([etiqueta, valor]) => ({ etiqueta, valor }))
+            .sort((a, b) => b.valor - a.valor)
+        : [];
+    }
+    return salida;
+  }
+
   return {
     hoy,
     mes,
+    desgloseHoy: aDesglose(recorridosHoy),
+    desgloseMes: aDesglose(recorridosMes),
     interaccion: { tasaHoy, madurosHoy, baseline, diasValidos: tasasPrevias.length },
     alertas,
   };
