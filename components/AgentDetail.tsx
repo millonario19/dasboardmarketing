@@ -3,7 +3,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { ContactDetail } from "@/lib/metrics";
 
-const COLUMNAS = ["Nombre", "Teléfono", "Creado", "FTD el", "Etiquetas"];
+// La columna de fecha de FTD va sin título a pedido: el rótulo "FTD el" no
+// aportaba nada. La celda queda vacía, la columna sigue mostrando el dato.
+const COLUMNAS = ["Nombre", "Teléfono", "Creado", "", "Etiquetas"];
 
 // Píldoras con fondo suave en vez de solo borde: con muchas etiquetas por
 // contacto, los bordes de colores hacían ruido y se leía como un amontonamiento.
@@ -88,9 +90,9 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
             <thead>
               {/* Franja celeste: separa visualmente los títulos de las filas de datos. */}
               <tr className="bg-header text-left">
-                {COLUMNAS.map((c) => (
+                {COLUMNAS.map((c, i) => (
                   <th
-                    key={c}
+                    key={i}
                     className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider text-header-ink whitespace-nowrap"
                   >
                     {c}
