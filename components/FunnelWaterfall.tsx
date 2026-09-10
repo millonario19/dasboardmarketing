@@ -7,14 +7,20 @@ export type WaterfallStage = {
   value: number;
 };
 
+// Escala global de la tarjeta. Todas las medidas (geometría, tipografía,
+// espaciados) se derivan de esta constante, así que para agrandarla o
+// achicarla alcanza con tocar este número.
+const S = 0.8;
+const px = (n: number) => n * S;
+
 // Lienzo de tamaño fijo: en pantallas angostas el contenedor scrollea en
 // horizontal en vez de escalar el SVG, para que el gráfico no se deforme.
-const WIDTH = 980;
-const HEIGHT = 384;
-const M_LEFT = 52;
-const M_RIGHT = 14;
-const PLOT_TOP = 104;
-const PLOT_H = 268;
+const WIDTH = px(980);
+const HEIGHT = px(384);
+const M_LEFT = px(52);
+const M_RIGHT = px(14);
+const PLOT_TOP = px(104);
+const PLOT_H = px(268);
 const PLOT_BOTTOM = PLOT_TOP + PLOT_H;
 
 const BLUE_STRIPE = "#2F5BFF";
@@ -62,7 +68,7 @@ export function FunnelWaterfall({
   const [active, setActive] = useState(defaultActive);
 
   const tipRef = useRef<HTMLDivElement>(null);
-  const [tipW, setTipW] = useState(200);
+  const [tipW, setTipW] = useState(px(200));
 
   const laneW = (WIDTH - M_LEFT - M_RIGHT) / Math.max(stages.length, 1);
   const maxValue = Math.max(...stages.map((s) => s.value), 0);
@@ -81,38 +87,38 @@ export function FunnelWaterfall({
 
   const laneX = M_LEFT + laneW * active;
   const barTop = yFor(current?.value ?? 0);
-  let tipLeft = laneX + laneW / 2 + 8;
-  if (tipLeft + tipW > WIDTH - 4) tipLeft = laneX + laneW / 2 - tipW - 8;
-  if (tipLeft < 4) tipLeft = 4;
-  const tipTop = barTop - 54 >= PLOT_TOP - 8 ? barTop - 54 : barTop + 14;
+  let tipLeft = laneX + laneW / 2 + px(8);
+  if (tipLeft + tipW > WIDTH - px(4)) tipLeft = laneX + laneW / 2 - tipW - px(8);
+  if (tipLeft < px(4)) tipLeft = px(4);
+  const tipTop = barTop - px(54) >= PLOT_TOP - px(8) ? barTop - px(54) : barTop + px(14);
 
   return (
     <div
       style={{
         background: "#FFFFFF",
         border: `1px solid ${BORDER}`,
-        borderRadius: 20,
+        borderRadius: px(20),
         boxShadow: "0 1px 2px rgba(16,24,40,0.04)",
-        padding: "22px 24px 18px",
+        padding: `${px(22)}px ${px(24)}px ${px(18)}px`,
         fontFamily:
           'Inter, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <h2 style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.02em", color: INK, margin: 0 }}>
+        <h2 style={{ fontSize: px(26), fontWeight: 700, letterSpacing: "-0.02em", color: INK, margin: 0 }}>
           {title}
         </h2>
         <button
           type="button"
           aria-label="Opciones"
           style={{
-            width: 44,
-            height: 44,
+            width: px(44),
+            height: px(44),
             borderRadius: "50%",
             border: `1px solid ${BORDER}`,
             background: "#FFFFFF",
             color: GRAY_AXIS,
-            fontSize: 18,
+            fontSize: px(18),
             lineHeight: 1,
             cursor: "pointer",
             flexShrink: 0,
@@ -134,12 +140,12 @@ export function FunnelWaterfall({
               {/* Rayas diagonales a 45° para las columnas inactivas. */}
               <pattern
                 id="fw-hatch"
-                width="7"
-                height="7"
+                width={px(7)}
+                height={px(7)}
                 patternUnits="userSpaceOnUse"
                 patternTransform="rotate(45)"
               >
-                <line x1="0" y1="0" x2="0" y2="7" stroke={BLUE_STRIPE} strokeWidth="3" />
+                <line x1="0" y1="0" x2="0" y2={px(7)} stroke={BLUE_STRIPE} strokeWidth={px(3)} />
               </pattern>
               {/* Velo blanco: deja las rayas casi transparentes arriba y saturadas abajo.
                   Sin gradientUnits, el gradiente se ajusta al alto de cada barra. */}
@@ -158,7 +164,7 @@ export function FunnelWaterfall({
             {ticks.map((t) => (
               <g key={t}>
                 <line x1={M_LEFT} x2={WIDTH - M_RIGHT} y1={yFor(t)} y2={yFor(t)} stroke={GRID} strokeWidth="1" />
-                <text x={M_LEFT - 12} y={yFor(t) + 4} textAnchor="end" fontSize="13" fill={GRAY_AXIS}>
+                <text x={M_LEFT - px(12)} y={yFor(t) + px(4)} textAnchor="end" fontSize={px(13)} fill={GRAY_AXIS}>
                   {formatValue(t)}
                 </text>
               </g>
@@ -200,11 +206,11 @@ export function FunnelWaterfall({
                   <rect x={x} y={top} width={laneW} height={h} fill="url(#fw-scrim)" style={{ ...fade, opacity: isActive ? 0 : 1 }} />
                   <rect x={x} y={top} width={laneW} height={h} fill="url(#fw-active)" style={{ ...fade, opacity: isActive ? 1 : 0 }} />
                   <rect
-                    x={x + laneW / 2 - 9}
-                    y={top - 2.5}
-                    width={18}
-                    height={5}
-                    rx={2.5}
+                    x={x + laneW / 2 - px(9)}
+                    y={top - px(2.5)}
+                    width={px(18)}
+                    height={px(5)}
+                    rx={px(2.5)}
                     fill={isActive ? BLUE_DEEP : BLUE_STRIPE}
                     style={{ transition: "fill 200ms ease" }}
                   />
@@ -234,17 +240,17 @@ export function FunnelWaterfall({
               style={{
                 position: "absolute",
                 left: M_LEFT + laneW * i,
-                top: 12,
+                top: px(12),
                 width: laneW,
-                paddingRight: 12,
+                paddingRight: px(12),
                 pointerEvents: "none",
               }}
             >
               <div
                 style={{
-                  fontSize: 13,
-                  lineHeight: "17px",
-                  marginBottom: 6,
+                  fontSize: px(13),
+                  lineHeight: `${px(17)}px`,
+                  marginBottom: px(6),
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   textOverflow: "ellipsis",
@@ -256,8 +262,8 @@ export function FunnelWaterfall({
               </div>
               <div
                 style={{
-                  fontSize: 30,
-                  lineHeight: "36px",
+                  fontSize: px(30),
+                  lineHeight: `${px(36)}px`,
                   fontWeight: 700,
                   letterSpacing: "-0.02em",
                   fontVariantNumeric: "tabular-nums",
@@ -280,18 +286,18 @@ export function FunnelWaterfall({
                 top: tipTop,
                 display: "flex",
                 alignItems: "center",
-                gap: 8,
+                gap: px(8),
                 whiteSpace: "nowrap",
                 background: "#FFFFFF",
                 borderRadius: 999,
-                padding: "11px 20px",
+                padding: `${px(11)}px ${px(20)}px`,
                 boxShadow: "0 6px 20px rgba(16,24,40,0.13), 0 1px 3px rgba(16,24,40,0.08)",
                 pointerEvents: "none",
                 transition: "left 200ms ease, top 200ms ease",
               }}
             >
-              <span style={{ position: "absolute", left: -7, top: -9 }}>
-                <svg width="18" height="21" viewBox="0 0 12 19" fill="none">
+              <span style={{ position: "absolute", left: px(-7), top: px(-9) }}>
+                <svg width={px(18)} height={px(21)} viewBox="0 0 12 19" fill="none">
                   <path
                     d="M1 1L1 15.4L4.6 12.1L7 17.9L9.7 16.7L7.3 11.2L11.5 11.2Z"
                     fill="#000000"
@@ -301,11 +307,11 @@ export function FunnelWaterfall({
                   />
                 </svg>
               </span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: INK, fontVariantNumeric: "tabular-nums" }}>
+              <span style={{ fontSize: px(13), fontWeight: 700, color: INK, fontVariantNumeric: "tabular-nums" }}>
                 {formatValue(current.value)}
               </span>
               {conversion !== null && (
-                <span style={{ fontSize: 13, color: GRAY_TIP }}>Conversion: {conversion}%</span>
+                <span style={{ fontSize: px(13), color: GRAY_TIP }}>Conversion: {conversion}%</span>
               )}
             </div>
           )}

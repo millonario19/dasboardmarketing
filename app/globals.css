@@ -15,6 +15,9 @@
   --series-2: #eb6834; /* ftd */
   --series-3: #1baf7a;
   --status-good: #0ca30c;
+  /* Franja de encabezado de tablas: tinte claro del azul de la marca. */
+  --header-plane: #eaf1fa;
+  --header-ink: #2a6fb8;
 }
 
 body {

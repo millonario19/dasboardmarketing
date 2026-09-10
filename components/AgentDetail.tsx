@@ -1,7 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { ContactDetail } from "@/lib/metrics";
+
+const COLUMNAS = ["Nombre", "Teléfono", "Creado", "FTD el", "Etiquetas"];
+
+// Píldoras con fondo suave en vez de solo borde: con muchas etiquetas por
+// contacto, los bordes de colores hacían ruido y se leía como un amontonamiento.
+function estiloTag(tag: string): string {
+  const t = tag.toLowerCase();
+  if (t === "ftd-efectuado") return "bg-[#fdeee7] text-[#b5501f]";
+  if (t.includes("registrado")) return "bg-header text-header-ink";
+  return "bg-[#f2f1ea] text-ink-secondary";
+}
+
+function fecha(iso: string): string {
+  return new Date(iso).toLocaleString("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export function AgentDetail({ agentId, from, to }: { agentId: string | null; from: string; to: string }) {
   const [contacts, setContacts] = useState<ContactDetail[] | null>(null);
@@ -31,80 +51,89 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
     };
   }, [agentId, from, to]);
 
+  const marco = (contenido: ReactNode) => <div className="px-4 pb-4 bg-page">{contenido}</div>;
+
   if (!agentId) {
-    return <div className="px-4 py-3 text-sm text-ink-secondary">Sin agente asignado — no se puede filtrar el detalle</div>;
+    return marco(
+      <p className="text-[13px] text-ink-secondary py-2">
+        Sin agente asignado — no se puede filtrar el detalle
+      </p>
+    );
   }
 
   if (error) {
-    return <div className="px-4 py-3 text-sm text-series2">{error}</div>;
+    return marco(<p className="text-[13px] text-series2 py-2">{error}</p>);
   }
 
   if (!contacts) {
-    return <div className="px-4 py-3 text-sm text-ink-secondary">Cargando…</div>;
+    return marco(<p className="text-[13px] text-ink-secondary py-2">Cargando…</p>);
   }
 
   if (contacts.length === 0) {
-    return <div className="px-4 py-3 text-sm text-ink-secondary">Sin contactos en este rango</div>;
+    return marco(<p className="text-[13px] text-ink-secondary py-2">Sin contactos en este rango</p>);
   }
 
-  return (
-    <div className="px-4 py-3 bg-page">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-left text-ink-muted">
-            <th className="py-1.5 font-medium">Nombre</th>
-            <th className="py-1.5 font-medium">Teléfono</th>
-            <th className="py-1.5 font-medium">Creado</th>
-            <th className="py-1.5 font-medium">FTD el</th>
-            <th className="py-1.5 font-medium">Etiquetas</th>
-          </tr>
-        </thead>
-        <tbody>
-          {contacts.map((c) => (
-            <tr key={c.id} className="border-t border-gridline">
-              <td className="py-1.5">{c.name}</td>
-              <td className="py-1.5 text-ink-secondary">{c.phone ?? "—"}</td>
-              <td className="py-1.5 text-ink-secondary tabular-nums whitespace-nowrap">
-                {new Date(c.dateAdded).toLocaleString("es-CO", {
-                  day: "2-digit",
-                  month: "2-digit",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </td>
-              <td className="py-1.5 text-ink-secondary tabular-nums whitespace-nowrap">
-                {c.ftdEventDate
-                  ? new Date(c.ftdEventDate).toLocaleString("es-CO", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "—"}
-              </td>
-              <td className="py-1.5">
-                <div className="flex flex-wrap gap-1">
-                  {c.tags.length === 0 && <span className="text-ink-muted">—</span>}
-                  {c.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className={`px-2 py-0.5 rounded-full text-xs border bg-surface ${
-                        tag.toLowerCase() === "ftd-efectuado"
-                          ? "border-series2 text-series2"
-                          : tag.toLowerCase().includes("registrado")
-                          ? "border-series1 text-series1"
-                          : "border-gridline text-ink-secondary"
-                      }`}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+  return marco(
+    <>
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+          Contactos del día
+        </span>
+        <span className="text-[11px] text-ink-muted tabular-nums">({contacts.length})</span>
+      </div>
+
+      <div className="rounded-xl border border-gridline bg-surface overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-[13px]">
+            <thead>
+              {/* Franja celeste: separa visualmente los títulos de las filas de datos. */}
+              <tr className="bg-header text-left">
+                {COLUMNAS.map((c) => (
+                  <th
+                    key={c}
+                    className="px-4 py-2.5 font-semibold text-[11px] uppercase tracking-wider text-header-ink whitespace-nowrap"
+                  >
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {contacts.map((c) => (
+                <tr key={c.id} className="border-t border-gridline hover:bg-page transition-colors">
+                  <td className="px-4 py-2.5 font-medium text-ink-primary">{c.name}</td>
+                  <td className="px-4 py-2.5 text-ink-secondary tabular-nums whitespace-nowrap">
+                    {c.phone ?? "—"}
+                  </td>
+                  <td className="px-4 py-2.5 text-ink-secondary tabular-nums whitespace-nowrap">
+                    {fecha(c.dateAdded)}
+                  </td>
+                  <td className="px-4 py-2.5 tabular-nums whitespace-nowrap">
+                    {c.ftdEventDate ? (
+                      <span className="text-series2 font-medium">{fecha(c.ftdEventDate)}</span>
+                    ) : (
+                      <span className="text-ink-muted">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {c.tags.length === 0 && <span className="text-ink-muted">—</span>}
+                      {c.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className={`px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap ${estiloTag(tag)}`}
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
   );
 }

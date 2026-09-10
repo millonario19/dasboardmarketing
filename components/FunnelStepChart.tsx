@@ -29,9 +29,11 @@ function niceTicks(max: number, count = 5): number[] {
   return ticks;
 }
 
+// Mismo recorte de 20% que la tarjeta principal: la altura y el bloque de
+// encabezado eran los que hacían ver enorme al panel del agente.
 const WIDTH = 1200;
-const HEIGHT = 460;
-const MARGIN = { top: 128, right: 12, bottom: 8, left: 56 };
+const HEIGHT = 368;
+const MARGIN = { top: 102, right: 12, bottom: 8, left: 56 };
 
 export function FunnelStepChart({
   title,
@@ -60,13 +62,13 @@ export function FunnelStepChart({
   const base = stages[0]?.value ?? 0;
 
   return (
-    <div className="bg-surface border border-gridline rounded-2xl shadow-sm p-8 w-full">
+    <div className="bg-surface border border-gridline rounded-2xl shadow-sm p-6 w-full">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-xl font-semibold text-ink-primary">{title}</h2>
+        <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
         <button
           type="button"
           aria-label="Opciones"
-          className="w-9 h-9 rounded-full border border-gridline flex items-center justify-center text-ink-muted hover:bg-page"
+          className="w-8 h-8 rounded-full border border-gridline flex items-center justify-center text-ink-muted hover:bg-page"
         >
           ⋯
         </button>
@@ -122,7 +124,7 @@ export function FunnelStepChart({
                 stroke="#eceae2"
                 strokeWidth="1"
               />
-              <text x={MARGIN.left - 12} y={yFor(t) + 5} textAnchor="end" fontSize="14" fill="#a3a199">
+              <text x={MARGIN.left - 12} y={yFor(t) + 5} textAnchor="end" fontSize="12" fill="#a3a199">
                 {formatValue(t)}
               </text>
             </g>
@@ -208,10 +210,10 @@ export function FunnelStepChart({
               className="text-left px-2 py-1"
               style={{ width: `${100 / stages.length}%` }}
             >
-              <p className={`text-base mb-2 ${i === active ? "text-ink-primary font-medium" : "text-ink-muted"}`}>
+              <p className={`text-sm mb-1.5 ${i === active ? "text-ink-primary font-medium" : "text-ink-muted"}`}>
                 {s.label}
               </p>
-              <p className="text-4xl md:text-5xl font-semibold text-ink-primary tabular-nums leading-none">
+              <p className="text-2xl md:text-3xl font-semibold text-ink-primary tabular-nums leading-none">
                 {formatValue(s.value)}
               </p>
             </button>

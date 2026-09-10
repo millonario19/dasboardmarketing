@@ -16,6 +16,8 @@ const config: Config = {
         series2: "var(--series-2)",
         series3: "var(--series-3)",
         good: "var(--status-good)",
+        header: "var(--header-plane)",
+        "header-ink": "var(--header-ink)",
       },
     },
   },
