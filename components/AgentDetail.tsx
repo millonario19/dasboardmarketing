@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { ESTADO_META } from "@/lib/leadStates";
 import type { ContactDetail } from "@/lib/metrics";
 
 // La columna de fecha de FTD va sin título a pedido: el rótulo "FTD el" no
@@ -103,7 +104,23 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
             <tbody>
               {contacts.map((c) => (
                 <tr key={c.id} className="border-t border-gridline hover:bg-page transition-colors">
-                  <td className="px-4 py-2.5 font-medium text-ink-primary">{c.name}</td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-ink-primary">{c.name}</span>
+                      {/* La temperatura al lado del nombre, no en columna
+                          aparte: es lo primero que el agente necesita ver y
+                          así no se agranda la tabla. */}
+                      <span
+                        className="text-[10.5px] font-semibold rounded-full px-2 py-0.5 whitespace-nowrap"
+                        style={{
+                          background: `${ESTADO_META[c.estado].color}22`,
+                          color: ESTADO_META[c.estado].fuerte,
+                        }}
+                      >
+                        {ESTADO_META[c.estado].nombre}
+                      </span>
+                    </div>
+                  </td>
                   <td className="px-4 py-2.5 text-ink-secondary tabular-nums whitespace-nowrap">
                     {c.phone ?? "—"}
                   </td>

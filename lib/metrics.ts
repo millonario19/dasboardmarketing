@@ -57,6 +57,9 @@ export type ContactDetail = {
   registrado: boolean;
   ftd: boolean;
   ftdEventDate: string | null; // fecha real del depósito (dateUpdated), no dateAdded
+  // La temperatura del lead, con la misma regla del panel: el agente ve en su
+  // lista quién está caliente sin tener que interpretar las etiquetas.
+  estado: EstadoLead;
 };
 
 // Detalle de los contactos de un agente en un rango. Dos búsquedas puntuales
@@ -93,6 +96,7 @@ export async function listContactsForAgent(from: string, to: string, agentId: st
       registrado: isRegistrado(contact) && hasOwnAffiliateLink(contact),
       ftd: ftdValido,
       ftdEventDate: ftdValido ? contact.dateUpdated ?? null : null,
+      estado: estadoDeLead(contact),
     };
   });
 
