@@ -24,6 +24,29 @@ import {
   type EstadoLead,
 } from "./leadStates";
 
+/**
+ * Deja solo los contactos de un agente.
+ *
+ * Es el filtro que hace que un agente vea su propio tablero: se aplica apenas
+ * vuelven los contactos de GHL, así que todo lo que se calcula después —las
+ * tarjetas, el panel de estados, la tabla, los totales— ya sale con sus
+ * números y no hay ningún camino por el que se le escape un lead ajeno.
+ *
+ * El id llega siempre de la cookie firmada, nunca de la URL.
+ */
+async function soloDelAgente<T extends GhlContact>(
+  contactos: T[],
+  agentId: string | null | undefined
+): Promise<T[]> {
+  if (!agentId) return contactos;
+  const propios: T[] = [];
+  for (const contacto of contactos) {
+    const { agentId: suyo } = await extractAttribution(contacto);
+    if (suyo === agentId) propios.push(contacto);
+  }
+  return propios;
+}
+
 // Colombia no tiene horario de verano: UTC-5 todo el año.
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 
@@ -404,14 +427,14 @@ function ensureRow(counts: Map<string, MutableRow>, agent: string, agentId: stri
 //   Regla 3 — FTD: tag ftd-efectuado + tag del link propio, por fecha REAL
 //             del depósito (dateUpdated) — el depósito casi siempre pasa
 //             días después del registro, así que no sirve filtrar por Creada.
-export async function computeAgentProduction(): Promise<AgentProduction> {
+export async function computeAgentProduction(soloAgente?: string | null): Promise<AgentProduction> {
   const now = Date.now();
   const today = bogotaRange(now, "day");
   const month = bogotaRange(now, "month");
   const todayFromMs = new Date(today.from).getTime();
   const todayToMs = new Date(today.to).getTime();
 
-  const [leadContacts, registroContacts, ftdContacts] = await Promise.all([
+  const [todosLeads, todosRegistros, todosFtd] = await Promise.all([
     searchContacts([
       { field: "tags", operator: "contains", value: LEAD_TAG() },
       { field: "dateAdded", operator: "range", value: { gte: month.from, lte: month.to } },
@@ -424,6 +447,12 @@ export async function computeAgentProduction(): Promise<AgentProduction> {
       { field: "tags", operator: "contains", value: FTD_TAG() },
       { field: "dateUpdated", operator: "range", value: { gte: month.from, lte: month.to } },
     ]),
+  ]);
+
+  const [leadContacts, registroContacts, ftdContacts] = await Promise.all([
+    soloDelAgente(todosLeads, soloAgente),
+    soloDelAgente(todosRegistros, soloAgente),
+    soloDelAgente(todosFtd, soloAgente),
   ]);
 
   const counts = new Map<string, MutableRow>();
@@ -502,11 +531,18 @@ export type EstadosDeUnRango = {
  * de un día: no cuántos habían respondido a las 6 de la tarde, sino cuántos
  * respondieron en total.
  */
-export async function computeEstadosDeUnRango(from: string, to: string): Promise<EstadosDeUnRango> {
-  const leadContacts = await searchContacts([
-    { field: "tags", operator: "contains", value: LEAD_TAG() },
-    { field: "dateAdded", operator: "range", value: { gte: from, lte: to } },
-  ]);
+export async function computeEstadosDeUnRango(
+  from: string,
+  to: string,
+  soloAgente?: string | null
+): Promise<EstadosDeUnRango> {
+  const leadContacts = await soloDelAgente(
+    await searchContacts([
+      { field: "tags", operator: "contains", value: LEAD_TAG() },
+      { field: "dateAdded", operator: "range", value: { gte: from, lte: to } },
+    ]),
+    soloAgente
+  );
 
   const conteos = conteoVacio();
   const acciones = new Map<EstadoLead, number[]>();
@@ -538,8 +574,12 @@ export type AgentRangeRow = {
   ftd: number;
 };
 
-export async function computeAgentRange(from: string, to: string): Promise<{ rows: AgentRangeRow[] }> {
-  const [leadContacts, registroContacts, ftdContacts] = await Promise.all([
+export async function computeAgentRange(
+  from: string,
+  to: string,
+  soloAgente?: string | null
+): Promise<{ rows: AgentRangeRow[] }> {
+  const [todosLeads, todosRegistros, todosFtd] = await Promise.all([
     searchContacts([
       { field: "tags", operator: "contains", value: LEAD_TAG() },
       { field: "dateAdded", operator: "range", value: { gte: from, lte: to } },
@@ -552,6 +592,12 @@ export async function computeAgentRange(from: string, to: string): Promise<{ row
       { field: "tags", operator: "contains", value: FTD_TAG() },
       { field: "dateUpdated", operator: "range", value: { gte: from, lte: to } },
     ]),
+  ]);
+
+  const [leadContacts, registroContacts, ftdContacts] = await Promise.all([
+    soloDelAgente(todosLeads, soloAgente),
+    soloDelAgente(todosRegistros, soloAgente),
+    soloDelAgente(todosFtd, soloAgente),
   ]);
 
   const counts = new Map<string, { agent: string; agentId: string | null; office: string; leads: number; registros: number; ftd: number }>();

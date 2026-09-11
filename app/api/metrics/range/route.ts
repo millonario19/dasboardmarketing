@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeAgentRange } from "@/lib/metrics";
+import { alcanceDeAgente } from "@/lib/sesion";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -11,7 +14,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const result = await computeAgentRange(from, to);
+    const result = await computeAgentRange(from, to, await alcanceDeAgente());
     return NextResponse.json(result);
   } catch (err) {
     console.error(err);

@@ -128,6 +128,33 @@ async function cambiarTag(contactId: string, tag: string, metodo: "POST" | "DELE
 export const agregarTag = (contactId: string, tag: string) => cambiarTag(contactId, tag, "POST");
 export const quitarTag = (contactId: string, tag: string) => cambiarTag(contactId, tag, "DELETE");
 
+export type UsuarioGhl = { id: string; nombre: string; email: string | null };
+
+/**
+ * Usuarios de la subcuenta, para elegir a qué agente se ata cada login.
+ *
+ * El id que devuelve es el mismo que GHL pone en assignedTo de cada contacto,
+ * que es con lo que se filtran los leads. Escribir ese id a mano sería la
+ * forma más fácil de atar a alguien al agente equivocado sin que nada falle.
+ */
+export async function listarUsuariosGhl(): Promise<UsuarioGhl[]> {
+  const locationId = requireEnv("GHL_LOCATION_ID");
+  const res = await fetchWithRetry(`${GHL_BASE_URL}/users/?locationId=${encodeURIComponent(locationId)}`, {
+    headers: ghlHeaders(),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`GHL no devolvió los usuarios (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const usuarios: UsuarioGhl[] = (data.users ?? []).map((u: Record<string, string>) => ({
+    id: u.id,
+    nombre: [u.firstName, u.lastName].filter(Boolean).join(" ") || u.name || u.email || u.id,
+    email: u.email ?? null,
+  }));
+  return usuarios.sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
 const userNameCache = new Map<string, string>();
 
 async function resolveUserName(userId: string): Promise<string> {

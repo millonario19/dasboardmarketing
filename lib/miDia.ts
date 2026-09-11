@@ -119,6 +119,10 @@ export async function computeMiDia(agenteId?: string | null): Promise<MiDia> {
     movimientosDeHoy(hoyMs).catch(() => new Map<string, { tag: string; ms: number }>()),
   ]);
 
+  // Los nombres de todos los agentes solo sirven para el selector de la
+  // dirección. Cuando la lista viene filtrada a una persona, el resto no se
+  // manda: no tiene por qué enterarse de quiénes son sus compañeros.
+  const filtrado = Boolean(agenteId) && agenteId !== "todos";
   const agentes = new Map<string, string>();
   const items: LeadItem[] = [];
 
@@ -127,8 +131,8 @@ export async function computeMiDia(agenteId?: string | null): Promise<MiDia> {
     if (yaDeposito(c)) continue;
 
     const { agent, agentId } = await extractAttribution(c);
-    if (agentId) agentes.set(agentId, agent);
-    if (agenteId && agenteId !== "todos" && agentId !== agenteId) continue;
+    if (agentId && (!filtrado || agentId === agenteId)) agentes.set(agentId, agent);
+    if (filtrado && agentId !== agenteId) continue;
 
     const altaMs = new Date(c.dateAdded).getTime();
     const mov = movimientos.get(c.id);

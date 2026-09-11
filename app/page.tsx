@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { FunnelWaterfall } from "@/components/FunnelWaterfall";
 import { PanelEstados } from "@/components/PanelEstados";
 import { CambiarVista } from "@/components/CambiarVista";
 import { TablaAgentes } from "@/components/TablaAgentes";
+import { CerrarSesion } from "@/components/CerrarSesion";
+import { useSesion } from "@/components/useSesion";
 import type { AgentProduction } from "@/lib/metrics";
 
 export default function DashboardPage() {
@@ -13,19 +15,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
-  const [loggingOut, setLoggingOut] = useState(false);
-  const router = useRouter();
-
-  async function handleLogout() {
-    setLoggingOut(true);
-    try {
-      await fetch("/api/logout", { method: "POST" });
-      router.push("/login");
-      router.refresh();
-    } finally {
-      setLoggingOut(false);
-    }
-  }
+  const sesion = useSesion();
+  const esAdmin = sesion?.rol === "admin";
 
   const load = useCallback(() => {
     setLoading(true);
@@ -51,6 +42,11 @@ export default function DashboardPage() {
           <h1 className="text-4xl md:text-5xl font-semibold text-ink-primary tracking-tight">
             Marketing y Ventas
           </h1>
+          {sesion && !esAdmin && (
+            <span className="text-sm text-ink-secondary bg-surface border border-gridline rounded-full px-3 py-1.5 shrink-0">
+              Tus números, {sesion.nombre}
+            </span>
+          )}
           <span className="w-10 h-10 rounded-full border border-gridline bg-surface flex items-center justify-center text-ink-muted text-lg shrink-0">
             🔗
           </span>
@@ -64,13 +60,15 @@ export default function DashboardPage() {
           >
             📅 {loading ? "Actualizando…" : "Actualizar"} ⌄
           </button>
-          <button
-            onClick={handleLogout}
-            disabled={loggingOut}
-            className="flex items-center gap-2 bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary disabled:opacity-50 shrink-0"
-          >
-            {loggingOut ? "Saliendo…" : "Cerrar sesión"}
-          </button>
+          {esAdmin && (
+            <Link
+              href="/admin/usuarios"
+              className="bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary shrink-0"
+            >
+              Usuarios
+            </Link>
+          )}
+          <CerrarSesion className="bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary disabled:opacity-50 shrink-0" />
         </div>
       </div>
 
@@ -99,7 +97,7 @@ export default function DashboardPage() {
             />
           </div>
 
-          <PanelEstados datos={data.panel} />
+          <PanelEstados datos={data.panel} propio={!esAdmin} />
 
           <TablaAgentes data={data} />
         </>

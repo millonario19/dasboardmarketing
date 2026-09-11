@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { EscalaEmbudo, Inicial } from "@/components/EscalaEmbudo";
+import { CerrarSesion } from "@/components/CerrarSesion";
+import { useSesion } from "@/components/useSesion";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
 
 // Paleta tomada de la referencia: gris cálido de fondo, blanco para las
@@ -26,6 +28,11 @@ const COLOR_ESTADO: Record<string, string> = {
 const CLAVE_AGENTE = "op_agente";
 
 export default function MiDiaPage() {
+  const sesion = useSesion();
+  // El agente no elige a quién mira: su sesión lo fija. El selector y el
+  // recuerdo en el navegador quedan solo para la dirección, que sí necesita
+  // pasar de un agente a otro.
+  const esAgente = sesion?.rol === "agente";
   const [agente, setAgente] = useState("todos");
   const [filtro, setFiltro] = useState("todos");
   const [data, setData] = useState<MiDia | null>(null);
@@ -33,12 +40,13 @@ export default function MiDiaPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (esAgente) return;
     try {
       setAgente(localStorage.getItem(CLAVE_AGENTE) ?? "todos");
     } catch {
       /* modo privado */
     }
-  }, []);
+  }, [esAgente]);
 
   const cargar = useCallback((quien: string) => {
     setCargando(true);
@@ -78,7 +86,9 @@ export default function MiDiaPage() {
   }, [bloques]);
 
   const visibles = filtro === "todos" ? bloques : bloques.filter((b) => b.id === filtro);
-  const nombreAgente = data?.agentes.find((a) => a.id === agente)?.nombre ?? "Toda la oficina";
+  const nombreAgente = esAgente
+    ? sesion?.nombre ?? "Tus leads"
+    : data?.agentes.find((a) => a.id === agente)?.nombre ?? "Toda la oficina";
 
   return (
     <div className="min-h-screen" style={{ background: FONDO, color: NEGRO }}>
@@ -123,13 +133,19 @@ export default function MiDiaPage() {
             </div>
           </div>
 
-          <Link
-            href="/"
-            className="rounded-full px-5 py-2.5 text-sm font-medium bg-white shrink-0 text-center"
-            style={{ border: `1px solid ${BORDE}` }}
-          >
-            Dirección
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/"
+              className="rounded-full px-5 py-2.5 text-sm font-medium bg-white text-center"
+              style={{ border: `1px solid ${BORDE}` }}
+            >
+              Dirección
+            </Link>
+            <CerrarSesion
+              className="rounded-full px-5 py-2.5 text-sm font-medium bg-white disabled:opacity-60"
+              style={{ border: `1px solid ${BORDE}`, color: GRIS }}
+            />
+          </div>
         </div>
 
         {/* Título y contadores */}
@@ -180,19 +196,28 @@ export default function MiDiaPage() {
             <strong className="tabular-nums">{conteos.pendientes}</strong> leads
           </span>
 
-          <select
-            value={agente}
-            onChange={(e) => elegirAgente(e.target.value)}
-            className="rounded-full px-4 py-2 text-[13px] bg-white outline-none"
-            style={{ border: `1px solid ${BORDE}` }}
-          >
-            <option value="todos">Toda la oficina</option>
-            {data?.agentes.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.nombre}
-              </option>
-            ))}
-          </select>
+          {esAgente ? (
+            <span
+              className="rounded-full px-4 py-2 text-[13px] font-semibold bg-white"
+              style={{ border: `1px solid ${BORDE}` }}
+            >
+              {sesion?.nombre}
+            </span>
+          ) : (
+            <select
+              value={agente}
+              onChange={(e) => elegirAgente(e.target.value)}
+              className="rounded-full px-4 py-2 text-[13px] bg-white outline-none"
+              style={{ border: `1px solid ${BORDE}` }}
+            >
+              <option value="todos">Toda la oficina</option>
+              {data?.agentes.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.nombre}
+                </option>
+              ))}
+            </select>
+          )}
 
           <Pildora activa={filtro === "todos"} onClick={() => setFiltro("todos")}>
             Todos

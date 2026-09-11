@@ -32,7 +32,10 @@ type Dia = {
   depositaron: number;
 };
 
-export function PanelEstados({ datos }: { datos: Datos }) {
+// Cuando el tablero está filtrado a un agente, todo lo que se compara sale de
+// sus propios leads. Decirle "lo habitual de la oficina" a un número que es su
+// propio histórico sería mentirle sobre contra qué se está midiendo.
+export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?: boolean }) {
   const [ventana, setVentana] = useState<"hoy" | "mes">("hoy");
   const [fecha, setFecha] = useState(ayerBogota);
   const [dia, setDia] = useState<Dia | null>(null);
@@ -188,7 +191,10 @@ export function PanelEstados({ datos }: { datos: Datos }) {
               <span className="font-semibold text-ink-primary tabular-nums">{tasaHoy.toFixed(0)}%</span> sobre{" "}
               {madurosHoy} leads con más de una hora de entrados
               {baseline !== null ? (
-                <> — lo habitual de la oficina es <span className="tabular-nums">{baseline.toFixed(0)}%</span>.</>
+                <>
+                  {" "}— {propio ? "tu promedio habitual es" : "lo habitual de la oficina es"}{" "}
+                  <span className="tabular-nums">{baseline.toFixed(0)}%</span>.
+                </>
               ) : (
                 <> — todavía sin referencia: hacen falta 3 días de datos y van {diasValidos}.</>
               )}

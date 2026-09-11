@@ -51,7 +51,10 @@ permite crearlos.
      custom field `office` para oficina. Ajustá el `fieldKey` al id real de
      tu custom field en GHL (Configuración → Campos personalizados).
    - `DATABASE_URL` — connection string de tu Postgres (mismo server de n8n).
-   - `DASHBOARD_PASSWORD` — contraseña para entrar al dashboard.
+   - `ADMIN_USER` / `ADMIN_PASSWORD` — el acceso de la dirección. Es la llave
+     maestra: no vive en la base, así que sirve aunque Postgres esté caído.
+   - `AGENT_PASSWORD` — contraseña común del equipo, para los agentes que no
+     tienen una propia cargada desde la pantalla de Usuarios.
    - `CRON_SECRET` — token con el que el cron del server llama al sondeo de
      etiquetas. `/api/cron` queda fuera del middleware de sesión porque lo
      llama una máquina, no una persona.
@@ -74,8 +77,22 @@ permite crearlos.
    npm run dev
    ```
 
-   Abrí http://localhost:3000 — te va a pedir la contraseña de
-   `DASHBOARD_PASSWORD`.
+   Abrí http://localhost:3000 — te va a pedir usuario y contraseña.
+
+## Quién ve qué
+
+Hay dos roles, y el filtro se aplica **en el servidor** a partir de la cookie de
+sesión firmada, nunca de un parámetro de la URL:
+
+- **Dirección** (`ADMIN_USER`): ve todo, y es la única que entra a
+  `/admin/usuarios`, donde se crean las cuentas.
+- **Agente**: ve las dos pantallas —Mi día y Dirección— pero solo con sus
+  propios leads. Cada cuenta se ata a un agente de GHL (el `userId` que aparece
+  en `assignedTo` de los contactos), y ese id es el que recorta las consultas.
+
+Los usuarios viven en la tabla `usuarios`, que se crea sola en la primera
+consulta. Si `password_hash` está vacío, la persona entra con `AGENT_PASSWORD`;
+cargarle una contraseña propia desde la pantalla de Usuarios llena esa columna.
 
 ## Pendientes antes de usar en producción
 
