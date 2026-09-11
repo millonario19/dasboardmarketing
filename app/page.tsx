@@ -68,6 +68,14 @@ export default function DashboardPage() {
               Usuarios
             </Link>
           )}
+          {sesion && !esAdmin && (
+            <Link
+              href="/mi-cuenta"
+              className="bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary shrink-0"
+            >
+              Mi cuenta
+            </Link>
+          )}
           <CerrarSesion className="bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary disabled:opacity-50 shrink-0" />
         </div>
       </div>

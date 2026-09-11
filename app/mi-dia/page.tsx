@@ -141,6 +141,15 @@ export default function MiDiaPage() {
             >
               Dirección
             </Link>
+            {esAgente && (
+              <Link
+                href="/mi-cuenta"
+                className="rounded-full px-5 py-2.5 text-sm font-medium bg-white text-center"
+                style={{ border: `1px solid ${BORDE}`, color: GRIS }}
+              >
+                Mi cuenta
+              </Link>
+            )}
             <CerrarSesion
               className="rounded-full px-5 py-2.5 text-sm font-medium bg-white disabled:opacity-60"
               style={{ border: `1px solid ${BORDE}`, color: GRIS }}
