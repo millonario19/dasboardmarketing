@@ -86,9 +86,11 @@ export default function MiDiaPage() {
 
         {/* Barra superior: cápsula negra a la izquierda, tira verde con los
             movimientos del día a la derecha, igual que la referencia. */}
-        <div className="flex items-center gap-3 mb-8">
-          <div className="flex items-center flex-1 min-w-0 rounded-full" style={{ background: NEGRO }}>
-            <div className="flex items-center gap-3 pl-6 pr-4 py-2.5 shrink-0">
+        {/* En móvil se apila: la tira de movimientos necesita ancho propio, y
+            metida en la misma fila que la cápsula quedaba en un hilito. */}
+        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center flex-1 min-w-0 rounded-3xl sm:rounded-full p-1.5 sm:p-0" style={{ background: NEGRO }}>
+            <div className="flex items-center gap-3 pl-4 sm:pl-6 pr-4 py-2 sm:py-2.5 shrink-0">
               <span className="text-white font-medium">Mi día</span>
               <span
                 className="text-[13px] rounded-full px-3 py-1 first-letter:uppercase whitespace-nowrap text-white"
@@ -99,7 +101,7 @@ export default function MiDiaPage() {
             </div>
 
             <div
-              className="flex-1 min-w-0 flex items-center gap-2 rounded-full px-3 py-1.5 mr-1.5 overflow-x-auto"
+              className="flex-1 min-w-0 flex items-center gap-2 rounded-2xl sm:rounded-full px-3 py-1.5 sm:mr-1.5 overflow-x-auto"
               style={{ background: LIMA }}
             >
               {movimientos && movimientos.items.length > 0 ? (
@@ -123,7 +125,7 @@ export default function MiDiaPage() {
 
           <Link
             href="/"
-            className="rounded-full px-5 py-2.5 text-sm font-medium bg-white shrink-0"
+            className="rounded-full px-5 py-2.5 text-sm font-medium bg-white shrink-0 text-center"
             style={{ border: `1px solid ${BORDE}` }}
           >
             Dirección
@@ -133,12 +135,22 @@ export default function MiDiaPage() {
         {/* Título y contadores */}
         <div className="flex items-end justify-between gap-6 flex-wrap mb-8">
           <div className="flex items-center gap-4 flex-wrap">
-            <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter leading-none">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter leading-none">
               MI D
               <span className="relative inline-block">
+                {/* Círculo medido en em para que acompañe al tamaño de letra.
+                    Con inset en px salía una cápsula alta y angosta en móvil. */}
                 <span
                   className="absolute rounded-full"
-                  style={{ background: LIMA, inset: "-8px -5px", zIndex: 0 }}
+                  style={{
+                    background: LIMA,
+                    width: "0.72em",
+                    height: "0.72em",
+                    left: "50%",
+                    top: "52%",
+                    transform: "translate(-50%, -50%)",
+                    zIndex: 0,
+                  }}
                 />
                 <span className="relative">Í</span>
               </span>
@@ -154,7 +166,7 @@ export default function MiDiaPage() {
             </button>
           </div>
 
-          <div className="flex items-end gap-8">
+          <div className="flex items-end gap-6 sm:gap-8">
             <Contador valor={conteos.pendientes} etiqueta="Pendientes" />
             <Contador valor={conteos.calientes} etiqueta="Calientes" color={COLOR_ESTADO.caliente} />
             <Contador valor={conteos.movimientos} etiqueta="Se movieron" destacado />
@@ -240,7 +252,7 @@ function Contador({
     <div className="flex items-start gap-2">
       <div>
         <div
-          className="text-4xl md:text-5xl font-extrabold tabular-nums leading-none tracking-tighter"
+          className="text-3xl sm:text-4xl md:text-5xl font-extrabold tabular-nums leading-none tracking-tighter"
           style={{ color: color ?? NEGRO }}
         >
           {valor}

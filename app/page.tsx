@@ -92,6 +92,7 @@ export default function DashboardPage() {
             <FunnelWaterfall
               stages={[
                 { label: "Total leads mes", value: data.totals.leadsMes },
+                { label: "Total registros mes", value: data.totals.registrosMes },
                 { label: "Total ftds del mes", value: data.totals.ftdMes },
                 { label: "Nuevo leads", value: data.totals.leadsHoy },
                 { label: "Registros Hoy", value: data.totals.registrosHoy },
