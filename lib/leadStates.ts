@@ -37,8 +37,8 @@ export const ESTADOS: EstadoLead[] = ["frio", "tibio", "caliente"];
 
 export const ESTADO_META: Record<EstadoLead, { nombre: string; emoji: string; color: string; que: string }> = {
   frio: { nombre: "Frío", emoji: "🧊", color: "#7C8AA5", que: "No hizo nada" },
-  tibio: { nombre: "Tibio", emoji: "🔥", color: "#E0A800", que: "Respondió o entró al canal" },
-  caliente: { nombre: "Caliente", emoji: "🔥🔥", color: "#D9481F", que: "Bajó a WhatsApp o se registró" },
+  tibio: { nombre: "Tibio", emoji: "🟡", color: "#E0A800", que: "Respondió o entró al canal" },
+  caliente: { nombre: "Caliente", emoji: "🔴", color: "#D9481F", que: "Bajó a WhatsApp o se registró" },
 };
 
 function tiene(contacto: GhlContact, tag: string): boolean {
@@ -101,11 +101,6 @@ export function accionesDeLead(contacto: GhlContact): string[] {
   if (tiene(contacto, TAG_BUSINESS)) acciones.push("Bajó a WhatsApp");
   if (isRegistrado(contacto) && hasOwnAffiliateLink(contacto)) acciones.push("Se registró");
   return acciones;
-}
-
-// Intensidad del interés: una llama por acción, hasta cuatro.
-export function llamasDeLead(contacto: GhlContact): number {
-  return accionesDeLead(contacto).length;
 }
 
 // El depósito saca al lead del panel: ya se cuenta en las tarjetas de FTD.

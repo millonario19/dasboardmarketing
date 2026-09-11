@@ -11,7 +11,6 @@ import {
 import {
   estadoDeLead,
   recorridoDeLead,
-  llamasDeLead,
   yaDeposito,
   interactuoAuto,
   conteoVacio,
@@ -125,7 +124,7 @@ export type Alerta = {
 
 // Qué hizo la gente dentro de cada estado, para que "Tibio: 16" no sea una
 // caja negra sino "11 respondieron, 5 entraron al canal".
-export type Desglose = { etiqueta: string; valor: number; llamas: number }[];
+export type Desglose = { etiqueta: string; valor: number }[];
 
 export type PanelEstados = {
   hoy: Record<EstadoLead, number>;
@@ -185,8 +184,8 @@ function calcularPanel(
 ): PanelEstados {
   const hoy = conteoVacio();
   const mes = conteoVacio();
-  const recorridosHoy = new Map<EstadoLead, Map<string, { valor: number; llamas: number }>>();
-  const recorridosMes = new Map<EstadoLead, Map<string, { valor: number; llamas: number }>>();
+  const recorridosHoy = new Map<EstadoLead, Map<string, number>>();
+  const recorridosMes = new Map<EstadoLead, Map<string, number>>();
   const hoyStr = diaBogota(new Date(ahoraMs).toISOString());
   const desdeConfiable = TAG_CONFIABLE_DESDE[TAG_INTERACCION_AUTO];
 
@@ -195,17 +194,10 @@ function calcularPanel(
   // Por agente, solo lo de hoy y ya filtrado a leads maduros.
   const porAgente = new Map<string, { maduros: number; auto: number }>();
 
-  function anotarRecorrido(
-    mapa: Map<EstadoLead, Map<string, { valor: number; llamas: number }>>,
-    estado: EstadoLead,
-    recorrido: string,
-    llamas: number
-  ) {
+  function anotarRecorrido(mapa: Map<EstadoLead, Map<string, number>>, estado: EstadoLead, recorrido: string) {
     if (!mapa.has(estado)) mapa.set(estado, new Map());
     const m = mapa.get(estado)!;
-    const actual = m.get(recorrido);
-    if (actual) actual.valor += 1;
-    else m.set(recorrido, { valor: 1, llamas });
+    m.set(recorrido, (m.get(recorrido) ?? 0) + 1);
   }
 
   for (const contacto of leadContacts) {
@@ -219,12 +211,11 @@ function calcularPanel(
     if (enPanel) {
       const estado = estadoDeLead(contacto);
       const recorrido = recorridoDeLead(contacto);
-      const llamas = llamasDeLead(contacto);
       mes[estado] += 1;
-      anotarRecorrido(recorridosMes, estado, recorrido, llamas);
+      anotarRecorrido(recorridosMes, estado, recorrido);
       if (t >= todayFromMs && t < todayToMs) {
         hoy[estado] += 1;
-        anotarRecorrido(recorridosHoy, estado, recorrido, llamas);
+        anotarRecorrido(recorridosHoy, estado, recorrido);
       }
     }
 
@@ -334,15 +325,13 @@ function calcularPanel(
 
   alertas.sort((a, b) => (a.severidad === b.severidad ? 0 : a.severidad === "alta" ? -1 : 1));
 
-  function aDesglose(
-    mapa: Map<EstadoLead, Map<string, { valor: number; llamas: number }>>
-  ): Record<EstadoLead, Desglose> {
+  function aDesglose(mapa: Map<EstadoLead, Map<string, number>>): Record<EstadoLead, Desglose> {
     const salida = {} as Record<EstadoLead, Desglose>;
     for (const estado of ESTADOS) {
       const m = mapa.get(estado);
       salida[estado] = m
         ? [...m.entries()]
-            .map(([etiqueta, { valor, llamas }]) => ({ etiqueta, valor, llamas }))
+            .map(([etiqueta, valor]) => ({ etiqueta, valor }))
             .sort((a, b) => b.valor - a.valor)
         : [];
     }
