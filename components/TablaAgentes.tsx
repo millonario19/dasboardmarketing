@@ -297,7 +297,10 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
           </tbody>
 
           <tfoot>
-            <tr className="border-t border-gridline font-medium bg-page">
+            {/* Celeste para que la fila de totales no se confunda con una fila más
+                de la tabla. Cierra en el mismo azul con el que abre el encabezado,
+                pero claro, porque acá el texto va oscuro. */}
+            <tr className="border-t border-gridline font-medium bg-header">
               <td className="px-4 py-3">Total</td>
               {enRango && totalesRango ? (
                 <>
