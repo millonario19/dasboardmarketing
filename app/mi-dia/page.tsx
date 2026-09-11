@@ -300,7 +300,7 @@ function BloqueTarjetas({ bloque, locationId }: { bloque: Bloque; locationId: st
         </span>
       </div>
 
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {bloque.items.map((l) => (
           <Tarjeta key={l.id} lead={l} locationId={locationId} />
         ))}
@@ -319,65 +319,98 @@ function Tarjeta({ lead, locationId }: { lead: LeadItem; locationId: string }) {
   const digitos = lead.telefono?.replace(/\D/g, "") ?? "";
   const crm = `https://app.gohighlevel.com/v2/location/${locationId}/contacts/detail/${lead.id}`;
   const color = COLOR_ESTADO[lead.estado] ?? GRIS;
-  const edad = lead.dias === 0 ? "entró hoy" : lead.dias === 1 ? "hace 1 día" : `hace ${lead.dias} días`;
+  const edad = lead.dias === 0 ? "hoy" : lead.dias === 1 ? "hace 1 día" : `hace ${lead.dias} días`;
+  const esRescate = lead.movimiento?.esRescate ?? lead.dias >= 4;
+  const pasos = lead.acciones.length > 0 ? lead.acciones : ["Sin responder"];
 
   return (
-    <article className="rounded-3xl bg-white p-5 flex flex-col gap-3.5">
-      <div className="flex items-start justify-between gap-2">
-        <Inicial nombre={lead.nombre} color={color} />
-        <a
-          href={crm}
-          target="_blank"
-          rel="noreferrer"
-          aria-label={`Abrir ${lead.nombre} en el CRM`}
-          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 hover:bg-black/5"
-          style={{ border: `1px solid ${BORDE}`, color: GRIS }}
-        >
-          ↗
-        </a>
-      </div>
+    <article
+      className="relative rounded-[26px] p-4 pt-4 flex flex-col gap-3"
+      style={{
+        // Degradado apenas perceptible en vez de blanco plano: da profundidad
+        // sin necesidad de un borde marcado.
+        background: "linear-gradient(180deg, #FFFFFF 0%, #FBFBF9 100%)",
+        boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 12px 28px -16px rgba(0,0,0,0.22)",
+      }}
+    >
+      {/* El botón principal va encajado en una muesca de la esquina, como en la
+          referencia. El anillo del color del fondo es lo que simula el recorte. */}
+      <a
+        href={digitos ? `https://wa.me/${digitos}` : crm}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={digitos ? `Escribir a ${lead.nombre} por WhatsApp` : `Abrir ${lead.nombre} en el CRM`}
+        title={digitos ? "Escribir por WhatsApp" : "Sin teléfono — abrir en el CRM"}
+        className="absolute -top-1.5 -right-1.5 w-9 h-9 rounded-full flex items-center justify-center text-[14px] transition-transform hover:scale-110"
+        style={{
+          background: digitos ? LIMA : "#F0F0EC",
+          color: digitos ? NEGRO : GRIS,
+          boxShadow: `0 0 0 5px ${FONDO}`,
+        }}
+      >
+        {digitos ? "✆" : "↗"}
+      </a>
 
-      <div>
-        <p className="text-lg font-bold leading-tight truncate">{lead.nombre}</p>
-        <p className="text-[13px] mt-0.5 truncate" style={{ color: GRIS }}>
+      <Inicial nombre={lead.nombre} color={color} tamano={38} />
+
+      <div className="min-w-0">
+        <p className="text-[15.5px] font-bold leading-snug truncate">{lead.nombre}</p>
+        <p className="text-[12px] mt-0.5 truncate" style={{ color: GRIS }}>
           {lead.movimiento ? (
             <>
-              <strong className="font-semibold" style={{ color: NEGRO }}>
-                {lead.movimiento.que}
-              </strong>{" "}
+              <span style={{ color: NEGRO, fontWeight: 600 }}>{lead.movimiento.que}</span>{" "}
               {lead.movimiento.cuando}
             </>
           ) : (
-            lead.recorrido
+            edad
           )}
         </p>
       </div>
 
-      <div>
-        <p className="text-[11px] mb-1.5" style={{ color: GRIS }}>
-          {lead.movimiento?.esRescate ? "Rescate" : edad}
-        </p>
-        <EscalaEmbudo acciones={lead.acciones} />
-      </div>
+      <div className="flex items-end justify-between gap-2 mt-auto">
+        <div className="min-w-0">
+          <p className="text-[9.5px] uppercase mb-1.5" style={{ color: GRIS, letterSpacing: "0.1em" }}>
+            {esRescate ? "Rescate" : "Recorrido"}
+          </p>
+          {/* Una sola línea: si envuelven, las tarjetas de la fila se
+              descuadran entre sí. El +N muestra el resto al pasar el mouse. */}
+          <div className="flex gap-1 overflow-hidden">
+            {pasos.slice(0, 2).map((a) => (
+              <span
+                key={a}
+                className="text-[10px] rounded-full px-2 py-[3px] whitespace-nowrap"
+                style={{ background: "#F1F1ED", color: "#5F5F59" }}
+              >
+                {a}
+              </span>
+            ))}
+            {pasos.length > 2 && (
+              <span
+                className="text-[10px] rounded-full px-2 py-[3px]"
+                style={{ background: "#F1F1ED", color: "#5F5F59" }}
+                title={pasos.join(" · ")}
+              >
+                +{pasos.length - 2}
+              </span>
+            )}
+          </div>
+        </div>
 
-      {digitos ? (
-        <a
-          href={`https://wa.me/${digitos}`}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-full py-2.5 text-[13px] font-semibold text-center"
-          style={{ background: LIMA, color: NEGRO }}
-        >
-          WhatsApp
-        </a>
-      ) : (
-        <span
-          className="rounded-full py-2.5 text-[13px] text-center"
-          style={{ background: "#F0F0EC", color: GRIS }}
-        >
-          Sin teléfono
-        </span>
-      )}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <a
+            href={crm}
+            target="_blank"
+            rel="noreferrer"
+            aria-label={`Abrir ${lead.nombre} en el CRM`}
+            title="Abrir en el CRM"
+            className="text-[10px] hover:underline"
+            style={{ color: GRIS }}
+          >
+            CRM ↗
+          </a>
+          <EscalaEmbudo acciones={lead.acciones} />
+        </div>
+      </div>
     </article>
   );
 }
