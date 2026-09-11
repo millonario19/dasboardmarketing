@@ -2,26 +2,49 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { EscalaEmbudo, Inicial } from "@/components/EscalaEmbudo";
+import { Inicial } from "@/components/EscalaEmbudo";
 import { CerrarSesion } from "@/components/CerrarSesion";
-import { formatearTelefono } from "@/components/ContactoRapido";
 import { useSesion } from "@/components/useSesion";
+import { TablaLeads } from "@/components/TablaLeads";
+import { ESTADO_META } from "@/lib/leadStates";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
 
 // Paleta tomada de la referencia: gris cálido de fondo, blanco para las
 // tarjetas, negro para la barra y el título, y un verde ácido como única nota
 // de color. El verde siempre lleva texto negro encima: sobre blanco no tiene
 // contraste suficiente.
-const FONDO = "#E8E8E5";
+const FONDO = "#E6E6E2";
+
+/**
+ * Fondo del día: el gris de siempre con manchas muy suaves de la propia
+ * paleta.
+ *
+ * No es decoración: los paneles de leads son de vidrio translúcido, y sobre un
+ * gris plano una tarjeta transparente se ve idéntica a una blanca. Lo que se
+ * asoma por debajo es lo que la hace flotar.
+ *
+ * Sin background-attachment: fixed — deja rastros al desplazar y en Safari de
+ * iPhone se rompe.
+ */
+const FONDO_DEGRADADO = [
+  "radial-gradient(820px 460px at 8% -8%, rgba(198,242,78,.62), transparent 58%)",
+  "radial-gradient(680px 460px at 95% 2%, rgba(255,255,255,.95), transparent 60%)",
+  "radial-gradient(760px 520px at 78% 62%, rgba(120,155,205,.34), transparent 58%)",
+  "radial-gradient(820px 560px at 26% 105%, rgba(224,168,0,.24), transparent 58%)",
+  FONDO,
+].join(", ");
 const LIMA = "#C6F24E";
 const NEGRO = "#0D0D0D";
 const GRIS = "#8E8E88";
 const BORDE = "#D8D8D3";
 
+// Los mismos tres colores que las tarjetas de Dirección. Antes acá eran
+// naranja, ámbar y gris azulado, así que un mismo lead se veía de un color en
+// una pantalla y de otro en la otra.
 const COLOR_ESTADO: Record<string, string> = {
-  caliente: "#D9481F",
-  tibio: "#E0A800",
-  frio: "#7C8AA5",
+  caliente: ESTADO_META.caliente.color,
+  tibio: ESTADO_META.tibio.fuerte,
+  frio: ESTADO_META.frio.color,
 };
 
 // El agente se elige a sí mismo una vez y el navegador lo recuerda: mientras
@@ -92,7 +115,10 @@ export default function MiDiaPage() {
     : data?.agentes.find((a) => a.id === agente)?.nombre ?? "Toda la oficina";
 
   return (
-    <div className="min-h-screen" style={{ background: FONDO, color: NEGRO }}>
+    <div
+      className="min-h-screen"
+      style={{ background: FONDO_DEGRADADO, backgroundRepeat: "no-repeat", color: NEGRO }}
+    >
       <div className="max-w-6xl mx-auto px-5 py-5">
 
         {/* Barra superior: cápsula negra a la izquierda, tira verde con los
@@ -253,9 +279,9 @@ export default function MiDiaPage() {
           </p>
         )}
 
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-6">
           {visibles.map((b) => (
-            <BloqueTarjetas key={b.id} bloque={b} locationId={data!.locationId} />
+            <TablaLeads key={b.id} bloque={b} locationId={data!.locationId} />
           ))}
           {data && conteos.pendientes === 0 && !cargando && (
             <p className="text-sm" style={{ color: GRIS }}>
@@ -329,164 +355,5 @@ function Pildora({
     >
       {children}
     </button>
-  );
-}
-
-function BloqueTarjetas({ bloque, locationId }: { bloque: Bloque; locationId: string }) {
-  if (bloque.total === 0) return null;
-
-  return (
-    <section>
-      <div className="flex items-baseline gap-3 flex-wrap mb-3">
-        <h3 className="text-xl font-bold tracking-tight">{bloque.titulo}</h3>
-        <span className="text-sm tabular-nums border-b-2 pb-0.5" style={{ borderColor: NEGRO }}>
-          <strong>{bloque.total}</strong> leads
-        </span>
-        <span className="text-[13px]" style={{ color: GRIS }}>
-          {bloque.subtitulo}
-        </span>
-      </div>
-
-      <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {bloque.items.map((l) => (
-          <Tarjeta key={l.id} lead={l} locationId={locationId} />
-        ))}
-      </div>
-
-      {bloque.total > bloque.items.length && (
-        <p className="text-[13px] mt-3" style={{ color: GRIS }}>
-          Se muestran {bloque.items.length} de {bloque.total}. Atendé estos primero.
-        </p>
-      )}
-    </section>
-  );
-}
-
-// Qué le falta al lead para avanzar. Es lo que convierte la tarjeta en algo
-// accionable: el agente lee la etiqueta y sabe qué hacer sin interpretar nada.
-function etiquetaFalta(lead: LeadItem): { texto: string; fondo: string; color: string } {
-  if (lead.acciones.includes("Se registró")) {
-    return { texto: "Registrado", fondo: "#E2F1EA", color: "#157F52" };
-  }
-  if (lead.estado === "caliente") {
-    return { texto: "Falta registro", fondo: "#FBE8E1", color: "#A63312" };
-  }
-  // "Nadie lo movió" solo si de verdad no se movió: un lead que entró hace
-  // días pero reaccionó hoy no está abandonado, le falta el paso siguiente.
-  if (lead.estado === "tibio" && lead.dias >= 4 && !lead.movimiento) {
-    return { texto: "Nadie lo movió", fondo: "#EAF1FA", color: "#2A6FB8" };
-  }
-  if (lead.estado === "tibio") {
-    return { texto: "Falta WhatsApp", fondo: "#FDF3DA", color: "#8A6100" };
-  }
-  return { texto: "Primer contacto", fondo: "#EDF1F7", color: "#3C536F" };
-}
-
-function IconoTelefono() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />
-    </svg>
-  );
-}
-
-function IconoRecorrido() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-      <path d="M3 12a9 9 0 1 0 9-9" />
-      <path d="M3 12h9V3" />
-    </svg>
-  );
-}
-
-function Tarjeta({ lead, locationId }: { lead: LeadItem; locationId: string }) {
-  const digitos = lead.telefono?.replace(/\D/g, "") ?? "";
-  const crm = `https://app.gohighlevel.com/v2/location/${locationId}/contacts/detail/${lead.id}`;
-  const color = COLOR_ESTADO[lead.estado] ?? GRIS;
-  const edad = lead.dias === 0 ? "entró hoy" : lead.dias === 1 ? "hace 1 día" : `hace ${lead.dias} días`;
-  const falta = etiquetaFalta(lead);
-  const recorrido = lead.acciones.length > 0 ? lead.acciones.join(" · ") : "Sin responder";
-
-  return (
-    <article
-      className="relative rounded-[22px] p-4 flex flex-col"
-      style={{
-        background: "linear-gradient(180deg, #FFFFFF 0%, #FBFBF9 100%)",
-        boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 12px 28px -16px rgba(0,0,0,0.22)",
-      }}
-    >
-      {/* Botón principal encajado en una muesca de la esquina: el anillo del
-          color del fondo es lo que simula el recorte. */}
-      <a
-        href={digitos ? `https://wa.me/${digitos}` : crm}
-        target="_blank"
-        rel="noreferrer"
-        aria-label={digitos ? `Escribir a ${lead.nombre} por WhatsApp` : `Abrir ${lead.nombre} en el CRM`}
-        title={digitos ? "Escribir por WhatsApp" : "Sin teléfono — abrir en el CRM"}
-        className="absolute -top-1.5 -right-1.5 w-9 h-9 rounded-full flex items-center justify-center text-[14px] transition-transform hover:scale-110"
-        style={{
-          background: digitos ? LIMA : "#F0F0EC",
-          color: digitos ? NEGRO : GRIS,
-          boxShadow: `0 0 0 5px ${FONDO}`,
-        }}
-      >
-        {digitos ? "✆" : "↗"}
-      </a>
-
-      <div className="flex items-start gap-2.5 pr-7">
-        <Inicial nombre={lead.nombre} color={color} tamano={38} />
-        <div className="min-w-0 pt-0.5">
-          <p className="text-[14.5px] font-bold leading-tight truncate">{lead.nombre}</p>
-          <p className="text-[12px] mt-0.5 truncate" style={{ color: GRIS }}>
-            {lead.movimiento ? (
-              <>
-                <span style={{ color: NEGRO, fontWeight: 600 }}>{lead.movimiento.que}</span>{" "}
-                {lead.movimiento.cuando}
-              </>
-            ) : (
-              edad
-            )}
-          </p>
-        </div>
-      </div>
-
-      <div className="h-px my-3" style={{ background: "#EDEDE8" }} />
-
-      <div className="flex items-center gap-2 text-[12.5px] mb-1.5" style={{ color: lead.telefono ? "#5F5F59" : GRIS }}>
-        <span style={{ color: GRIS }}>
-          <IconoTelefono />
-        </span>
-        <span className="truncate">{lead.telefono ? formatearTelefono(lead.telefono) : "Sin teléfono"}</span>
-      </div>
-
-      <div className="flex items-center gap-2 text-[12.5px]" style={{ color: "#5F5F59" }}>
-        <span style={{ color: GRIS }}>
-          <IconoRecorrido />
-        </span>
-        <span className="truncate" title={recorrido}>
-          {recorrido}
-        </span>
-      </div>
-
-      <div className="flex items-center justify-between gap-2 mt-3.5">
-        <span
-          className="text-[11.5px] font-medium rounded-lg px-2.5 py-1 whitespace-nowrap"
-          style={{ background: falta.fondo, color: falta.color }}
-        >
-          {falta.texto}
-        </span>
-        <EscalaEmbudo acciones={lead.acciones} />
-      </div>
-
-      <a
-        href={crm}
-        target="_blank"
-        rel="noreferrer"
-        className="text-[10.5px] mt-2.5 self-start hover:underline"
-        style={{ color: GRIS }}
-      >
-        Abrir en el CRM ↗
-      </a>
-    </article>
   );
 }

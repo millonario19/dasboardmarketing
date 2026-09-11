@@ -36,6 +36,9 @@ export type LeadItem = {
   // se cumplieron y cuáles no, una por una.
   acciones: string[];
   dias: number; // días desde que entró
+  // Momento exacto en que entró. El agente necesita la hora, no solo "hace 2
+  // días": a las 7 de la mañana y a las 8 de la noche no se trabaja igual.
+  creado: string;
   movimiento?: { que: string; cuando: string; cuandoMs: number; esRescate: boolean };
 };
 
@@ -147,6 +150,7 @@ export async function computeMiDia(agenteId?: string | null): Promise<MiDia> {
       recorrido: recorridoDeLead(c),
       acciones: accionesDeLead(c),
       dias: Math.floor((hoyMs - inicioDeHoyBogota(altaMs)) / DIA_MS),
+      creado: c.dateAdded,
       movimiento: mov
         ? {
             que: ACCION_DE_TAG[mov.tag] ?? mov.tag,
