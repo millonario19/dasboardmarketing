@@ -171,11 +171,11 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]" style={{ minWidth: 720 }}>
             <thead>
-              <tr className="bg-page text-left border-b border-gridline">
+              <tr className="bg-header text-left border-b border-gridline">
                 {["Temperatura", "Nombre", "Teléfono", "Creado", "Etiquetas"].map((h) => (
                   <th
                     key={h}
-                    className="px-4 py-2.5 font-semibold text-[10.5px] uppercase tracking-wider text-ink-muted whitespace-nowrap"
+                    className="px-4 py-2.5 font-semibold text-[10.5px] uppercase tracking-wider text-ink-primary whitespace-nowrap"
                   >
                     {h}
                   </th>
