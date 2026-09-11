@@ -61,9 +61,10 @@ export const ESTADO_META: Record<
   tibio: {
     nombre: "Tibio",
     que: "Respondió o entró al canal",
-    color: "#F97316",
-    sobre: "#FFFFFF",
-    fuerte: "#C2560F",
+    color: "#FACC15",
+    // Único estado con texto oscuro: sobre amarillo, el blanco no se lee.
+    sobre: "#422006",
+    fuerte: "#A16207",
     sobreFuerte: "#FFFFFF",
   },
   caliente: {
