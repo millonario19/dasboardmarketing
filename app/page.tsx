@@ -6,6 +6,7 @@ import { AgentDetail } from "@/components/AgentDetail";
 import { FunnelStepChart } from "@/components/FunnelStepChart";
 import { FunnelWaterfall } from "@/components/FunnelWaterfall";
 import { PanelEstados } from "@/components/PanelEstados";
+import { CambiarVista } from "@/components/CambiarVista";
 import { CustomRangeQuery } from "@/components/CustomRangeQuery";
 import type { AgentProduction } from "@/lib/metrics";
 
@@ -57,6 +58,7 @@ export default function DashboardPage() {
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <CambiarVista actual="direccion" />
           <button
             onClick={load}
             disabled={loading}
