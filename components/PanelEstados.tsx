@@ -111,9 +111,10 @@ export function PanelEstados({ datos }: { datos: Datos }) {
           <button
             onClick={verDia}
             disabled={cargando}
-            className="rounded-full border border-gridline bg-surface px-4 py-1.5 text-[13px] text-ink-primary hover:bg-page disabled:opacity-50"
+            className="rounded-full px-4 py-1.5 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
+            style={{ background: "#17457F" }}
           >
-            {cargando ? "Cargando…" : "Ver ese día"}
+            {cargando ? "Consultando…" : "Consultar"}
           </button>
         </div>
       </div>
