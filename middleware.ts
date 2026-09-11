@@ -23,7 +23,7 @@ export async function middleware(req: NextRequest) {
   if (sesion.rol !== "admin" && SOLO_DIRECCION.some((p) => ruta === p || ruta.startsWith(`${p}/`))) {
     return ruta.startsWith("/api/")
       ? NextResponse.json({ error: "Solo la dirección puede hacer esto" }, { status: 403 })
-      : NextResponse.redirect(new URL("/mi-dia", req.url));
+      : NextResponse.redirect(new URL("/", req.url));
   }
 
   return NextResponse.next();

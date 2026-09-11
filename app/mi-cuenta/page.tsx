@@ -50,7 +50,7 @@ export default function MiCuentaPage() {
       <div className="flex items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-semibold text-ink-primary tracking-tight">Mi cuenta</h1>
         <Link
-          href="/mi-dia"
+          href="/"
           className="bg-surface border border-gridline rounded-full px-4 py-2 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary"
         >
           ← Volver

@@ -92,8 +92,13 @@ export async function verificarSesion(token: string | undefined): Promise<Sesion
   }
 }
 
-// Qué pantalla ve cada quien al entrar: el agente arranca en su lista de
-// trabajo, la dirección en el tablero.
-export function pantallaInicial(rol: Rol): string {
-  return rol === "admin" ? "/" : "/mi-dia";
+/**
+ * Dónde cae cada quien al entrar.
+ *
+ * El tablero para todos. El agente lo ve recortado a sus propios leads, y es
+ * lo primero que quiere mirar al empezar: cómo viene su día en números. Mi día
+ * sigue a un toque de distancia, en la pestaña de al lado.
+ */
+export function pantallaInicial(_rol: Rol): string {
+  return "/";
 }
