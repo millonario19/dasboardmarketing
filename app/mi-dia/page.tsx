@@ -300,7 +300,7 @@ function BloqueTarjetas({ bloque, locationId }: { bloque: Bloque; locationId: st
         </span>
       </div>
 
-      <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {bloque.items.map((l) => (
           <Tarjeta key={l.id} lead={l} locationId={locationId} />
         ))}
@@ -315,26 +315,72 @@ function BloqueTarjetas({ bloque, locationId }: { bloque: Bloque; locationId: st
   );
 }
 
+// Teléfonos de GHL vienen como "+573104804802"; cortarlos en grupos los hace
+// legibles de un vistazo cuando el agente compara con su WhatsApp.
+function formatearTelefono(bruto: string): string {
+  const d = bruto.replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("57")) {
+    return `+57 ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8)}`;
+  }
+  if (d.length === 10) return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
+  return bruto;
+}
+
+// Qué le falta al lead para avanzar. Es lo que convierte la tarjeta en algo
+// accionable: el agente lee la etiqueta y sabe qué hacer sin interpretar nada.
+function etiquetaFalta(lead: LeadItem): { texto: string; fondo: string; color: string } {
+  if (lead.acciones.includes("Se registró")) {
+    return { texto: "Registrado", fondo: "#E2F1EA", color: "#157F52" };
+  }
+  if (lead.estado === "caliente") {
+    return { texto: "Falta registro", fondo: "#FBE8E1", color: "#A63312" };
+  }
+  // "Nadie lo movió" solo si de verdad no se movió: un lead que entró hace
+  // días pero reaccionó hoy no está abandonado, le falta el paso siguiente.
+  if (lead.estado === "tibio" && lead.dias >= 4 && !lead.movimiento) {
+    return { texto: "Nadie lo movió", fondo: "#EAF1FA", color: "#2A6FB8" };
+  }
+  if (lead.estado === "tibio") {
+    return { texto: "Falta WhatsApp", fondo: "#FDF3DA", color: "#8A6100" };
+  }
+  return { texto: "Primer contacto", fondo: "#EDF1F7", color: "#3C536F" };
+}
+
+function IconoTelefono() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z" />
+    </svg>
+  );
+}
+
+function IconoRecorrido() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
+      <path d="M3 12a9 9 0 1 0 9-9" />
+      <path d="M3 12h9V3" />
+    </svg>
+  );
+}
+
 function Tarjeta({ lead, locationId }: { lead: LeadItem; locationId: string }) {
   const digitos = lead.telefono?.replace(/\D/g, "") ?? "";
   const crm = `https://app.gohighlevel.com/v2/location/${locationId}/contacts/detail/${lead.id}`;
   const color = COLOR_ESTADO[lead.estado] ?? GRIS;
-  const edad = lead.dias === 0 ? "hoy" : lead.dias === 1 ? "hace 1 día" : `hace ${lead.dias} días`;
-  const esRescate = lead.movimiento?.esRescate ?? lead.dias >= 4;
-  const pasos = lead.acciones.length > 0 ? lead.acciones : ["Sin responder"];
+  const edad = lead.dias === 0 ? "entró hoy" : lead.dias === 1 ? "hace 1 día" : `hace ${lead.dias} días`;
+  const falta = etiquetaFalta(lead);
+  const recorrido = lead.acciones.length > 0 ? lead.acciones.join(" · ") : "Sin responder";
 
   return (
     <article
-      className="relative rounded-[26px] p-4 pt-4 flex flex-col gap-3"
+      className="relative rounded-[22px] p-4 flex flex-col"
       style={{
-        // Degradado apenas perceptible en vez de blanco plano: da profundidad
-        // sin necesidad de un borde marcado.
         background: "linear-gradient(180deg, #FFFFFF 0%, #FBFBF9 100%)",
         boxShadow: "0 1px 2px rgba(0,0,0,0.03), 0 12px 28px -16px rgba(0,0,0,0.22)",
       }}
     >
-      {/* El botón principal va encajado en una muesca de la esquina, como en la
-          referencia. El anillo del color del fondo es lo que simula el recorte. */}
+      {/* Botón principal encajado en una muesca de la esquina: el anillo del
+          color del fondo es lo que simula el recorte. */}
       <a
         href={digitos ? `https://wa.me/${digitos}` : crm}
         target="_blank"
@@ -351,66 +397,60 @@ function Tarjeta({ lead, locationId }: { lead: LeadItem; locationId: string }) {
         {digitos ? "✆" : "↗"}
       </a>
 
-      <Inicial nombre={lead.nombre} color={color} tamano={38} />
-
-      <div className="min-w-0">
-        <p className="text-[15.5px] font-bold leading-snug truncate">{lead.nombre}</p>
-        <p className="text-[12px] mt-0.5 truncate" style={{ color: GRIS }}>
-          {lead.movimiento ? (
-            <>
-              <span style={{ color: NEGRO, fontWeight: 600 }}>{lead.movimiento.que}</span>{" "}
-              {lead.movimiento.cuando}
-            </>
-          ) : (
-            edad
-          )}
-        </p>
-      </div>
-
-      <div className="flex items-end justify-between gap-2 mt-auto">
-        <div className="min-w-0">
-          <p className="text-[9.5px] uppercase mb-1.5" style={{ color: GRIS, letterSpacing: "0.1em" }}>
-            {esRescate ? "Rescate" : "Recorrido"}
-          </p>
-          {/* Una sola línea: si envuelven, las tarjetas de la fila se
-              descuadran entre sí. El +N muestra el resto al pasar el mouse. */}
-          <div className="flex gap-1 overflow-hidden">
-            {pasos.slice(0, 2).map((a) => (
-              <span
-                key={a}
-                className="text-[10px] rounded-full px-2 py-[3px] whitespace-nowrap"
-                style={{ background: "#F1F1ED", color: "#5F5F59" }}
-              >
-                {a}
-              </span>
-            ))}
-            {pasos.length > 2 && (
-              <span
-                className="text-[10px] rounded-full px-2 py-[3px]"
-                style={{ background: "#F1F1ED", color: "#5F5F59" }}
-                title={pasos.join(" · ")}
-              >
-                +{pasos.length - 2}
-              </span>
+      <div className="flex items-start gap-2.5 pr-7">
+        <Inicial nombre={lead.nombre} color={color} tamano={38} />
+        <div className="min-w-0 pt-0.5">
+          <p className="text-[14.5px] font-bold leading-tight truncate">{lead.nombre}</p>
+          <p className="text-[12px] mt-0.5 truncate" style={{ color: GRIS }}>
+            {lead.movimiento ? (
+              <>
+                <span style={{ color: NEGRO, fontWeight: 600 }}>{lead.movimiento.que}</span>{" "}
+                {lead.movimiento.cuando}
+              </>
+            ) : (
+              edad
             )}
-          </div>
-        </div>
-
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <a
-            href={crm}
-            target="_blank"
-            rel="noreferrer"
-            aria-label={`Abrir ${lead.nombre} en el CRM`}
-            title="Abrir en el CRM"
-            className="text-[10px] hover:underline"
-            style={{ color: GRIS }}
-          >
-            CRM ↗
-          </a>
-          <EscalaEmbudo acciones={lead.acciones} />
+          </p>
         </div>
       </div>
+
+      <div className="h-px my-3" style={{ background: "#EDEDE8" }} />
+
+      <div className="flex items-center gap-2 text-[12.5px] mb-1.5" style={{ color: lead.telefono ? "#5F5F59" : GRIS }}>
+        <span style={{ color: GRIS }}>
+          <IconoTelefono />
+        </span>
+        <span className="truncate">{lead.telefono ? formatearTelefono(lead.telefono) : "Sin teléfono"}</span>
+      </div>
+
+      <div className="flex items-center gap-2 text-[12.5px]" style={{ color: "#5F5F59" }}>
+        <span style={{ color: GRIS }}>
+          <IconoRecorrido />
+        </span>
+        <span className="truncate" title={recorrido}>
+          {recorrido}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 mt-3.5">
+        <span
+          className="text-[11.5px] font-medium rounded-lg px-2.5 py-1 whitespace-nowrap"
+          style={{ background: falta.fondo, color: falta.color }}
+        >
+          {falta.texto}
+        </span>
+        <EscalaEmbudo acciones={lead.acciones} />
+      </div>
+
+      <a
+        href={crm}
+        target="_blank"
+        rel="noreferrer"
+        className="text-[10.5px] mt-2.5 self-start hover:underline"
+        style={{ color: GRIS }}
+      >
+        Abrir en el CRM ↗
+      </a>
     </article>
   );
 }
