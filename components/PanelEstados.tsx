@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import { ESTADOS, ESTADO_META, accionSugerida, type EstadoLead } from "@/lib/leadStates";
-import type { PanelEstados as Datos } from "@/lib/metrics";
+import type { LeadDeEstado, PanelEstados as Datos } from "@/lib/metrics";
 
 const SEVERIDAD = {
   alta: { borde: "#D93A2B", fondo: "#FDF0EE", texto: "#A32A1E" },
@@ -42,6 +42,13 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
   const [cargando, setCargando] = useState(false);
   const [errorDia, setErrorDia] = useState<string | null>(null);
 
+  // La tarjeta abierta y su lista. Solo una a la vez: dos tablas largas
+  // abiertas obligan a bajar hasta el final para comparar.
+  const [abierto, setAbierto] = useState<EstadoLead | null>(null);
+  const [leads, setLeads] = useState<{ leads: LeadDeEstado[]; total: number } | null>(null);
+  const [cargandoLeads, setCargandoLeads] = useState(false);
+  const [errorLeads, setErrorLeads] = useState<string | null>(null);
+
   // El día elegido se pide aparte: el panel por defecto solo trae hoy y el mes.
   const verDia = useCallback(() => {
     const desde = new Date(`${fecha}T00:00:00-05:00`);
@@ -54,10 +61,56 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
         if (!r.ok) throw new Error((await r.json()).error ?? "Error al consultar el día");
         return r.json();
       })
-      .then((d) => setDia({ fecha, ...d }))
+      .then((d) => {
+        setDia({ fecha, ...d });
+        cerrarLista();
+      })
       .catch((e) => setErrorDia(e.message))
       .finally(() => setCargando(false));
   }, [fecha]);
+
+  const cerrarLista = useCallback(() => {
+    setAbierto(null);
+    setLeads(null);
+    setErrorLeads(null);
+  }, []);
+
+  // El rango que está mirando la pantalla ahora mismo: el día consultado, o
+  // la ventana de hoy / del mes que ya viene calculada desde el servidor.
+  const rangoActual = useCallback(() => {
+    if (dia) {
+      const desde = new Date(`${dia.fecha}T00:00:00-05:00`);
+      const hasta = new Date(desde);
+      hasta.setDate(hasta.getDate() + 1);
+      return { from: desde.toISOString(), to: hasta.toISOString() };
+    }
+    return ventana === "hoy" ? datos.rango.hoy : datos.rango.mes;
+  }, [dia, ventana, datos.rango]);
+
+  const verLeads = useCallback(
+    (estado: EstadoLead) => {
+      if (abierto === estado) {
+        cerrarLista();
+        return;
+      }
+      const { from, to } = rangoActual();
+      setAbierto(estado);
+      setLeads(null);
+      setErrorLeads(null);
+      setCargandoLeads(true);
+      fetch(
+        `/api/metrics/estados/leads?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&estado=${estado}`
+      )
+        .then(async (r) => {
+          if (!r.ok) throw new Error((await r.json()).error ?? "Error al traer los leads");
+          return r.json();
+        })
+        .then(setLeads)
+        .catch((e) => setErrorLeads(e.message))
+        .finally(() => setCargandoLeads(false));
+    },
+    [abierto, cerrarLista, rangoActual]
+  );
 
   const conteos = dia ? dia.conteos : datos[ventana];
   const desglose = dia ? dia.desglose : ventana === "hoy" ? datos.desgloseHoy : datos.desgloseMes;
@@ -91,6 +144,7 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
                 onClick={() => {
                   setVentana(v);
                   setDia(null);
+                  cerrarLista();
                 }}
                 className={`px-4 py-1.5 ${
                   !dia && ventana === v
@@ -135,7 +189,10 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
             {dia.depositaron > 0 && `, de los cuales ${dia.depositaron} ya depositaron`}
           </span>
           <button
-            onClick={() => setDia(null)}
+            onClick={() => {
+              setDia(null);
+              cerrarLista();
+            }}
             className="border border-gridline bg-surface text-header-ink rounded-lg px-3 py-1 text-[12.5px] font-medium hover:bg-page"
           >
             × Volver
@@ -168,15 +225,38 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
         </div>
       )}
 
+      {/* La lista vive dentro de la grilla, justo detrás de su tarjeta, y se
+          acomoda sola a cada pantalla:
+
+          - En celular las tarjetas van apiladas, así que la lista aparece
+            pegada a la que tocaste, sin hacer bajar tres tarjetas para verla.
+          - En escritorio, `sm:order-last` la manda al final de la grilla y
+            `sm:col-span-3` la deja a lo ancho, debajo de las tres. En una
+            columna de un tercio los nombres y teléfonos salían cortados. */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {ESTADOS.map((estado) => (
-          <Tarjeta
-            key={estado}
-            estado={estado}
-            valor={conteos[estado]}
-            total={total}
-            desglose={desglose[estado] ?? []}
-          />
+          <Fragment key={estado}>
+            <Tarjeta
+              estado={estado}
+              valor={conteos[estado]}
+              total={total}
+              desglose={desglose[estado] ?? []}
+              abierto={abierto === estado}
+              onVerLeads={() => verLeads(estado)}
+            />
+            {abierto === estado && (
+              <div className="sm:col-span-3 sm:order-last">
+                <ListaDeLeads
+                  estado={estado}
+                  datos={leads}
+                  cargando={cargandoLeads}
+                  error={errorLeads}
+                  conAgente={!propio}
+                  onCerrar={cerrarLista}
+                />
+              </div>
+            )}
+          </Fragment>
         ))}
       </div>
 
@@ -241,11 +321,15 @@ function Tarjeta({
   valor,
   total,
   desglose,
+  abierto,
+  onVerLeads,
 }: {
   estado: EstadoLead;
   valor: number;
   total: number;
   desglose: { etiqueta: string; valor: number }[];
+  abierto: boolean;
+  onVerLeads: () => void;
 }) {
   const meta = ESTADO_META[estado];
   const pct = total > 0 ? (valor / total) * 100 : 0;
@@ -357,7 +441,178 @@ function Tarjeta({
             <span className="block text-[12.5px] font-extrabold leading-tight">{accionSugerida(estado)}</span>
           </span>
         </div>
+
+        {/* De número a lista: sin esto, "Frío: 47" no se puede trabajar. */}
+        <button
+          onClick={onVerLeads}
+          disabled={valor === 0}
+          aria-expanded={abierto}
+          className="w-full rounded-xl px-3 py-2.5 text-[12.5px] font-extrabold disabled:opacity-40 disabled:cursor-default hover:opacity-90"
+          style={{ background: meta.color, color: meta.sobre }}
+        >
+          {valor === 0 ? "Sin leads" : abierto ? "Ocultar lista ▲" : `Ver leads (${valor}) ▼`}
+        </button>
       </div>
     </article>
+  );
+}
+
+function fechaCorta(iso: string): string {
+  return new Date(iso).toLocaleString("es-CO", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * La lista de una tarjeta, desplegada a lo ancho.
+ *
+ * Muestra qué hizo cada lead y no solo su nombre: dos leads Tibios pueden ser
+ * uno que respondió y otro que solo entró al canal, y el siguiente paso del
+ * agente no es el mismo.
+ */
+function ListaDeLeads({
+  estado,
+  datos,
+  cargando,
+  error,
+  conAgente,
+  onCerrar,
+}: {
+  estado: EstadoLead;
+  datos: { leads: LeadDeEstado[]; total: number } | null;
+  cargando: boolean;
+  error: string | null;
+  conAgente: boolean;
+  onCerrar: () => void;
+}) {
+  const meta = ESTADO_META[estado];
+  const leads = datos?.leads ?? [];
+  const recortada = datos ? datos.total > leads.length : false;
+
+  return (
+    <section
+      className="rounded-2xl overflow-hidden"
+      style={{ border: `2px solid ${meta.color}` }}
+    >
+      <header
+        className="flex items-center justify-between gap-3 px-4 py-3"
+        style={{ background: meta.color, color: meta.sobre }}
+      >
+        <div className="min-w-0">
+          <strong className="text-[15px] font-extrabold">Leads en {meta.nombre}</strong>
+          <span className="text-[13px] font-semibold ml-2" style={{ opacity: 0.8 }}>
+            {datos ? `${datos.total}` : "…"}
+          </span>
+          <p className="text-[12px] font-semibold" style={{ opacity: 0.8 }}>
+            {accionSugerida(estado)}
+          </p>
+        </div>
+        <button
+          onClick={onCerrar}
+          className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-extrabold hover:opacity-90"
+          style={{ background: `color-mix(in srgb, ${meta.sobre} 22%, transparent)`, color: meta.sobre }}
+        >
+          ← Regresar
+        </button>
+      </header>
+
+      {cargando && (
+        <p className="px-4 py-5 text-[13px] text-ink-secondary bg-surface">Cargando la lista…</p>
+      )}
+      {error && <p className="px-4 py-5 text-[13px] text-series2 bg-surface">{error}</p>}
+
+      {!cargando && !error && leads.length === 0 && (
+        <p className="px-4 py-5 text-[13px] text-ink-secondary bg-surface">
+          No hay leads en este estado.
+        </p>
+      )}
+
+      {!cargando && !error && leads.length > 0 && (
+        <>
+          {/* Escritorio: tabla. */}
+          <div className="hidden sm:block overflow-x-auto bg-surface">
+            <table className="w-full text-left border-collapse" style={{ minWidth: 640 }}>
+              <thead>
+                <tr className="bg-header text-ink-primary">
+                  {["Nombre", "Teléfono", "Creado", ...(conAgente ? ["Agente"] : []), "Qué hizo"].map((c) => (
+                    <th
+                      key={c}
+                      className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap"
+                    >
+                      {c}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {leads.map((l) => (
+                  <tr key={l.id} style={{ background: `${meta.color}0D` }} className="border-t border-gridline">
+                    <td className="px-4 py-2.5 text-[13.5px] font-bold text-ink-primary">{l.nombre}</td>
+                    <td className="px-4 py-2.5 text-[13px] text-ink-secondary tabular-nums whitespace-nowrap">
+                      {l.telefono ?? <span className="text-ink-muted">Sin teléfono</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-[13px] text-ink-secondary tabular-nums whitespace-nowrap">
+                      {fechaCorta(l.creado)}
+                    </td>
+                    {conAgente && (
+                      <td className="px-4 py-2.5 text-[13px] text-ink-secondary whitespace-nowrap">{l.agente}</td>
+                    )}
+                    <td className="px-4 py-2.5">
+                      <Acciones acciones={l.acciones} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Móvil: tarjetas, con una franja del color del estado al costado. */}
+          <div className="sm:hidden bg-surface">
+            {leads.map((l) => (
+              <div key={l.id} className="flex border-t border-gridline">
+                <span className="w-1.5 shrink-0" style={{ background: meta.color }} />
+                <div className="flex-1 min-w-0 px-3.5 py-3" style={{ background: `${meta.color}0D` }}>
+                  <p className="text-[14.5px] font-bold text-ink-primary truncate">{l.nombre}</p>
+                  <p className="text-[12.5px] text-ink-secondary tabular-nums mt-0.5">
+                    {l.telefono ?? "Sin teléfono"} · {fechaCorta(l.creado)}
+                  </p>
+                  {conAgente && <p className="text-[12px] text-ink-muted mt-0.5">{l.agente}</p>}
+                  <div className="mt-1.5">
+                    <Acciones acciones={l.acciones} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {recortada && (
+        <p className="px-4 py-2.5 text-[12px] text-ink-secondary bg-surface border-t border-gridline">
+          Mostrando los {leads.length} más recientes de {datos!.total}.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function Acciones({ acciones }: { acciones: string[] }) {
+  if (acciones.length === 0) {
+    return <span className="text-[12px] text-ink-muted">Solo entró, sin responder</span>;
+  }
+  return (
+    <span className="flex flex-wrap gap-1">
+      {acciones.map((a) => (
+        <span
+          key={a}
+          className="text-[11.5px] font-semibold rounded-full px-2 py-0.5 bg-page text-ink-secondary whitespace-nowrap"
+        >
+          {a}
+        </span>
+      ))}
+    </span>
   );
 }

@@ -206,7 +206,13 @@ export type PanelEstados = {
     diasValidos: number;
   };
   alertas: Alerta[];
+  // Las fechas exactas de cada ventana. Van acá para que la pantalla pueda
+  // pedir el detalle de una tarjeta sin rehacer la cuenta de la zona horaria
+  // de Bogotá, que es justo donde se cuelan los errores de un día.
+  rango: { hoy: Rango; mes: Rango };
 };
+
+export type Rango = { from: string; to: string };
 
 export type AgentProduction = {
   rows: AgentProductionRow[];
@@ -249,7 +255,7 @@ function calcularPanel(
   ahoraMs: number,
   todayFromMs: number,
   todayToMs: number
-): PanelEstados {
+): Omit<PanelEstados, "rango"> {
   const hoy = conteoVacio();
   const mes = conteoVacio();
   const accionesHoy = new Map<EstadoLead, number[]>();
@@ -490,14 +496,10 @@ export async function computeAgentProduction(soloAgente?: string | null): Promis
   const nombrePorAgente = new Map<string, string>();
   for (const r of rows) if (r.agentId) nombrePorAgente.set(r.agentId, r.agent);
 
-  const panel = calcularPanel(
-    leadContacts,
-    registroContacts,
-    nombrePorAgente,
-    now,
-    todayFromMs,
-    todayToMs
-  );
+  const panel: PanelEstados = {
+    ...calcularPanel(leadContacts, registroContacts, nombrePorAgente, now, todayFromMs, todayToMs),
+    rango: { hoy: today, mes: month },
+  };
 
   return {
     rows,
@@ -512,6 +514,62 @@ export async function computeAgentProduction(soloAgente?: string | null): Promis
     },
     range: { today, month },
   };
+}
+
+/**
+ * Los leads que están en un estado, con nombre y teléfono.
+ *
+ * El panel dice cuántos hay; esto dice quiénes son. Sin esto, "Frío: 47" es un
+ * número que no se puede trabajar: no hay a quién llamar.
+ *
+ * Usa exactamente las mismas reglas que el panel —misma búsqueda, mismo
+ * descarte de los que ya depositaron, mismo estadoDeLead— para que la lista
+ * nunca contradiga al número de la tarjeta de la que salió.
+ */
+export type LeadDeEstado = {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  creado: string;
+  agente: string;
+  acciones: string[];
+};
+
+// Tope por si un mes entero de leads fríos crece demasiado: la pantalla avisa
+// cuántos quedaron afuera en vez de intentar dibujar mil filas.
+const TOPE_LISTA = 400;
+
+export async function listarLeadsPorEstado(
+  from: string,
+  to: string,
+  estado: EstadoLead,
+  soloAgente?: string | null
+): Promise<{ leads: LeadDeEstado[]; total: number }> {
+  const contactos = await soloDelAgente(
+    await searchContacts([
+      { field: "tags", operator: "contains", value: LEAD_TAG() },
+      { field: "dateAdded", operator: "range", value: { gte: from, lte: to } },
+    ]),
+    soloAgente
+  );
+
+  const leads: LeadDeEstado[] = [];
+  for (const contacto of contactos) {
+    if (yaDeposito(contacto)) continue;
+    if (estadoDeLead(contacto) !== estado) continue;
+    const { agent } = await extractAttribution(contacto);
+    leads.push({
+      id: contacto.id,
+      nombre: contactDisplayName(contacto),
+      telefono: contacto.phone ?? null,
+      creado: contacto.dateAdded,
+      agente: agent,
+      acciones: accionesDeLead(contacto),
+    });
+  }
+
+  leads.sort((a, b) => new Date(b.creado).getTime() - new Date(a.creado).getTime());
+  return { leads: leads.slice(0, TOPE_LISTA), total: leads.length };
 }
 
 export type EstadosDeUnRango = {
