@@ -138,12 +138,21 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
       {error && <div className="px-4 py-3 text-sm text-series2">{error}</div>}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: 680 }}>
+          {/* Anchos fijos: sin esto las columnas se reparten según el texto y
+              los grupos Hoy y Este mes terminan de anchos distintos, aunque
+              tengan las mismas tres columnas. */}
+          <colgroup>
+            <col style={{ width: enRango ? "40%" : "28%" }} />
+            {Array.from({ length: enRango ? 3 : 6 }).map((_, i) => (
+              <col key={i} style={{ width: enRango ? "20%" : "12%" }} />
+            ))}
+          </colgroup>
           <thead>
             {/* Encabezado de dos niveles: con seis columnas sueltas cuesta saber
                 cuál es de hoy y cuál del mes. */}
             <tr>
-              <th className="bg-surface" />
+              <th style={{ background: CAB }} />
               {enRango ? (
                 <th
                   colSpan={3}
@@ -172,7 +181,10 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
               )}
             </tr>
             <tr className="border-b border-gridline">
-              <th className="bg-surface text-left text-[11px] font-medium uppercase tracking-wide text-ink-muted px-4 pt-1 pb-2.5">
+              <th
+                className="text-left text-[11px] font-medium uppercase tracking-wide text-white px-4 pt-1 pb-2.5"
+                style={{ background: CAB }}
+              >
                 Agente
               </th>
               {(enRango ? ["Leads", "Registros", "FTD"] : ["Leads", "Registros", "FTD", "Leads", "Registros", "FTD"]).map(
@@ -202,7 +214,7 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
                         onClick={() => setAbierto(esteAbierto ? null : r.agent)}
                         className="border-b border-gridline last:border-0 cursor-pointer hover:bg-page"
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 truncate" title={r.agent}>
                           <span className="text-ink-muted mr-1">{esteAbierto ? "▾" : "▸"}</span>
                           {r.agent}
                         </td>
@@ -241,7 +253,7 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
                         onClick={() => setAbierto(esteAbierto ? null : r.agent)}
                         className="border-b border-gridline last:border-0 cursor-pointer hover:bg-page"
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 truncate" title={r.agent}>
                           <span className="text-ink-muted mr-1">{esteAbierto ? "▾" : "▸"}</span>
                           {r.agent}
                         </td>
