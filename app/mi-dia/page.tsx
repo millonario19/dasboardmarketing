@@ -51,6 +51,25 @@ const COLOR_ESTADO: Record<string, string> = {
 // el dashboard tenga una sola contraseña compartida no puede saber quién entró.
 const CLAVE_AGENTE = "op_agente";
 
+// Colombia no tiene horario de verano: UTC-5 todo el año.
+const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
+
+function hoyBogota(): string {
+  return new Date(Date.now() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function hace(dias: number): string {
+  return new Date(Date.now() - BOGOTA_OFFSET_MS - dias * 864e5).toISOString().slice(0, 10);
+}
+
+// El día elegido en el calendario es el de Bogotá: sin el desfase, consultar
+// "el 9" traía desde las 7 de la noche del 8.
+function aIso(dia: string, finDelDia: boolean): string {
+  const base = new Date(`${dia}T00:00:00-05:00`);
+  if (finDelDia) base.setDate(base.getDate() + 1);
+  return base.toISOString();
+}
+
 export default function MiDiaPage() {
   const sesion = useSesion();
   // El agente no elige a quién mira: su sesión lo fija. El selector y el
@@ -63,6 +82,12 @@ export default function MiDiaPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Rango pedido a mano. Vacío = la última semana, que es lo que trae la API
+  // por defecto. Los leads más viejos no desaparecieron: se buscan acá.
+  const [desde, setDesde] = useState(hace(7));
+  const [hasta, setHasta] = useState(hoyBogota);
+  const [rangoPropio, setRangoPropio] = useState(false);
+
   useEffect(() => {
     if (esAgente) return;
     try {
@@ -72,10 +97,15 @@ export default function MiDiaPage() {
     }
   }, [esAgente]);
 
-  const cargar = useCallback((quien: string) => {
+  const cargar = useCallback((quien: string, propio?: { desde: string; hasta: string }) => {
     setCargando(true);
     setError(null);
-    fetch(`/api/mi-dia?agente=${encodeURIComponent(quien)}`)
+    const params = new URLSearchParams({ agente: quien });
+    if (propio) {
+      params.set("desde", aIso(propio.desde, false));
+      params.set("hasta", aIso(propio.hasta, true));
+    }
+    fetch(`/api/mi-dia?${params}`)
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error ?? "Error al cargar la lista");
         return r.json();
@@ -88,6 +118,18 @@ export default function MiDiaPage() {
   useEffect(() => {
     cargar(agente);
   }, [agente, cargar]);
+
+  function consultar() {
+    setRangoPropio(true);
+    cargar(agente, { desde, hasta });
+  }
+
+  function volverALaSemana() {
+    setRangoPropio(false);
+    setDesde(hace(7));
+    setHasta(hoyBogota());
+    cargar(agente);
+  }
 
   function elegirAgente(id: string) {
     setAgente(id);
@@ -209,7 +251,7 @@ export default function MiDiaPage() {
               A
             </h1>
             <button
-              onClick={() => cargar(agente)}
+              onClick={() => cargar(agente, rangoPropio ? { desde, hasta } : undefined)}
               disabled={cargando}
               className="rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
               style={{ background: LIMA, color: NEGRO }}
@@ -266,6 +308,52 @@ export default function MiDiaPage() {
                 {b.titulo}
               </Pildora>
             ))}
+        </div>
+
+        {/* Rango de fechas. La lista arranca con la última semana; lo de más
+            atrás se pide acá en vez de venir siempre y hacer de la pantalla un
+            rollo de diez mil píxeles. */}
+        <div className="flex items-center gap-2 flex-wrap mb-5">
+          <span className="text-[12.5px] shrink-0" style={{ color: GRIS }}>
+            {rangoPropio ? "Estás viendo:" : "Últimos 7 días ·"}
+          </span>
+          <input
+            type="date"
+            value={desde}
+            max={hasta}
+            onChange={(e) => setDesde(e.target.value)}
+            className="rounded-full px-3 py-1.5 text-[12.5px] bg-white outline-none"
+            style={{ border: `1px solid ${BORDE}` }}
+          />
+          <span className="text-[12.5px]" style={{ color: GRIS }}>
+            a
+          </span>
+          <input
+            type="date"
+            value={hasta}
+            min={desde}
+            max={hoyBogota()}
+            onChange={(e) => setHasta(e.target.value)}
+            className="rounded-full px-3 py-1.5 text-[12.5px] bg-white outline-none"
+            style={{ border: `1px solid ${BORDE}` }}
+          />
+          <button
+            onClick={consultar}
+            disabled={cargando}
+            className="rounded-full px-4 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
+            style={{ background: "#17457F" }}
+          >
+            {cargando ? "Consultando…" : "Consultar"}
+          </button>
+          {rangoPropio && (
+            <button
+              onClick={volverALaSemana}
+              className="rounded-full px-3 py-1.5 text-[12.5px] bg-white hover:opacity-80"
+              style={{ border: `1px solid ${BORDE}`, color: GRIS }}
+            >
+              × Volver a los últimos 7 días
+            </button>
+          )}
         </div>
 
         {error && (

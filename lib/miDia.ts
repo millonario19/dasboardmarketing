@@ -15,10 +15,15 @@ import {
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 const DIA_MS = 24 * 60 * 60 * 1000;
 
-// Ventana de la lista. 30 días porque la curva real de depósitos muestra que
-// el 44% deposita entre la semana 2 y la 4: cortar antes esconde justo donde
-// está la plata.
-const VENTANA_DIAS = 30;
+/**
+ * Ventana por defecto de la lista: la última semana.
+ *
+ * No es que antes de eso no haya nada — la curva real de depósitos muestra que
+ * el 44% deposita entre la semana 2 y la 4, así que ahí hay plata. Pero traer
+ * 30 días de una deja una pantalla de diez mil píxeles que nadie recorre. Lo
+ * de atrás se busca a propósito, con el rango de fechas.
+ */
+const VENTANA_DIAS = 7;
 // Tope por bloque. Una lista de 300 no la trabaja nadie; el total igual se
 // muestra para que se sepa cuántos quedaron afuera.
 const TOPE = 40;
@@ -56,6 +61,9 @@ export type MiDia = {
   agentes: { id: string; nombre: string }[];
   locationId: string;
   generadoEn: string;
+  // Qué ventana de fechas se consultó. La pantalla la muestra para que nunca
+  // se confunda "no hay leads" con "no los pediste".
+  rango: { desde: string; hasta: string };
 };
 
 // Nombre humano de cada etiqueta, para el feed de movimientos. Las que no
@@ -109,15 +117,21 @@ async function movimientosDeHoy(desdeMs: number): Promise<Map<string, { tag: str
   return ultimo;
 }
 
-export async function computeMiDia(agenteId?: string | null): Promise<MiDia> {
+export async function computeMiDia(
+  agenteId?: string | null,
+  rango?: { desde?: string | null; hasta?: string | null }
+): Promise<MiDia> {
   const ahora = Date.now();
   const hoyMs = inicioDeHoyBogota(ahora);
-  const desde = new Date(ahora - VENTANA_DIAS * DIA_MS).toISOString();
+
+  // El rango pedido manda; si no viene, la última semana.
+  const desde = rango?.desde || new Date(ahora - VENTANA_DIAS * DIA_MS).toISOString();
+  const hasta = rango?.hasta || new Date(ahora).toISOString();
 
   const [contactos, movimientos] = await Promise.all([
     searchContacts([
       { field: "tags", operator: "contains", value: process.env.GHL_LEAD_TAG ?? "ingreso de pauta" },
-      { field: "dateAdded", operator: "range", value: { gte: desde, lte: new Date(ahora).toISOString() } },
+      { field: "dateAdded", operator: "range", value: { gte: desde, lte: hasta } },
     ]),
     movimientosDeHoy(hoyMs).catch(() => new Map<string, { tag: string; ms: number }>()),
   ]);
@@ -245,5 +259,6 @@ export async function computeMiDia(agenteId?: string | null): Promise<MiDia> {
       .sort((a, b) => a.nombre.localeCompare(b.nombre)),
     locationId: process.env.GHL_LOCATION_ID ?? "",
     generadoEn: new Date(ahora).toISOString(),
+    rango: { desde, hasta },
   };
 }

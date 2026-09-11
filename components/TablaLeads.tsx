@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { ESTADO_META, type EstadoLead } from "@/lib/leadStates";
 import { BotonLlamar, BotonWhatsApp, formatearTelefono } from "@/components/ContactoRapido";
 import { Inicial } from "@/components/EscalaEmbudo";
@@ -144,12 +146,26 @@ function Quien({ lead, estado }: { lead: LeadItem; estado: EstadoLead }) {
   );
 }
 
+// Cuántas filas se ven de entrada y de a cuántas crece.
+//
+// Se muestran pocas y se agrega en bloques, en vez de paginar: la lista se
+// trabaja de arriba hacia abajo y con páginas se pierde el lugar en cada
+// salto. Además, agregar abajo funciona igual en el celular y en el
+// escritorio, mientras que los botones de página son incómodos con el pulgar.
+const AL_PRINCIPIO = 10;
+const DE_A = 20;
+
 export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId: string }) {
+  const [visibles, setVisibles] = useState(AL_PRINCIPIO);
+
   if (bloque.total === 0) return null;
 
   const tono = TONO[bloque.tono] ?? TONO.frio;
   const conTemp = CON_TEMPERATURA.has(bloque.id);
   const crmDe = (id: string) => `https://app.gohighlevel.com/v2/location/${locationId}/contacts/detail/${id}`;
+
+  const items = bloque.items.slice(0, visibles);
+  const faltan = bloque.items.length - items.length;
 
   const columnas = [
     ...(conTemp ? ["Temperatura"] : []),
@@ -158,6 +174,10 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
     "Siguiente paso",
     "Acciones",
   ];
+
+  // Anchos fijos: con el reparto automático, la columna del nombre se quedaba
+  // con el espacio sobrante y dejaba un hueco enorme antes de la siguiente.
+  const anchos = conTemp ? ["2px", "10%", "27%", "23%", "25%", "15%"] : ["2px", "31%", "25%", "28%", "16%"];
 
   return (
     <section style={{ ["--c" as string]: tono.c }}>
@@ -190,7 +210,12 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
       >
         {/* Escritorio: una fila por lead. */}
         <div className="hidden md:block overflow-x-auto">
-          <table className="w-full border-collapse" style={{ minWidth: 760 }}>
+          <table className="w-full border-collapse" style={{ minWidth: 760, tableLayout: "fixed" }}>
+            <colgroup>
+              {anchos.map((a, i) => (
+                <col key={i} style={{ width: a }} />
+              ))}
+            </colgroup>
             <thead>
               {/* El color va en la fila y no en cada celda: con border-collapse
                   los fondos por celda dejan hilos asomando entre columnas. */}
@@ -199,7 +224,7 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
                 {columnas.map((c) => (
                   <th
                     key={c}
-                    className="text-left px-3.5 py-[7px] text-[9.5px] font-bold uppercase tracking-[.10em] whitespace-nowrap"
+                    className="text-left px-3 py-[7px] text-[9.5px] font-bold uppercase tracking-[.10em] whitespace-nowrap"
                     style={{
                       color: `color-mix(in srgb, ${tono.sob} 72%, transparent)`,
                       textAlign: c === "Acciones" ? "right" : "left",
@@ -211,7 +236,7 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
               </tr>
             </thead>
             <tbody>
-              {bloque.items.map((l) => {
+              {items.map((l) => {
                 const meta = ESTADO_META[l.estado];
                 const ultima = ultimaInteraccion(l);
                 return (
@@ -220,14 +245,14 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
                       <span style={{ display: "block", width: 2, height: 40, background: meta.color }} />
                     </td>
                     {conTemp && (
-                      <td className="px-3.5 py-2.5">
+                      <td className="px-3 py-2.5">
                         <PildoraTemperatura estado={l.estado} />
                       </td>
                     )}
-                    <td className="px-3.5 py-2.5">
+                    <td className="px-3 py-2.5">
                       <Quien lead={l} estado={l.estado} />
                     </td>
-                    <td className="px-3.5 py-2.5">
+                    <td className="px-3 py-2.5">
                       <div className="text-[13px] font-bold tracking-[-0.01em] whitespace-nowrap first-letter:uppercase">{ultima.que}</div>
                       <div
                         className="text-[11.5px] mt-px tabular-nums whitespace-nowrap"
@@ -238,7 +263,7 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
                     </td>
                     {/* Sin whitespace-nowrap: un paso largo estiraba la tabla
                         hasta empujar los botones fuera de la pantalla. */}
-                    <td className="px-3.5 py-2.5">
+                    <td className="px-3 py-2.5">
                       <span
                         className="text-[13px] leading-snug"
                         style={{ color: meta.fuerte, fontFamily: "Arial, Helvetica, sans-serif", minWidth: 130, display: "inline-block" }}
@@ -246,7 +271,7 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
                         {siguientePaso(l, bloque.id)}
                       </span>
                     </td>
-                    <td className="px-3.5 py-2.5 text-right whitespace-nowrap" style={{ width: "1%" }}>
+                    <td className="px-3 py-2.5 text-right whitespace-nowrap" style={{ width: "1%" }}>
                       <Acciones lead={l} crm={crmDe(l.id)} />
                     </td>
                   </tr>
@@ -259,13 +284,13 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
         {/* Celular: la fila se apila. Sin encabezado de columnas, una línea del
             color arriba mantiene la identidad del bloque. */}
         <div className="md:hidden" style={{ borderTop: `3px solid ${tono.c}` }}>
-          {bloque.items.map((l) => {
+          {items.map((l) => {
             const meta = ESTADO_META[l.estado];
             const ultima = ultimaInteraccion(l);
             return (
               <div key={l.id} className="flex border-b last:border-b-0" style={{ borderColor: "rgba(13,13,13,.045)" }}>
                 <span className="shrink-0" style={{ width: 3, background: meta.color }} />
-                <div className="flex-1 min-w-0 px-3.5 py-3">
+                <div className="flex-1 min-w-0 px-3 py-3">
                   {conTemp && (
                     <div className="mb-2">
                       <PildoraTemperatura estado={l.estado} />
@@ -299,11 +324,22 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
         </div>
       </div>
 
-      {bloque.total > bloque.items.length && (
-        <p className="text-[12.5px] mt-2.5 px-1" style={{ color: GRIS }}>
-          Se muestran {bloque.items.length} de {bloque.total}. Atendé estos primero.
+      <div className="flex items-center gap-3 flex-wrap mt-2.5 px-1">
+        {faltan > 0 && (
+          <button
+            onClick={() => setVisibles((n) => n + DE_A)}
+            className="rounded-full px-4 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90"
+            style={{ background: tono.c, color: tono.sob }}
+          >
+            Ver {Math.min(faltan, DE_A)} más
+          </button>
+        )}
+        <p className="text-[12.5px]" style={{ color: GRIS }}>
+          {bloque.total > bloque.items.length
+            ? `Mostrando ${items.length} de ${bloque.total}. Para ver más atrás, usá el rango de fechas.`
+            : `Mostrando ${items.length} de ${bloque.total}.`}
         </p>
-      )}
+      </div>
     </section>
   );
 }

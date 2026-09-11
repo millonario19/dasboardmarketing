@@ -9,8 +9,12 @@ export async function GET(req: NextRequest) {
   // selector de la pantalla solo existe para la dirección.
   const propio = await alcanceDeAgente();
   const agente = propio ?? req.nextUrl.searchParams.get("agente");
+
+  const desde = req.nextUrl.searchParams.get("desde");
+  const hasta = req.nextUrl.searchParams.get("hasta");
+
   try {
-    return NextResponse.json(await computeMiDia(agente));
+    return NextResponse.json(await computeMiDia(agente, { desde, hasta }));
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : "Error al armar la lista";
     return NextResponse.json({ error: mensaje }, { status: 500 });
