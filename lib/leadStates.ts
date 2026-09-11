@@ -10,6 +10,11 @@ export const TAG_INTERACCION_MANUAL = "interactuó";
 export const TAG_CANAL_FREE = "ingresó al canal free";
 export const TAG_BUSINESS = "bajado a business";
 
+// Respuesta del agente sobre si la bajada a WhatsApp ocurrió de verdad. Las
+// pone el dashboard cuando el agente contesta; ningún flujo de GHL las usa.
+export const TAG_BAJADA_SI = "bajada confirmada";
+export const TAG_BAJADA_NO = "bajada no confirmada";
+
 /**
  * Fecha desde la que cada automatización de GHL existe y su tag es confiable.
  *
@@ -98,6 +103,20 @@ export function interactuoAuto(contacto: GhlContact): boolean {
   return tiene(contacto, TAG_INTERACCION_AUTO);
 }
 
+// Qué respondió el agente sobre la bajada: sí, no, o todavía nada.
+export function confirmacionDeBajada(contacto: GhlContact): "si" | "no" | null {
+  if (tiene(contacto, TAG_BAJADA_SI)) return "si";
+  if (tiene(contacto, TAG_BAJADA_NO)) return "no";
+  return null;
+}
+
+// La bajada cuenta salvo que el agente haya dicho que no ocurrió. Ese es el
+// punto de pedirle confirmación: si el flujo marcó una bajada que no pasó, la
+// respuesta del agente corrige el estado en vez de quedar como una nota.
+export function bajoAWhatsApp(contacto: GhlContact): boolean {
+  return tiene(contacto, TAG_BUSINESS) && confirmacionDeBajada(contacto) !== "no";
+}
+
 /**
  * Estado del lead, con una sola regla que divide aguas: bajar a WhatsApp o
  * registrarse es lo único que separa a un interesado de un cliente real.
@@ -117,7 +136,7 @@ export function interactuoAuto(contacto: GhlContact): boolean {
 export function estadoDeLead(contacto: GhlContact): EstadoLead {
   const conLinkPropio = hasOwnAffiliateLink(contacto);
   if ((isFtdEfectuado(contacto) || isRegistrado(contacto)) && conLinkPropio) return "caliente";
-  if (tiene(contacto, TAG_BUSINESS)) return "caliente";
+  if (bajoAWhatsApp(contacto)) return "caliente";
   if (interactuo(contacto) || tiene(contacto, TAG_CANAL_FREE)) return "tibio";
   return "frio";
 }
@@ -140,7 +159,7 @@ export function accionesDeLead(contacto: GhlContact): string[] {
   // hecho visto por el flujo y por el agente, no dos cosas distintas.
   if (interactuo(contacto)) acciones.push("Respondió");
   if (tiene(contacto, TAG_CANAL_FREE)) acciones.push("Entró al canal");
-  if (tiene(contacto, TAG_BUSINESS)) acciones.push("Bajó a WhatsApp");
+  if (bajoAWhatsApp(contacto)) acciones.push("Bajó a WhatsApp");
   if (isRegistrado(contacto) && hasOwnAffiliateLink(contacto)) acciones.push("Se registró");
   return acciones;
 }

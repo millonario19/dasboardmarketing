@@ -11,6 +11,8 @@ import {
 import {
   estadoDeLead,
   accionesDeLead,
+  confirmacionDeBajada,
+  TAG_BUSINESS,
   yaDeposito,
   interactuoAuto,
   conteoVacio,
@@ -60,6 +62,10 @@ export type ContactDetail = {
   // La temperatura del lead, con la misma regla del panel: el agente ve en su
   // lista quién está caliente sin tener que interpretar las etiquetas.
   estado: EstadoLead;
+  // El flujo marcó una bajada a WhatsApp sobre este contacto.
+  marcadoBajada: boolean;
+  // Qué respondió el agente sobre esa bajada: sí, no, o todavía nada.
+  confirmacion: "si" | "no" | null;
 };
 
 // Detalle de los contactos de un agente en un rango. Dos búsquedas puntuales
@@ -97,6 +103,8 @@ export async function listContactsForAgent(from: string, to: string, agentId: st
       ftd: ftdValido,
       ftdEventDate: ftdValido ? contact.dateUpdated ?? null : null,
       estado: estadoDeLead(contact),
+      marcadoBajada: (contact.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS),
+      confirmacion: confirmacionDeBajada(contact),
     };
   });
 

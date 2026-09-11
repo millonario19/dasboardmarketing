@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ESTADOS, ESTADO_META, type EstadoLead } from "@/lib/leadStates";
 import type { ContactDetail } from "@/lib/metrics";
+
+// En línea y no como clase de Tailwind: con valor arbitrario el escáner no
+// siempre genera la regla, y el botón termina sin fondo.
+const VERDE = "#157F52";
 
 // Píldoras con fondo suave en vez de solo borde: con muchas etiquetas por
 // contacto, los bordes de colores hacían ruido y se leía como un amontonamiento.
@@ -74,6 +78,69 @@ function IconoReloj() {
   );
 }
 
+/**
+ * La pregunta al agente sobre la bajada a WhatsApp.
+ *
+ * Existe porque hasta ahora el sistema confiaba ciegamente en la etiqueta del
+ * flujo. Cuando el agente responde que no, la bajada deja de contar y el lead
+ * baja de temperatura: la respuesta corrige el dato, no queda como comentario.
+ */
+function Confirmacion({
+  c,
+  onResponder,
+}: {
+  c: ContactDetail;
+  onResponder: (contactId: string, confirmado: boolean) => void;
+}) {
+  const [enviando, setEnviando] = useState(false);
+  if (!c.marcadoBajada) return null;
+
+  if (c.confirmacion === "si") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full px-2.5 py-1 bg-[#E2F1EA] text-[#157F52] whitespace-nowrap">
+        ✓ Bajada confirmada
+      </span>
+    );
+  }
+  if (c.confirmacion === "no") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full px-2.5 py-1 bg-[#f2f1ea] text-ink-secondary whitespace-nowrap">
+        Pendiente — no bajó
+      </span>
+    );
+  }
+
+  async function responder(valor: boolean) {
+    setEnviando(true);
+    try {
+      await onResponder(c.id, valor);
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="text-[11px] text-ink-secondary">¿Bajó a WhatsApp?</span>
+      <button
+        onClick={() => responder(true)}
+        disabled={enviando}
+        className="text-[11px] font-semibold rounded-full px-2.5 py-1 text-white hover:opacity-90 disabled:opacity-50"
+        style={{ background: VERDE }}
+      >
+        Sí
+      </button>
+      <button
+        onClick={() => responder(false)}
+        disabled={enviando}
+        className="text-[11px] font-semibold rounded-full px-2.5 py-1 bg-surface border border-gridline text-ink-secondary hover:bg-page disabled:opacity-50"
+      >
+        No
+      </button>
+    </div>
+  );
+}
+
 function Etiquetas({ c }: { c: ContactDetail }) {
   return (
     <div className="flex flex-wrap gap-1">
@@ -122,6 +189,30 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
       cancelled = true;
     };
   }, [agentId, from, to]);
+
+  // Se actualiza el contacto en memoria en vez de recargar toda la lista: la
+  // recarga vuelve a pegarle a GHL y el agente vería un parpadeo por cada
+  // respuesta.
+  const responder = useCallback(async (contactId: string, confirmado: boolean) => {
+    const res = await fetch("/api/contacts/confirmar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId, confirmado }),
+    });
+    if (!res.ok) {
+      setError((await res.json()).error ?? "No se pudo guardar la confirmación");
+      return;
+    }
+    setContacts((prev) =>
+      prev
+        ? prev.map((c) =>
+            c.id === contactId
+              ? { ...c, confirmacion: confirmado ? "si" : "no", estado: confirmado ? c.estado : "tibio" }
+              : c
+          )
+        : prev
+    );
+  }, []);
 
   const marco = (contenido: ReactNode) => <div className="px-4 pb-4 bg-page">{contenido}</div>;
 
@@ -209,6 +300,11 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
                     </td>
                     <td className="px-4 py-2.5">
                       <Etiquetas c={c} />
+                      {c.marcadoBajada && (
+                        <div className="mt-1.5">
+                          <Confirmacion c={c} onResponder={responder} />
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
@@ -251,6 +347,11 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
                 <div className="mt-2.5">
                   <Etiquetas c={c} />
                 </div>
+                {c.marcadoBajada && (
+                  <div className="mt-2.5">
+                    <Confirmacion c={c} onResponder={responder} />
+                  </div>
+                )}
               </div>
             </article>
           );

@@ -104,6 +104,30 @@ export async function searchContacts(filters: SearchFilter[]): Promise<GhlContac
   return contacts;
 }
 
+/**
+ * Agrega o quita una etiqueta de un contacto.
+ *
+ * Es la única escritura que el dashboard hace sobre GHL. Se usa para que el
+ * agente confirme si una bajada a WhatsApp ocurrió de verdad: la respuesta
+ * vive como etiqueta en el CRM y no en una base aparte, porque todo el resto
+ * del sistema lee etiquetas y una confirmación escondida sería invisible para
+ * los flujos y para cualquiera que abra la ficha.
+ */
+async function cambiarTag(contactId: string, tag: string, metodo: "POST" | "DELETE"): Promise<void> {
+  const res = await fetchWithRetry(`${GHL_BASE_URL}/contacts/${encodeURIComponent(contactId)}/tags`, {
+    method: metodo,
+    headers: ghlHeaders(),
+    body: JSON.stringify({ tags: [tag] }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`GHL no aceptó el cambio de etiqueta (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+}
+
+export const agregarTag = (contactId: string, tag: string) => cambiarTag(contactId, tag, "POST");
+export const quitarTag = (contactId: string, tag: string) => cambiarTag(contactId, tag, "DELETE");
+
 const userNameCache = new Map<string, string>();
 
 async function resolveUserName(userId: string): Promise<string> {
