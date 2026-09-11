@@ -1,13 +1,11 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AgentDetail } from "@/components/AgentDetail";
-import { FunnelStepChart } from "@/components/FunnelStepChart";
 import { FunnelWaterfall } from "@/components/FunnelWaterfall";
 import { PanelEstados } from "@/components/PanelEstados";
 import { CambiarVista } from "@/components/CambiarVista";
-import { CustomRangeQuery } from "@/components/CustomRangeQuery";
+import { TablaAgentes } from "@/components/TablaAgentes";
 import type { AgentProduction } from "@/lib/metrics";
 
 export default function DashboardPage() {
@@ -103,84 +101,7 @@ export default function DashboardPage() {
 
           <PanelEstados datos={data.panel} />
 
-          <div className="bg-surface border border-gridline rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gridline text-left text-ink-secondary">
-                  <th className="px-4 py-3 font-medium">Agente</th>
-                  <th className="px-4 py-3 font-medium text-right">Leads hoy</th>
-                  <th className="px-4 py-3 font-medium text-right">Registros hoy</th>
-                  <th className="px-4 py-3 font-medium text-right">FTD hoy</th>
-                  <th className="px-4 py-3 font-medium text-right">Leads mes</th>
-                  <th className="px-4 py-3 font-medium text-right">Registros mes</th>
-                  <th className="px-4 py-3 font-medium text-right">FTD mes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.rows.map((r) => {
-                  const isOpen = expandedAgent === r.agent;
-                  return (
-                    <Fragment key={r.agentId ?? r.agent}>
-                      <tr
-                        onClick={() => setExpandedAgent(isOpen ? null : r.agent)}
-                        className="border-b border-gridline last:border-0 cursor-pointer hover:bg-page"
-                      >
-                        <td className="px-4 py-3">
-                          <span className="text-ink-muted mr-1">{isOpen ? "▾" : "▸"}</span>
-                          {r.agent}
-                        </td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.leadsHoy}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.registrosHoy}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.ftdHoy}</td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium">{r.leadsMes}</td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium">{r.registrosMes}</td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium">{r.ftdMes}</td>
-                      </tr>
-                      {isOpen && (
-                        <tr className="border-b border-gridline last:border-0">
-                          <td colSpan={7} className="p-0">
-                            <div className="px-4 pt-4 bg-page">
-                              <FunnelStepChart
-                                title={`${r.agent} — este mes`}
-                                stages={[
-                                  { label: "Leads", value: r.leadsMes },
-                                  { label: "Registros", value: r.registrosMes },
-                                  { label: "FTD", value: r.ftdMes },
-                                ]}
-                              />
-                            </div>
-                            <AgentDetail agentId={r.agentId} from={data.range.today.from} to={data.range.today.to} />
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  );
-                })}
-                {data.rows.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-ink-secondary">
-                      Sin datos todavía hoy
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-              <tfoot>
-                <tr className="border-t border-gridline font-medium bg-page">
-                  <td className="px-4 py-3">Total</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.leadsHoy}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.registrosHoy}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.ftdHoy}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.leadsMes}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.registrosMes}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.ftdMes}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-
-          <div className="mt-8">
-            <CustomRangeQuery />
-          </div>
+          <TablaAgentes data={data} />
         </>
       )}
     </main>
