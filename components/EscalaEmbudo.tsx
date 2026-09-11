@@ -10,15 +10,15 @@ const PASOS = [
   { clave: "Se registró", nombre: "Se registró" },
 ] as const;
 
-// Degradado de frío a caliente según la posición: el punto que se enciende
-// más a la derecha es el que está más cerca del depósito.
-const COLORES = ["#C0432A", "#E06A2B", "#E0A800", "#8FBF3F", "#1BAF7A"];
-const APAGADO = "#DDDCD4";
+// Los colores de la referencia: rojo a verde según la posición.
+const COLORES = ["#FF6B5A", "#FF9F45", "#FFD644", "#A8E05F", "#4CC96A"];
+const APAGADO = "#E2E2DD";
 
 /**
- * Escala de puntos del embudo. Reemplaza a una barra de progreso porque no es
- * un avance continuo sino cinco hitos concretos, y porque de un vistazo se ve
- * cuánto le falta a cada lead sin leer una sola palabra.
+ * Escala de puntos del embudo. No es una barra de progreso porque no hay
+ * avance continuo sino cinco hitos, y los huecos importan: un lead con el
+ * punto del registro encendido y los del medio apagados se saltó el canal y
+ * el enlace de WhatsApp.
  */
 export function EscalaEmbudo({ acciones }: { acciones: string[] }) {
   const hechos = PASOS.map((p) => (p.clave === null ? true : acciones.includes(p.clave)));
@@ -32,7 +32,7 @@ export function EscalaEmbudo({ acciones }: { acciones: string[] }) {
       {PASOS.map((p, i) => (
         <span
           key={p.nombre}
-          className="w-2 h-2 rounded-full"
+          className="w-[9px] h-[9px] rounded-full"
           style={{ background: hechos[i] ? COLORES[i] : APAGADO }}
         />
       ))}
@@ -40,13 +40,22 @@ export function EscalaEmbudo({ acciones }: { acciones: string[] }) {
   );
 }
 
-// Círculo con iniciales en vez de foto: los leads de WhatsApp no tienen avatar,
-// y teñirlo con el color del estado hace que la temperatura se lea antes que
+// Los leads de WhatsApp no tienen foto, así que el avatar es un círculo con
+// iniciales teñido con el color del estado: la temperatura se lee antes que
 // el nombre.
-export function Inicial({ nombre, color }: { nombre: string; color: string }) {
+export function Inicial({
+  nombre,
+  color,
+  tamano = 40,
+}: {
+  nombre: string;
+  color: string;
+  tamano?: number;
+}) {
   const limpio = nombre.trim();
-  const palabras = limpio.split(/\s+/).filter(Boolean);
-  let texto = palabras
+  let texto = limpio
+    .split(/\s+/)
+    .filter(Boolean)
     .slice(0, 2)
     .map((p) => p[0])
     .join("");
@@ -56,8 +65,14 @@ export function Inicial({ nombre, color }: { nombre: string; color: string }) {
 
   return (
     <span
-      className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold shrink-0"
-      style={{ background: `${color}1F`, color }}
+      className="rounded-full flex items-center justify-center font-semibold shrink-0"
+      style={{
+        width: tamano,
+        height: tamano,
+        fontSize: tamano * 0.34,
+        background: `${color}24`,
+        color,
+      }}
       aria-hidden
     >
       {texto.toUpperCase()}
