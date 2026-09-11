@@ -533,6 +533,10 @@ export type LeadDeEstado = {
   creado: string;
   agente: string;
   acciones: string[];
+  // El flujo de GHL marcó la bajada a WhatsApp, y qué contestó el agente
+  // cuando se le preguntó si de verdad ocurrió.
+  marcadoBajada: boolean;
+  confirmacion: "si" | "no" | null;
 };
 
 // Tope por si un mes entero de leads fríos crece demasiado: la pantalla avisa
@@ -565,6 +569,8 @@ export async function listarLeadsPorEstado(
       creado: contacto.dateAdded,
       agente: agent,
       acciones: accionesDeLead(contacto),
+      marcadoBajada: (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS),
+      confirmacion: confirmacionDeBajada(contacto),
     });
   }
 

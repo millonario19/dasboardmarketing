@@ -2,6 +2,7 @@
 
 import { Fragment, useCallback, useState } from "react";
 import { ESTADOS, ESTADO_META, accionSugerida, type EstadoLead } from "@/lib/leadStates";
+import { ConfirmarBajada, guardarConfirmacion } from "@/components/ConfirmarBajada";
 import type { LeadDeEstado, PanelEstados as Datos } from "@/lib/metrics";
 
 const SEVERIDAD = {
@@ -111,6 +112,27 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
     },
     [abierto, cerrarLista, rangoActual]
   );
+
+  // La respuesta se guarda en GHL y el lead se actualiza en memoria. Recargar
+  // la lista entera volvería a pegarle a GHL y haría parpadear la tabla en
+  // cada respuesta.
+  const responder = useCallback(async (contactId: string, confirmado: boolean) => {
+    const fallo = await guardarConfirmacion(contactId, confirmado);
+    if (fallo) {
+      setErrorLeads(fallo);
+      return;
+    }
+    setLeads((prev) =>
+      prev
+        ? {
+            ...prev,
+            leads: prev.leads.map((l) =>
+              l.id === contactId ? { ...l, confirmacion: confirmado ? "si" : "no" } : l
+            ),
+          }
+        : prev
+    );
+  }, []);
 
   const conteos = dia ? dia.conteos : datos[ventana];
   const desglose = dia ? dia.desglose : ventana === "hoy" ? datos.desgloseHoy : datos.desgloseMes;
@@ -253,6 +275,7 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
                   error={errorLeads}
                   conAgente={!propio}
                   onCerrar={cerrarLista}
+                  onResponder={responder}
                 />
               </div>
             )}
@@ -480,6 +503,7 @@ function ListaDeLeads({
   error,
   conAgente,
   onCerrar,
+  onResponder,
 }: {
   estado: EstadoLead;
   datos: { leads: LeadDeEstado[]; total: number } | null;
@@ -487,10 +511,15 @@ function ListaDeLeads({
   error: string | null;
   conAgente: boolean;
   onCerrar: () => void;
+  onResponder: (contactId: string, confirmado: boolean) => void;
 }) {
   const meta = ESTADO_META[estado];
   const leads = datos?.leads ?? [];
   const recortada = datos ? datos.total > leads.length : false;
+  // La columna aparece sola cuando hay algo que confirmar: siempre en
+  // Caliente, y en los otros estados solo si algún lead arrastra la etiqueta.
+  const conBajada = leads.some((l) => l.marcadoBajada);
+  const degradados = leads.filter((l) => bajaDeTemperatura(estado, l)).length;
 
   return (
     <section
@@ -537,7 +566,14 @@ function ListaDeLeads({
             <table className="w-full text-left border-collapse" style={{ minWidth: 640 }}>
               <thead>
                 <tr className="bg-header text-ink-primary">
-                  {["Nombre", "Teléfono", "Creado", ...(conAgente ? ["Agente"] : []), "Qué hizo"].map((c) => (
+                  {[
+                    "Nombre",
+                    "Teléfono",
+                    "Creado",
+                    ...(conAgente ? ["Agente"] : []),
+                    "Qué hizo",
+                    ...(conBajada ? ["¿Bajó de verdad?"] : []),
+                  ].map((c) => (
                     <th
                       key={c}
                       className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap"
@@ -549,8 +585,15 @@ function ListaDeLeads({
               </thead>
               <tbody>
                 {leads.map((l) => (
-                  <tr key={l.id} style={{ background: `${meta.color}0D` }} className="border-t border-gridline">
-                    <td className="px-4 py-2.5 text-[13.5px] font-bold text-ink-primary">{l.nombre}</td>
+                  <tr
+                    key={l.id}
+                    style={{ background: `${meta.color}0D`, opacity: bajaDeTemperatura(estado, l) ? 0.6 : 1 }}
+                    className="border-t border-gridline"
+                  >
+                    <td className="px-4 py-2.5 text-[13.5px] font-bold text-ink-primary">
+                      {l.nombre}
+                      <Degradado estado={estado} lead={l} />
+                    </td>
                     <td className="px-4 py-2.5 text-[13px] text-ink-secondary tabular-nums whitespace-nowrap">
                       {l.telefono ?? <span className="text-ink-muted">Sin teléfono</span>}
                     </td>
@@ -563,6 +606,16 @@ function ListaDeLeads({
                     <td className="px-4 py-2.5">
                       <Acciones acciones={l.acciones} />
                     </td>
+                    {conBajada && (
+                      <td className="px-4 py-2.5">
+                        <ConfirmarBajada
+                          marcado={l.marcadoBajada}
+                          confirmacion={l.confirmacion}
+                          onResponder={(valor) => onResponder(l.id, valor)}
+                          conPregunta={false}
+                        />
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -574,8 +627,14 @@ function ListaDeLeads({
             {leads.map((l) => (
               <div key={l.id} className="flex border-t border-gridline">
                 <span className="w-1.5 shrink-0" style={{ background: meta.color }} />
-                <div className="flex-1 min-w-0 px-3.5 py-3" style={{ background: `${meta.color}0D` }}>
-                  <p className="text-[14.5px] font-bold text-ink-primary truncate">{l.nombre}</p>
+                <div
+                  className="flex-1 min-w-0 px-3.5 py-3"
+                  style={{ background: `${meta.color}0D`, opacity: bajaDeTemperatura(estado, l) ? 0.6 : 1 }}
+                >
+                  <p className="text-[14.5px] font-bold text-ink-primary truncate">
+                    {l.nombre}
+                    <Degradado estado={estado} lead={l} />
+                  </p>
                   <p className="text-[12.5px] text-ink-secondary tabular-nums mt-0.5">
                     {l.telefono ?? "Sin teléfono"} · {fechaCorta(l.creado)}
                   </p>
@@ -583,11 +642,27 @@ function ListaDeLeads({
                   <div className="mt-1.5">
                     <Acciones acciones={l.acciones} />
                   </div>
+                  {l.marcadoBajada && (
+                    <div className="mt-2">
+                      <ConfirmarBajada
+                        marcado={l.marcadoBajada}
+                        confirmacion={l.confirmacion}
+                        onResponder={(valor) => onResponder(l.id, valor)}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         </>
+      )}
+
+      {degradados > 0 && (
+        <p className="px-4 py-2.5 text-[12px] font-medium bg-surface border-t border-gridline text-ink-secondary">
+          {degradados === 1 ? "Un lead dejó" : `${degradados} leads dejaron`} de ser {meta.nombre} con tu
+          respuesta. Actualizá el tablero para ver los números al día.
+        </p>
       )}
 
       {recortada && (
@@ -613,6 +688,37 @@ function Acciones({ acciones }: { acciones: string[] }) {
           {a}
         </span>
       ))}
+    </span>
+  );
+}
+
+/**
+ * Si un "No" del agente saca al lead del estado en el que está listado.
+ *
+ * Aplica la misma regla que el servidor: Caliente se gana bajando a WhatsApp
+ * o registrándose. Si el lead está en Caliente y nunca se registró, negar la
+ * bajada lo deja sin motivo para estar ahí. Un lead que sí se registró se
+ * queda Caliente por su cuenta, responda lo que responda el agente.
+ */
+function bajaDeTemperatura(estado: EstadoLead, lead: LeadDeEstado): boolean {
+  return estado === "caliente" && lead.confirmacion === "no" && !lead.acciones.includes("Se registró");
+}
+
+// A dónde cae después: las mismas dos señales que definen Tibio.
+function estadoTrasElNo(lead: LeadDeEstado): EstadoLead {
+  const tibio = lead.acciones.includes("Respondió") || lead.acciones.includes("Entró al canal");
+  return tibio ? "tibio" : "frio";
+}
+
+function Degradado({ estado, lead }: { estado: EstadoLead; lead: LeadDeEstado }) {
+  if (!bajaDeTemperatura(estado, lead)) return null;
+  const destino = ESTADO_META[estadoTrasElNo(lead)];
+  return (
+    <span
+      className="ml-2 align-middle text-[10.5px] font-bold rounded-full px-2 py-0.5 whitespace-nowrap"
+      style={{ background: destino.color, color: destino.sobre }}
+    >
+      Pasó a {destino.nombre}
     </span>
   );
 }
