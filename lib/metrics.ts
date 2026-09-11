@@ -10,11 +10,13 @@ import {
 } from "./ghl";
 import {
   estadoDeLead,
-  recorridoDeLead,
+  accionesDeLead,
   yaDeposito,
   interactuoAuto,
   conteoVacio,
   ESTADOS,
+  ACCIONES_EMBUDO,
+  SIN_ACCIONES,
   TAG_CONFIABLE_DESDE,
   TAG_INTERACCION_AUTO,
   type EstadoLead,
@@ -122,9 +124,40 @@ export type Alerta = {
   detalle: string;
 };
 
-// Qué hizo la gente dentro de cada estado, para que "Tibio: 16" no sea una
-// caja negra sino "11 respondieron, 5 entraron al canal".
+// Qué hizo la gente dentro de cada estado, para que "Tibio: 36" no sea una
+// caja negra sino "36 respondieron, 12 además entraron al canal".
+//
+// Son totales POR ACCIÓN, no recorridos exclusivos: un mismo lead aparece en
+// varias filas y las filas NO suman el total del estado. Se eligió así porque
+// se lee mucho más rápido que listar cada combinación, y porque permite
+// mostrar las acciones que faltan con su casilla en cero.
 export type Desglose = { etiqueta: string; valor: number }[];
+
+// Cuenta, para cada estado, cuántos de sus leads hicieron cada paso del
+// embudo. Los pasos en cero se mantienen: son justamente los que faltan.
+function contarAcciones(porEstado: Map<EstadoLead, number[]>, estado: EstadoLead, acciones: string[]) {
+  if (!porEstado.has(estado)) porEstado.set(estado, ACCIONES_EMBUDO.map(() => 0));
+  const cuenta = porEstado.get(estado)!;
+  ACCIONES_EMBUDO.forEach((a, i) => {
+    if (acciones.includes(a)) cuenta[i] += 1;
+  });
+}
+
+function aDesglose(
+  porEstado: Map<EstadoLead, number[]>,
+  conteos: Record<EstadoLead, number>
+): Record<EstadoLead, Desglose> {
+  const salida = {} as Record<EstadoLead, Desglose>;
+  for (const estado of ESTADOS) {
+    const cuenta = porEstado.get(estado) ?? ACCIONES_EMBUDO.map(() => 0);
+    // Frío por definición no hizo nada: listar cuatro ceros no dice nada, una
+    // sola línea con el total sí.
+    salida[estado] = cuenta.every((n) => n === 0)
+      ? [{ etiqueta: SIN_ACCIONES, valor: conteos[estado] }]
+      : ACCIONES_EMBUDO.map((a, i) => ({ etiqueta: a, valor: cuenta[i] }));
+  }
+  return salida;
+}
 
 export type PanelEstados = {
   hoy: Record<EstadoLead, number>;
@@ -184,8 +217,8 @@ function calcularPanel(
 ): PanelEstados {
   const hoy = conteoVacio();
   const mes = conteoVacio();
-  const recorridosHoy = new Map<EstadoLead, Map<string, number>>();
-  const recorridosMes = new Map<EstadoLead, Map<string, number>>();
+  const accionesHoy = new Map<EstadoLead, number[]>();
+  const accionesMes = new Map<EstadoLead, number[]>();
   const hoyStr = diaBogota(new Date(ahoraMs).toISOString());
   const desdeConfiable = TAG_CONFIABLE_DESDE[TAG_INTERACCION_AUTO];
 
@@ -193,12 +226,6 @@ function calcularPanel(
   const porDia = new Map<string, { leads: number; auto: number }>();
   // Por agente, solo lo de hoy y ya filtrado a leads maduros.
   const porAgente = new Map<string, { maduros: number; auto: number }>();
-
-  function anotarRecorrido(mapa: Map<EstadoLead, Map<string, number>>, estado: EstadoLead, recorrido: string) {
-    if (!mapa.has(estado)) mapa.set(estado, new Map());
-    const m = mapa.get(estado)!;
-    m.set(recorrido, (m.get(recorrido) ?? 0) + 1);
-  }
 
   for (const contacto of leadContacts) {
     const t = new Date(contacto.dateAdded).getTime();
@@ -210,12 +237,12 @@ function calcularPanel(
     const enPanel = !yaDeposito(contacto);
     if (enPanel) {
       const estado = estadoDeLead(contacto);
-      const recorrido = recorridoDeLead(contacto);
+      const acciones = accionesDeLead(contacto);
       mes[estado] += 1;
-      anotarRecorrido(recorridosMes, estado, recorrido);
+      contarAcciones(accionesMes, estado, acciones);
       if (t >= todayFromMs && t < todayToMs) {
         hoy[estado] += 1;
-        anotarRecorrido(recorridosHoy, estado, recorrido);
+        contarAcciones(accionesHoy, estado, acciones);
       }
     }
 
@@ -325,24 +352,11 @@ function calcularPanel(
 
   alertas.sort((a, b) => (a.severidad === b.severidad ? 0 : a.severidad === "alta" ? -1 : 1));
 
-  function aDesglose(mapa: Map<EstadoLead, Map<string, number>>): Record<EstadoLead, Desglose> {
-    const salida = {} as Record<EstadoLead, Desglose>;
-    for (const estado of ESTADOS) {
-      const m = mapa.get(estado);
-      salida[estado] = m
-        ? [...m.entries()]
-            .map(([etiqueta, valor]) => ({ etiqueta, valor }))
-            .sort((a, b) => b.valor - a.valor)
-        : [];
-    }
-    return salida;
-  }
-
   return {
     hoy,
     mes,
-    desgloseHoy: aDesglose(recorridosHoy),
-    desgloseMes: aDesglose(recorridosMes),
+    desgloseHoy: aDesglose(accionesHoy, hoy),
+    desgloseMes: aDesglose(accionesMes, mes),
     interaccion: { tasaHoy, madurosHoy, baseline, diasValidos: tasasPrevias.length },
     alertas,
   };
@@ -483,7 +497,7 @@ export async function computeEstadosDeUnRango(from: string, to: string): Promise
   ]);
 
   const conteos = conteoVacio();
-  const recorridos = new Map<EstadoLead, Map<string, number>>();
+  const acciones = new Map<EstadoLead, number[]>();
   let depositaron = 0;
 
   for (const contacto of leadContacts) {
@@ -494,22 +508,11 @@ export async function computeEstadosDeUnRango(from: string, to: string): Promise
       continue;
     }
     const estado = estadoDeLead(contacto);
-    const recorrido = recorridoDeLead(contacto);
     conteos[estado] += 1;
-    if (!recorridos.has(estado)) recorridos.set(estado, new Map());
-    const m = recorridos.get(estado)!;
-    m.set(recorrido, (m.get(recorrido) ?? 0) + 1);
+    contarAcciones(acciones, estado, accionesDeLead(contacto));
   }
 
-  const desglose = {} as Record<EstadoLead, Desglose>;
-  for (const estado of ESTADOS) {
-    const m = recorridos.get(estado);
-    desglose[estado] = m
-      ? [...m.entries()].map(([etiqueta, valor]) => ({ etiqueta, valor })).sort((a, b) => b.valor - a.valor)
-      : [];
-  }
-
-  return { conteos, desglose, total: leadContacts.length, depositaron };
+  return { conteos, desglose: aDesglose(acciones, conteos), total: leadContacts.length, depositaron };
 }
 
 // Igual que computeAgentProduction pero para un rango de fechas arbitrario

@@ -39,40 +39,48 @@ export const ESTADO_META: Record<
   EstadoLead,
   {
     nombre: string;
-    emoji: string;
-    color: string;
     que: string;
-    // Franja de la acción sugerida, al pie de cada tarjeta. Va en color y no
-    // en gris: es lo único accionable del panel y en gris claro no se leía.
-    accionFondo: string;
-    accionTexto: string;
+    // Semáforo: rojo malo, verde bueno. Se eligió sobre la escala de
+    // temperatura —azul frío, rojo caliente— porque dice de un vistazo si algo
+    // está bien o mal, y porque los bloques saturados con letra encima tienen
+    // mucho más contraste que los tonos claros de antes.
+    color: string;   // fondo del bloque
+    sobre: string;   // texto encima del bloque
+    fuerte: string;  // versión oscura, para el botón y los checks
+    sobreFuerte: string;
   }
 > = {
   frio: {
     nombre: "Frío",
-    emoji: "🧊",
-    color: "#7C8AA5",
     que: "No hizo nada",
-    accionFondo: "#EDF1F7",
-    accionTexto: "#3C536F",
+    color: "#F2382C",
+    sobre: "#FFFFFF",
+    fuerte: "#BD1D13",
+    sobreFuerte: "#FFFFFF",
   },
   tibio: {
     nombre: "Tibio",
-    emoji: "🟡",
-    color: "#E0A800",
     que: "Respondió o entró al canal",
-    accionFondo: "#FDF3DA",
-    accionTexto: "#8A6100",
+    color: "#FACC15",
+    sobre: "#2A2100",
+    fuerte: "#EAB308",
+    sobreFuerte: "#2A2100",
   },
   caliente: {
     nombre: "Caliente",
-    emoji: "🔴",
-    color: "#D9481F",
     que: "Bajó a WhatsApp o se registró",
-    accionFondo: "#FCEAE3",
-    accionTexto: "#A63312",
+    color: "#16A34A",
+    sobre: "#FFFFFF",
+    fuerte: "#0F7A3C",
+    sobreFuerte: "#FFFFFF",
   },
 };
+
+// Los cuatro pasos del embudo, en orden. El desglose de cada estado los cuenta
+// uno por uno: cuántos de esos leads hicieron cada cosa.
+export const ACCIONES_EMBUDO = ["Respondió", "Entró al canal", "Bajó a WhatsApp", "Se registró"] as const;
+
+export const SIN_ACCIONES = "Solo entró, sin responder";
 
 function tiene(contacto: GhlContact, tag: string): boolean {
   const t = tag.toLowerCase();

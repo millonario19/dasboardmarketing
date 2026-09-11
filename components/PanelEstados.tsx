@@ -140,6 +140,31 @@ export function PanelEstados({ datos }: { datos: Datos }) {
         </div>
       )}
 
+      {/* Barra de distribución: la proporción de los tres estados en una sola
+          línea, antes de entrar a los números. */}
+      {total > 0 && (
+        <div className="rounded-2xl bg-surface border border-gridline p-4 mb-3">
+          <div className="flex gap-1 h-3">
+            {ESTADOS.filter((e) => conteos[e] > 0).map((e) => (
+              <span
+                key={e}
+                className="rounded-full"
+                style={{ flex: conteos[e], background: ESTADO_META[e].color }}
+              />
+            ))}
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {ESTADOS.map((e) => (
+              <div key={e} className="flex items-center gap-2 text-[13px] font-semibold text-ink-secondary">
+                <i className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: ESTADO_META[e].color }} />
+                {ESTADO_META[e].nombre}
+                <b className="text-ink-primary tabular-nums">{conteos[e]}</b>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {ESTADOS.map((estado) => (
           <Tarjeta
@@ -220,40 +245,113 @@ function Tarjeta({
   const pct = total > 0 ? (valor / total) * 100 : 0;
 
   return (
-    <div
-      className="rounded-xl border border-gridline bg-surface p-4 border-t-4 flex flex-col"
-      style={{ borderTopColor: meta.color }}
+    <article
+      className="rounded-2xl overflow-hidden flex flex-col"
+      style={{
+        background: `color-mix(in srgb, ${meta.color} 14%, var(--surface-1))`,
+        border: `2px solid ${meta.color}`,
+      }}
     >
-      <div className="flex items-center gap-1.5 mb-2">
-        <span aria-hidden>{meta.emoji}</span>
-        <span className="text-[13px] font-medium text-ink-primary">{meta.nombre}</span>
+      {/* Bloque de color macizo: el número y el estado se leen de lejos. */}
+      <div className="p-4 pb-4" style={{ background: meta.color, color: meta.sobre }}>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[17px] font-extrabold tracking-tight">{meta.nombre}</span>
+          <span
+            className="text-[13px] font-extrabold rounded-full px-2.5 py-1 tabular-nums"
+            style={{ background: `color-mix(in srgb, ${meta.sobre} 20%, transparent)` }}
+          >
+            {pct.toFixed(1)}%
+          </span>
+        </div>
+
+        <div className="flex items-baseline gap-2 mt-2.5">
+          <strong className="text-[44px] font-extrabold leading-none tracking-tighter tabular-nums">{valor}</strong>
+          <span className="text-[14px] font-semibold" style={{ opacity: 0.75 }}>
+            de {total}
+          </span>
+        </div>
+        <p className="text-[14px] font-semibold mt-1">{meta.que}</p>
+
+        <div
+          className="h-1.5 rounded-full mt-3 overflow-hidden"
+          style={{ background: `color-mix(in srgb, ${meta.sobre} 25%, transparent)` }}
+        >
+          <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: meta.sobre }} />
+        </div>
       </div>
-      <p className="text-3xl font-semibold text-ink-primary tabular-nums leading-none mb-1">{valor}</p>
-      <p className="text-[12px] text-ink-muted tabular-nums mb-3">
-        {pct.toFixed(1)}% · {meta.que}
-      </p>
 
-      {/* Qué hizo cada uno. Sin esto el estado es una caja negra: dos leads
-          Tibios pueden ser uno que respondió y otro que solo entró al canal. */}
-      {desglose.length > 0 && (
-        <ul className="flex flex-col gap-1 mb-3">
-          {desglose.map((d) => (
-            <li key={d.etiqueta} className="flex items-baseline justify-between gap-2 text-[11px]">
-              <span className="text-ink-secondary leading-snug">{d.etiqueta}</span>
-              <span className="text-ink-primary font-medium tabular-nums shrink-0">{d.valor}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* Checklist: cuántos de estos leads hicieron cada paso del embudo. Los
+          pasos en cero quedan apagados a propósito: son los que faltan. */}
+      <div className="p-3 flex flex-col gap-3 flex-1">
+        <div
+          className="rounded-xl px-3"
+          style={{ background: `color-mix(in srgb, ${meta.color} 24%, var(--surface-1))` }}
+        >
+          {desglose.map((d, i) => {
+            const hecho = d.valor > 0;
+            const ancho = valor > 0 ? Math.round((d.valor / valor) * 100) : 0;
+            return (
+              <div
+                key={d.etiqueta}
+                className="flex items-center gap-2.5 py-2.5"
+                style={{
+                  borderTop: i === 0 ? undefined : `1px solid color-mix(in srgb, ${meta.color} 32%, var(--surface-1))`,
+                  opacity: hecho ? 1 : 0.55,
+                }}
+              >
+                <span
+                  className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold shrink-0"
+                  style={
+                    hecho
+                      ? { background: meta.fuerte, color: meta.sobreFuerte }
+                      : { background: "var(--surface-1)", color: "var(--text-muted)", boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.12)" }
+                  }
+                >
+                  {hecho ? "✓" : i + 1}
+                </span>
 
-      {/* La acción sugerida es lo único accionable de la tarjeta. En gris
-          claro al pie pasaba desapercibida, así que va como franja de color. */}
-      <p
-        className="text-[12px] font-semibold leading-snug mt-auto rounded-lg px-3 py-2"
-        style={{ background: meta.accionFondo, color: meta.accionTexto }}
-      >
-        {accionSugerida(estado)}
-      </p>
-    </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12.5px] font-bold leading-tight text-ink-primary truncate">{d.etiqueta}</p>
+                  <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ background: "rgba(255,255,255,0.6)" }}>
+                    <span className="block h-full rounded-full" style={{ width: `${ancho}%`, background: meta.fuerte }} />
+                  </div>
+                </div>
+
+                <span
+                  className="min-w-[34px] h-8 px-1.5 rounded-lg flex items-center justify-center text-[15px] font-extrabold tabular-nums shrink-0"
+                  style={
+                    hecho
+                      ? { background: meta.color, color: meta.sobre }
+                      : { background: "var(--surface-1)", color: "var(--text-muted)" }
+                  }
+                >
+                  {d.valor}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Lo único accionable de la tarjeta, como botón y no como nota al pie. */}
+        <div
+          className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 mt-auto"
+          style={{ background: meta.fuerte, color: meta.sobreFuerte }}
+        >
+          <span
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] shrink-0"
+            style={{ background: `color-mix(in srgb, ${meta.sobreFuerte} 20%, transparent)` }}
+            aria-hidden
+          >
+            ⚡
+          </span>
+          <span className="min-w-0">
+            <small className="block text-[10.5px] font-semibold" style={{ opacity: 0.75 }}>
+              Siguiente paso
+            </small>
+            <span className="block text-[12.5px] font-extrabold leading-tight">{accionSugerida(estado)}</span>
+          </span>
+        </div>
+      </div>
+    </article>
   );
 }
