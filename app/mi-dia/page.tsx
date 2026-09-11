@@ -64,14 +64,34 @@ export default function MiDiaPage() {
     }
   }, [esAgente]);
 
+  /**
+   * La lista llega en dos tiempos.
+   *
+   * Primero los que se movieron hoy, que salen de Postgres y tardan un
+   * segundo: es lo único que cambió desde ayer y lo primero que el agente
+   * quiere ver. Después la lista completa, que tiene que barrer un mes en GHL
+   * y tarda diez. Antes se esperaba lo segundo para mostrar lo primero.
+   */
   const cargar = useCallback((quien: string) => {
     setCargando(true);
     setError(null);
-    fetch(`/api/mi-dia?agente=${encodeURIComponent(quien)}`)
-      .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).error ?? "Error al cargar la lista");
-        return r.json();
-      })
+    const url = (extra: string) => `/api/mi-dia?agente=${encodeURIComponent(quien)}${extra}`;
+    const pedir = async (extra: string) => {
+      const r = await fetch(url(extra));
+      if (!r.ok) throw new Error((await r.json()).error ?? "Error al cargar la lista");
+      return (await r.json()) as MiDia;
+    };
+
+    // El arranque no pisa datos completos que ya estén en pantalla: si la
+    // respuesta lenta gana la carrera, mostrarle al agente media lista sería
+    // ir para atrás.
+    pedir("&solo=movimiento")
+      .then((rapido) => setData((previo) => (previo && !previo.parcial ? previo : rapido)))
+      .catch(() => {
+        /* si falla, la carga completa igual llega */
+      });
+
+    pedir("")
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setCargando(false));
@@ -236,6 +256,11 @@ export default function MiDiaPage() {
           <div className="rounded-2xl bg-white p-4 mb-4 text-sm" style={{ color: "#C0432A" }}>
             {error}
           </div>
+        )}
+        {cargando && data?.parcial && (
+          <p className="text-sm mb-4" style={{ color: GRIS }}>
+            Estos son los movimientos de hoy. Cargando el resto de la lista…
+          </p>
         )}
         {cargando && !data && (
           <p className="text-sm" style={{ color: GRIS }}>

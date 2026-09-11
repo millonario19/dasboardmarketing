@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { computeMiDia } from "@/lib/miDia";
+import { computeMiDia, computeMovimientosDeHoy } from "@/lib/miDia";
 import { alcanceDeAgente } from "@/lib/sesion";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +10,17 @@ export async function GET(req: NextRequest) {
   const propio = await alcanceDeAgente();
   const agente = propio ?? req.nextUrl.searchParams.get("agente");
 
+  // Arranque rápido: solo los movimientos del día, que salen de Postgres.
+  const soloMovimientos = req.nextUrl.searchParams.get("solo") === "movimiento";
+
   const desde = req.nextUrl.searchParams.get("desde");
   const hasta = req.nextUrl.searchParams.get("hasta");
 
   try {
-    return NextResponse.json(await computeMiDia(agente, { desde, hasta }));
+    const datos = soloMovimientos
+      ? await computeMovimientosDeHoy(agente)
+      : await computeMiDia(agente, { desde, hasta });
+    return NextResponse.json(datos);
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : "Error al armar la lista";
     return NextResponse.json({ error: mensaje }, { status: 500 });

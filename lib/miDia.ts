@@ -1,4 +1,4 @@
-import { searchContacts, extractAttribution, contactDisplayName } from "./ghl";
+import { searchContacts, obtenerContacto, extractAttribution, contactDisplayName, type GhlContact } from "./ghl";
 import { getPool } from "./db";
 import {
   estadoDeLead,
@@ -78,6 +78,8 @@ export type MiDia = {
   rango: { desde: string; hasta: string };
   // Cuántos leads de la lista hay en cada temperatura.
   porEstado: Record<EstadoLead, number>;
+  // true mientras es solo el arranque rápido: falta el resto de la lista.
+  parcial?: boolean;
 };
 
 // Nombre humano de cada etiqueta, para el feed de movimientos. Las que no
@@ -131,6 +133,98 @@ async function movimientosDeHoy(desdeMs: number): Promise<Map<string, { tag: str
   return ultimo;
 }
 
+type Movimientos = Map<string, { tag: string; ms: number }>;
+
+async function aLeadItem(
+  c: GhlContact,
+  ahora: number,
+  hoyMs: number,
+  movimientos: Movimientos
+): Promise<{ item: LeadItem; agentId: string | null; agente: string }> {
+  const { agent, agentId } = await extractAttribution(c);
+  const altaMs = new Date(c.dateAdded).getTime();
+  const mov = movimientos.get(c.id);
+
+  return {
+    agentId,
+    agente: agent,
+    item: {
+      id: c.id,
+      nombre: contactDisplayName(c),
+      telefono: c.phone ?? null,
+      agenteId: agentId,
+      agente: agent,
+      estado: estadoDeLead(c),
+      recorrido: recorridoDeLead(c),
+      acciones: accionesDeLead(c),
+      dias: Math.floor((hoyMs - inicioDeHoyBogota(altaMs)) / DIA_MS),
+      creado: c.dateAdded,
+      movimiento: mov
+        ? {
+            que: ACCION_DE_TAG[mov.tag] ?? mov.tag,
+            cuando: haceCuanto(mov.ms, ahora),
+            cuandoMs: mov.ms,
+            esRescate: altaMs < hoyMs,
+          }
+        : undefined,
+    },
+  };
+}
+
+/**
+ * Solo el bloque "Se movieron hoy", para la primera pantalla.
+ *
+ * Los movimientos salen de Postgres en milisegundos y son un puñado, así que
+ * se traen esos contactos uno por uno en vez de esperar la búsqueda del mes
+ * entero. El agente ve en un segundo lo único que cambió desde ayer, y el
+ * resto de la lista llega después sin que haya tenido que mirar una pantalla
+ * vacía nueve segundos.
+ */
+export async function computeMovimientosDeHoy(agenteId?: string | null): Promise<MiDia> {
+  const ahora = Date.now();
+  const hoyMs = inicioDeHoyBogota(ahora);
+  const filtrado = Boolean(agenteId) && agenteId !== "todos";
+
+  const movimientos = await movimientosDeHoy(hoyMs).catch(() => new Map() as Movimientos);
+  const contactos = (await Promise.all([...movimientos.keys()].map(obtenerContacto))).filter(
+    (c): c is GhlContact => c !== null
+  );
+
+  const porEstado = conteoVacio();
+  const items: LeadItem[] = [];
+
+  for (const c of contactos) {
+    if (yaDeposito(c)) continue;
+    const { item, agentId } = await aLeadItem(c, ahora, hoyMs, movimientos);
+    if (filtrado && agentId !== agenteId) continue;
+    items.push(item);
+    porEstado[item.estado] += 1;
+  }
+
+  items.sort((a, b) => (b.movimiento?.cuandoMs ?? 0) - (a.movimiento?.cuandoMs ?? 0));
+
+  return {
+    bloques: [
+      {
+        id: "movimiento",
+        titulo: "Se movieron hoy",
+        subtitulo: "Mientras la mecha está prendida",
+        tono: "movimiento",
+        items,
+        total: items.length,
+      },
+    ],
+    // El selector de agentes lo llena la carga completa: para armarlo hay que
+    // haber visto todos los contactos, no solo los que se movieron.
+    agentes: [],
+    locationId: process.env.GHL_LOCATION_ID ?? "",
+    generadoEn: new Date(ahora).toISOString(),
+    rango: { desde: new Date(hoyMs).toISOString(), hasta: new Date(ahora).toISOString() },
+    porEstado,
+    parcial: true,
+  };
+}
+
 export async function computeMiDia(
   agenteId?: string | null,
   rango?: { desde?: string | null; hasta?: string | null }
@@ -161,33 +255,11 @@ export async function computeMiDia(
     // El que ya depositó no es una oportunidad abierta: está en FTD.
     if (yaDeposito(c)) continue;
 
-    const { agent, agentId } = await extractAttribution(c);
-    if (agentId && (!filtrado || agentId === agenteId)) agentes.set(agentId, agent);
+    const { item, agentId, agente } = await aLeadItem(c, ahora, hoyMs, movimientos);
+    if (agentId && (!filtrado || agentId === agenteId)) agentes.set(agentId, agente);
     if (filtrado && agentId !== agenteId) continue;
 
-    const altaMs = new Date(c.dateAdded).getTime();
-    const mov = movimientos.get(c.id);
-
-    items.push({
-      id: c.id,
-      nombre: contactDisplayName(c),
-      telefono: c.phone ?? null,
-      agenteId: agentId,
-      agente: agent,
-      estado: estadoDeLead(c),
-      recorrido: recorridoDeLead(c),
-      acciones: accionesDeLead(c),
-      dias: Math.floor((hoyMs - inicioDeHoyBogota(altaMs)) / DIA_MS),
-      creado: c.dateAdded,
-      movimiento: mov
-        ? {
-            que: ACCION_DE_TAG[mov.tag] ?? mov.tag,
-            cuando: haceCuanto(mov.ms, ahora),
-            cuandoMs: mov.ms,
-            esRescate: altaMs < hoyMs,
-          }
-        : undefined,
-    });
+    items.push(item);
   }
 
   const usados = new Set<string>();

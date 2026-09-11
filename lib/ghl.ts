@@ -155,6 +155,37 @@ export async function listarUsuariosGhl(): Promise<UsuarioGhl[]> {
   return usuarios.sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
+/**
+ * Un contacto puntual, por id.
+ *
+ * Existe para el arranque rápido de Mi día: los movimientos del día salen de
+ * Postgres en milisegundos y solo hace falta traer esos contactos, en vez de
+ * esperar la búsqueda de un mes entera para mostrar la primera pantalla.
+ */
+export async function obtenerContacto(contactId: string): Promise<GhlContact | null> {
+  try {
+    const res = await fetchWithRetry(
+      `${GHL_BASE_URL}/contacts/${encodeURIComponent(contactId)}`,
+      { headers: ghlHeaders(), cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    const contacto = data.contact as (GhlContact & { fullNameLowerCase?: string }) | undefined;
+    if (!contacto) return null;
+
+    // Este endpoint no devuelve contactName, que es de donde sale el nombre
+    // que se muestra; la búsqueda sí. Sin esto, el mismo lead aparece con una
+    // capitalización en la carga rápida y con otra cuando llega la completa.
+    if (!contacto.contactName && contacto.fullNameLowerCase) {
+      contacto.contactName = contacto.fullNameLowerCase;
+    }
+    return contacto;
+  } catch {
+    // Un contacto que no se pudo traer no puede tumbar la lista entera.
+    return null;
+  }
+}
+
 const userNameCache = new Map<string, string>();
 
 async function resolveUserName(userId: string): Promise<string> {
