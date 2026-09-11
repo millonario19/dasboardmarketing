@@ -5,6 +5,12 @@ import { AgentDetail } from "@/components/AgentDetail";
 import { FunnelStepChart } from "@/components/FunnelStepChart";
 import type { AgentProduction, AgentRangeRow } from "@/lib/metrics";
 
+// Franja del encabezado: azul oscuro con letra blanca. El celeste anterior
+// tenía tan poco contraste que los rótulos casi no se leían.
+const CAB = "#17457F";
+const CAB_SEP = "rgba(255,255,255,0.22)";
+const CAB_TENUE = "rgba(255,255,255,0.75)";
+
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 
 function hoyBogota(): string {
@@ -135,45 +141,49 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            {/* Encabezado de dos niveles: con seis columnas sueltas cuesta saber
-                cuál es de hoy y cuál del mes. */}
-            <tr>
-              <th className="bg-surface" />
+            {/* Encabezado de dos niveles sobre franja azul oscura: con seis
+                columnas sueltas cuesta saber cuál es de hoy y cuál del mes, y
+                en celeste claro los rótulos no se leían. */}
+            <tr style={{ background: CAB }}>
+              <th style={{ background: CAB }} />
               {enRango ? (
                 <th
                   colSpan={3}
-                  className="bg-header text-header-ink text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-2 pb-0.5 whitespace-nowrap"
+                  className="text-center text-[11px] font-bold uppercase tracking-wider px-4 pt-2.5 pb-1 whitespace-nowrap text-white"
                 >
                   Del {enEspanol(consulta.desde)} al {enEspanol(consulta.hasta)}
                 </th>
               ) : (
                 <>
-                  <th
-                    colSpan={3}
-                    className="bg-header text-header-ink text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-2 pb-0.5"
-                  >
+                  <th className="text-center text-[11px] font-bold uppercase tracking-wider px-4 pt-2.5 pb-1 text-white" colSpan={3}>
                     Hoy
                   </th>
                   <th
                     colSpan={3}
-                    className="bg-header text-header-ink text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-2 pb-0.5 border-l border-[#d3e0f0]"
+                    className="text-center text-[11px] font-bold uppercase tracking-wider px-4 pt-2.5 pb-1 text-white"
+                    style={{ borderLeft: `1px solid ${CAB_SEP}` }}
                   >
                     Este mes
                   </th>
                 </>
               )}
             </tr>
-            <tr className="border-b border-gridline">
-              <th className="bg-surface text-left text-[11px] font-medium uppercase tracking-wide text-ink-muted px-4 pt-1 pb-2.5">
+            <tr style={{ background: CAB }}>
+              <th
+                className="text-left text-[11px] font-semibold uppercase tracking-wider px-4 pt-1 pb-3 text-white"
+                style={{ background: CAB }}
+              >
                 Agente
               </th>
               {(enRango ? ["Leads", "Registros", "FTD"] : ["Leads", "Registros", "FTD", "Leads", "Registros", "FTD"]).map(
                 (c, i) => (
                   <th
                     key={i}
-                    className={`bg-header text-right text-[11px] font-medium uppercase tracking-wide text-ink-muted px-4 pt-1 pb-2.5 whitespace-nowrap ${
-                      !enRango && i === 3 ? "border-l border-[#d3e0f0]" : ""
-                    }`}
+                    className="text-right text-[11px] font-semibold uppercase tracking-wider px-4 pt-1 pb-3 whitespace-nowrap"
+                    style={{
+                      color: CAB_TENUE,
+                      borderLeft: !enRango && i === 3 ? `1px solid ${CAB_SEP}` : undefined,
+                    }}
                   >
                     {c}
                   </th>
@@ -235,9 +245,9 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
                           <span className="text-ink-muted mr-1">{esteAbierto ? "▾" : "▸"}</span>
                           {r.agent}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.leadsHoy}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.registrosHoy}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.ftdHoy}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-ink-primary">{r.leadsHoy}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-ink-primary">{r.registrosHoy}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-ink-primary">{r.ftdHoy}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-medium border-l border-gridline">
                           {r.leadsMes}
                         </td>
@@ -275,7 +285,7 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
           </tbody>
 
           <tfoot>
-            <tr className="border-t border-gridline font-medium bg-page">
+            <tr className="border-t-2 border-gridline font-semibold bg-page text-ink-primary">
               <td className="px-4 py-3">Total</td>
               {enRango && totalesRango ? (
                 <>
