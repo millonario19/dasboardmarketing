@@ -29,11 +29,15 @@ function niceTicks(max: number, count = 5): number[] {
   return ticks;
 }
 
-// Mismo recorte de 20% que la tarjeta principal: la altura y el bloque de
-// encabezado eran los que hacían ver enorme al panel del agente.
+// El lienzo escala al ancho del contenedor, así que lo que define cuán alto se
+// ve el gráfico es la RELACIÓN entre alto y ancho. Achicando el alto a la
+// mitad —y con él el bloque de encabezado— el gráfico ocupa la mitad de la
+// pantalla sin dejar de usar todo el ancho.
 const WIDTH = 1200;
-const HEIGHT = 368;
-const MARGIN = { top: 102, right: 12, bottom: 8, left: 56 };
+const HEIGHT = 132;
+// Sin margen izquierdo: al no haber números de eje, las barras usan todo
+// el ancho.
+const MARGIN = { top: 8, right: 12, bottom: 6, left: 12 };
 
 export function FunnelStepChart({
   title,
@@ -62,16 +66,49 @@ export function FunnelStepChart({
   const base = stages[0]?.value ?? 0;
 
   return (
-    <div className="bg-surface border border-gridline rounded-2xl shadow-sm p-6 w-full">
+    <div className="bg-surface border border-gridline rounded-2xl shadow-sm p-4 sm:p-5 w-full">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base font-semibold text-ink-primary">{title}</h2>
+        <h2 className="text-[14px] font-semibold text-ink-primary">{title}</h2>
         <button
           type="button"
           aria-label="Opciones"
-          className="w-8 h-8 rounded-full border border-gridline flex items-center justify-center text-ink-muted hover:bg-page"
+          className="w-7 h-7 rounded-full border border-gridline flex items-center justify-center text-ink-muted hover:bg-page shrink-0"
         >
           ⋯
         </button>
+      </div>
+
+      {/* Los rótulos van en flujo normal, ARRIBA del SVG, y no superpuestos.
+          Superpuestos eran HTML de tamaño fijo sobre un lienzo que escala: al
+          angostarse la pantalla el lienzo dejaba de reservarles lugar y los
+          números terminaban encima de las barras. */}
+      <div
+        className="flex select-none"
+        style={{
+          paddingLeft: `${(MARGIN.left / WIDTH) * 100}%`,
+          paddingRight: `${(MARGIN.right / WIDTH) * 100}%`,
+        }}
+      >
+        {stages.map((s, i) => (
+          <button
+            key={s.label}
+            onMouseEnter={() => setHovered(i)}
+            onMouseLeave={() => setHovered(null)}
+            className="text-left px-1 sm:px-2 pb-1.5 min-w-0"
+            style={{ width: `${100 / stages.length}%` }}
+          >
+            <p
+              className={`text-[10.5px] sm:text-[11px] mb-0.5 truncate ${
+                i === active ? "text-ink-primary font-medium" : "text-ink-muted"
+              }`}
+            >
+              {s.label}
+            </p>
+            <p className="text-base sm:text-lg font-semibold text-ink-primary tabular-nums leading-none">
+              {formatValue(s.value)}
+            </p>
+          </button>
+        ))}
       </div>
 
       <div className="relative select-none">
@@ -124,9 +161,8 @@ export function FunnelStepChart({
                 stroke="#eceae2"
                 strokeWidth="1"
               />
-              <text x={MARGIN.left - 12} y={yFor(t) + 5} textAnchor="end" fontSize="12" fill="#a3a199">
-                {formatValue(t)}
-              </text>
+              {/* Sin números de eje: los tres valores ya están impresos arriba
+                  de cada barra, y a este tamaño quedarían en tres píxeles. */}
             </g>
           ))}
 
@@ -191,34 +227,6 @@ export function FunnelStepChart({
             );
           })}
         </svg>
-
-        {/* Etiquetas de cada columna (encima del área del gráfico) */}
-        <div
-          className="absolute left-0 flex"
-          style={{
-            top: 0,
-            width: "100%",
-            paddingLeft: `${(MARGIN.left / WIDTH) * 100}%`,
-            paddingRight: `${(MARGIN.right / WIDTH) * 100}%`,
-          }}
-        >
-          {stages.map((s, i) => (
-            <button
-              key={s.label}
-              onMouseEnter={() => setHovered(i)}
-              onMouseLeave={() => setHovered(null)}
-              className="text-left px-2 py-1"
-              style={{ width: `${100 / stages.length}%` }}
-            >
-              <p className={`text-sm mb-1.5 ${i === active ? "text-ink-primary font-medium" : "text-ink-muted"}`}>
-                {s.label}
-              </p>
-              <p className="text-2xl md:text-3xl font-semibold text-ink-primary tabular-nums leading-none">
-                {formatValue(s.value)}
-              </p>
-            </button>
-          ))}
-        </div>
 
         {/* Tooltip flotante */}
         {active !== null && (
