@@ -5,6 +5,7 @@ import {
   recorridoDeLead,
   accionesDeLead,
   yaDeposito,
+  conteoVacio,
   TAG_BUSINESS,
   TAG_CANAL_FREE,
   TAG_INTERACCION_AUTO,
@@ -16,17 +17,28 @@ const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 const DIA_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Ventana por defecto de la lista: la última semana.
+ * Cuánto se trae de GHL: 30 días.
  *
- * No es que antes de eso no haya nada — la curva real de depósitos muestra que
- * el 44% deposita entre la semana 2 y la 4, así que ahí hay plata. Pero traer
- * 30 días de una deja una pantalla de diez mil píxeles que nadie recorre. Lo
- * de atrás se busca a propósito, con el rango de fechas.
+ * La curva real de depósitos muestra que el 44% deposita entre la semana 2 y
+ * la 4. Cortar la búsqueda antes escondería justamente donde está la plata, y
+ * los rescates dejarían de existir.
  */
-const VENTANA_DIAS = 7;
-// Tope por bloque. Una lista de 300 no la trabaja nadie; el total igual se
-// muestra para que se sepa cuántos quedaron afuera.
-const TOPE = 40;
+const VENTANA_DIAS = 30;
+
+/**
+ * Los bloques del día miran una ventana más corta que la búsqueda.
+ *
+ * Un caliente de hace tres semanas no es el trabajo de hoy — o ya se cerró, o
+ * pasó a ser un rescate. Rescates es el único bloque sin recorte: ahí va todo
+ * lo que la búsqueda encuentre, porque es justo lo que no hay que perder.
+ */
+const DIAS_CALIENTE = 7;
+
+// Tope de seguridad por bloque. No es un recorte de trabajo —la pantalla
+// pagina— sino un freno para que una respuesta no crezca sin control. Está
+// muy por encima de lo que da un mes de la oficina entera: si algún día se
+// alcanza, la pantalla avisa cuántos quedaron afuera en vez de mentir.
+const TOPE = 2000;
 
 export type LeadItem = {
   id: string;
@@ -64,6 +76,8 @@ export type MiDia = {
   // Qué ventana de fechas se consultó. La pantalla la muestra para que nunca
   // se confunda "no hay leads" con "no los pediste".
   rango: { desde: string; hasta: string };
+  // Cuántos leads de la lista hay en cada temperatura.
+  porEstado: Record<EstadoLead, number>;
 };
 
 // Nombre humano de cada etiqueta, para el feed de movimientos. Las que no
@@ -177,9 +191,21 @@ export async function computeMiDia(
   }
 
   const usados = new Set<string>();
+
+  // Reparto por temperatura de lo que realmente entra a la lista.
+  //
+  // Se cuenta acá y no en la pantalla porque no todos los leads caen en un
+  // bloque (un frío de anteayer no es el trabajo de hoy), y porque los
+  // bloques recortan a TOPE: contando lo que se muestra, el arco diría un
+  // total distinto al que tiene al lado.
+  const porEstado = conteoVacio();
+
   function tomar(filtro: (l: LeadItem) => boolean, orden: (a: LeadItem, b: LeadItem) => number) {
     const todos = items.filter((l) => !usados.has(l.id) && filtro(l)).sort(orden);
-    for (const l of todos.slice(0, TOPE)) usados.add(l.id);
+    for (const l of todos) {
+      usados.add(l.id);
+      porEstado[l.estado] += 1;
+    }
     return { items: todos.slice(0, TOPE), total: todos.length };
   }
 
@@ -195,7 +221,7 @@ export async function computeMiDia(
     (a, b) => b.movimiento!.cuandoMs - a.movimiento!.cuandoMs
   );
   const calientes = tomar(
-    (l) => l.estado === "caliente",
+    (l) => l.estado === "caliente" && l.dias <= DIAS_CALIENTE,
     masReciente
   );
   const tibios = tomar((l) => l.estado === "tibio" && l.dias <= 3, masReciente);
@@ -260,5 +286,6 @@ export async function computeMiDia(
     locationId: process.env.GHL_LOCATION_ID ?? "",
     generadoEn: new Date(ahora).toISOString(),
     rango: { desde, hasta },
+    porEstado,
   };
 }

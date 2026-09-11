@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Inicial } from "@/components/EscalaEmbudo";
 import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
 import { TablaLeads } from "@/components/TablaLeads";
-import { ESTADO_META } from "@/lib/leadStates";
+import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatura";
+import { conteoVacio } from "@/lib/leadStates";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
 
 // Paleta tomada de la referencia: gris cálido de fondo, blanco para las
@@ -38,37 +38,9 @@ const NEGRO = "#0D0D0D";
 const GRIS = "#8E8E88";
 const BORDE = "#D8D8D3";
 
-// Los mismos tres colores que las tarjetas de Dirección. Antes acá eran
-// naranja, ámbar y gris azulado, así que un mismo lead se veía de un color en
-// una pantalla y de otro en la otra.
-const COLOR_ESTADO: Record<string, string> = {
-  caliente: ESTADO_META.caliente.color,
-  tibio: ESTADO_META.tibio.fuerte,
-  frio: ESTADO_META.frio.color,
-};
-
 // El agente se elige a sí mismo una vez y el navegador lo recuerda: mientras
 // el dashboard tenga una sola contraseña compartida no puede saber quién entró.
 const CLAVE_AGENTE = "op_agente";
-
-// Colombia no tiene horario de verano: UTC-5 todo el año.
-const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
-
-function hoyBogota(): string {
-  return new Date(Date.now() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
-}
-
-function hace(dias: number): string {
-  return new Date(Date.now() - BOGOTA_OFFSET_MS - dias * 864e5).toISOString().slice(0, 10);
-}
-
-// El día elegido en el calendario es el de Bogotá: sin el desfase, consultar
-// "el 9" traía desde las 7 de la noche del 8.
-function aIso(dia: string, finDelDia: boolean): string {
-  const base = new Date(`${dia}T00:00:00-05:00`);
-  if (finDelDia) base.setDate(base.getDate() + 1);
-  return base.toISOString();
-}
 
 export default function MiDiaPage() {
   const sesion = useSesion();
@@ -82,11 +54,6 @@ export default function MiDiaPage() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Rango pedido a mano. Vacío = la última semana, que es lo que trae la API
-  // por defecto. Los leads más viejos no desaparecieron: se buscan acá.
-  const [desde, setDesde] = useState(hace(7));
-  const [hasta, setHasta] = useState(hoyBogota);
-  const [rangoPropio, setRangoPropio] = useState(false);
 
   useEffect(() => {
     if (esAgente) return;
@@ -97,15 +64,10 @@ export default function MiDiaPage() {
     }
   }, [esAgente]);
 
-  const cargar = useCallback((quien: string, propio?: { desde: string; hasta: string }) => {
+  const cargar = useCallback((quien: string) => {
     setCargando(true);
     setError(null);
-    const params = new URLSearchParams({ agente: quien });
-    if (propio) {
-      params.set("desde", aIso(propio.desde, false));
-      params.set("hasta", aIso(propio.hasta, true));
-    }
-    fetch(`/api/mi-dia?${params}`)
+    fetch(`/api/mi-dia?agente=${encodeURIComponent(quien)}`)
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error ?? "Error al cargar la lista");
         return r.json();
@@ -119,17 +81,6 @@ export default function MiDiaPage() {
     cargar(agente);
   }, [agente, cargar]);
 
-  function consultar() {
-    setRangoPropio(true);
-    cargar(agente, { desde, hasta });
-  }
-
-  function volverALaSemana() {
-    setRangoPropio(false);
-    setDesde(hace(7));
-    setHasta(hoyBogota());
-    cargar(agente);
-  }
 
   function elegirAgente(id: string) {
     setAgente(id);
@@ -141,7 +92,6 @@ export default function MiDiaPage() {
   }
 
   const bloques = data?.bloques ?? [];
-  const movimientos = bloques.find((b) => b.id === "movimiento");
   const conteos = useMemo(() => {
     const por = (id: string) => bloques.find((b) => b.id === id)?.total ?? 0;
     return {
@@ -150,6 +100,11 @@ export default function MiDiaPage() {
       movimientos: por("movimiento"),
     };
   }, [bloques]);
+
+  // El reparto por temperatura lo cuenta el servidor sobre la lista completa.
+  // Contarlo acá daría otro número: la pantalla solo recibe las primeras
+  // filas de cada bloque.
+  const conteosPorEstado = data?.porEstado ?? conteoVacio();
 
   const visibles = filtro === "todos" ? bloques : bloques.filter((b) => b.id === filtro);
   const nombreAgente = esAgente
@@ -162,143 +117,101 @@ export default function MiDiaPage() {
       style={{ background: FONDO_DEGRADADO, backgroundRepeat: "no-repeat", color: NEGRO }}
     >
       <div className="max-w-6xl mx-auto px-5 py-5">
-
-        {/* Barra superior: cápsula negra a la izquierda, tira verde con los
-            movimientos del día a la derecha, igual que la referencia. */}
-        {/* En móvil se apila: la tira de movimientos necesita ancho propio, y
-            metida en la misma fila que la cápsula quedaba en un hilito. */}
-        <div className="flex flex-col md:flex-row md:items-center gap-3 mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center flex-1 min-w-0 rounded-3xl sm:rounded-full p-1.5 sm:p-0" style={{ background: NEGRO }}>
-            <div className="flex items-center gap-3 pl-4 sm:pl-6 pr-4 py-2 sm:py-2.5 shrink-0">
-              <span className="text-white font-medium">Mi día</span>
-              <span
-                className="text-[13px] rounded-full px-3 py-1 first-letter:uppercase whitespace-nowrap text-white"
-                style={{ background: "rgba(255,255,255,0.14)" }}
-              >
-                {new Date().toLocaleDateString("es-CO", { day: "numeric", month: "long" })}
-              </span>
-            </div>
-
-            <div
-              className="flex-1 min-w-0 flex items-center gap-2 rounded-2xl sm:rounded-full px-3 py-1.5 sm:mr-1.5 overflow-x-auto"
-              style={{ background: LIMA }}
-            >
-              {movimientos && movimientos.items.length > 0 ? (
-                movimientos.items.slice(0, 6).map((l) => (
-                  <span
-                    key={l.id}
-                    className="flex items-center gap-1.5 bg-white rounded-full pl-1 pr-2.5 py-1 text-[12px] whitespace-nowrap shrink-0"
-                  >
-                    <Inicial nombre={l.nombre} color={COLOR_ESTADO[l.estado] ?? GRIS} tamano={20} />
-                    <strong className="font-semibold">{l.movimiento?.que}</strong>
-                    <span style={{ color: GRIS }}>{l.movimiento?.cuando}</span>
-                  </span>
-                ))
-              ) : (
-                <span className="text-[12.5px] font-medium px-2 py-0.5 whitespace-nowrap">
-                  Todavía nadie se movió hoy
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              href="/"
-              className="rounded-full px-5 py-2.5 text-sm font-medium bg-white text-center"
-              style={{ border: `1px solid ${BORDE}` }}
-            >
-              Dirección
-            </Link>
+        {/* Cabecera: saludo, las dos pantallas, y el reparto del día en un
+            arco. Antes eran cinco cosas sueltas —cápsula, tira de
+            movimientos, título gigante, contadores, botones— repartidas por
+            la pantalla sin alineación entre sí. */}
+        <section
+          className="relative rounded-[30px] px-6 pt-6 pb-7 mb-5 text-center overflow-hidden"
+          style={{
+            background: [
+              "radial-gradient(700px 420px at 6% 0%, rgba(120,180,235,.55), transparent 62%)",
+              "radial-gradient(760px 480px at 96% 34%, rgba(198,242,78,.50), transparent 64%)",
+              "radial-gradient(620px 420px at 52% 108%, rgba(255,255,255,.85), transparent 62%)",
+              "#EFF3F0",
+            ].join(", "),
+            backgroundRepeat: "no-repeat",
+            boxShadow: "0 1px 2px rgba(13,13,13,.03), 0 20px 44px -26px rgba(13,13,13,.30)",
+          }}
+        >
+          {/* Cuenta y salida, discretos: se usan una vez al día. */}
+          <div className="absolute top-4 right-4 flex gap-1.5">
             {esAgente && (
               <Link
                 href="/mi-cuenta"
-                className="rounded-full px-5 py-2.5 text-sm font-medium bg-white text-center"
-                style={{ border: `1px solid ${BORDE}`, color: GRIS }}
+                className="rounded-full px-3.5 py-1.5 text-[12.5px] hover:bg-white"
+                style={{ background: "rgba(255,255,255,.66)", color: "#52514e" }}
               >
                 Mi cuenta
               </Link>
             )}
             <CerrarSesion
-              className="rounded-full px-5 py-2.5 text-sm font-medium bg-white disabled:opacity-60"
-              style={{ border: `1px solid ${BORDE}`, color: GRIS }}
+              className="rounded-full px-3.5 py-1.5 text-[12.5px] hover:bg-white disabled:opacity-60"
+              style={{ background: "rgba(255,255,255,.66)", color: "#52514e" }}
             />
           </div>
-        </div>
 
-        {/* Título y contadores */}
-        <div className="flex items-end justify-between gap-6 flex-wrap mb-8">
-          <div className="flex items-center gap-4 flex-wrap">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tighter leading-none">
-              MI D
-              <span className="relative inline-block">
-                {/* Círculo medido en em para que acompañe al tamaño de letra.
-                    Con inset en px salía una cápsula alta y angosta en móvil. */}
-                <span
-                  className="absolute rounded-full"
-                  style={{
-                    background: LIMA,
-                    width: "0.72em",
-                    height: "0.72em",
-                    left: "50%",
-                    top: "52%",
-                    transform: "translate(-50%, -50%)",
-                    zIndex: 0,
-                  }}
-                />
-                <span className="relative">Í</span>
-              </span>
-              A
-            </h1>
-            <button
-              onClick={() => cargar(agente, rangoPropio ? { desde, hasta } : undefined)}
-              disabled={cargando}
-              className="rounded-full px-5 py-2.5 text-sm font-semibold disabled:opacity-60"
-              style={{ background: LIMA, color: NEGRO }}
-            >
-              {cargando ? "Actualizando…" : "↻ Actualizar"}
-            </button>
-          </div>
+          <p className="text-[22px] sm:text-[27px] font-bold tracking-[-0.03em] pt-8 sm:pt-0">
+            Hola, {sesion?.nombre?.split(" ")[0] ?? "de nuevo"}
+          </p>
+          <p className="text-[19px] sm:text-[24px] tracking-[-0.02em] mt-0.5">Así viene tu día 🙂</p>
 
-          <div className="flex items-end gap-6 sm:gap-8">
-            <Contador valor={conteos.pendientes} etiqueta="Pendientes" />
-            <Contador valor={conteos.calientes} etiqueta="Calientes" color={COLOR_ESTADO.caliente} />
-            <Contador valor={conteos.movimientos} etiqueta="Se movieron" destacado />
-          </div>
-        </div>
-
-        {/* Rótulo, agente y filtros */}
-        <div className="flex items-center gap-3 flex-wrap mb-5">
-          <h2 className="text-2xl font-bold tracking-tight">Mis leads</h2>
-          <span className="text-sm border-b-2 pb-0.5" style={{ borderColor: NEGRO }}>
-            <strong className="tabular-nums">{conteos.pendientes}</strong> leads
-          </span>
-
-          {esAgente ? (
+          <div className="inline-flex gap-2 mt-4 mb-1">
             <span
-              className="rounded-full px-4 py-2 text-[13px] font-semibold bg-white"
-              style={{ border: `1px solid ${BORDE}` }}
+              className="rounded-full px-6 py-2 text-sm font-semibold bg-white"
+              style={{ boxShadow: "0 1px 3px rgba(13,13,13,.10)" }}
             >
-              {sesion?.nombre}
+              Mi día
             </span>
-          ) : (
-            <select
-              value={agente}
-              onChange={(e) => elegirAgente(e.target.value)}
-              className="rounded-full px-4 py-2 text-[13px] bg-white outline-none"
-              style={{ border: `1px solid ${BORDE}` }}
+            <Link
+              href="/"
+              className="rounded-full px-6 py-2 text-sm"
+              style={{ border: "1px solid rgba(13,13,13,.10)", color: "#52514e" }}
             >
-              <option value="todos">Toda la oficina</option>
-              {data?.agentes.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nombre}
-                </option>
-              ))}
-            </select>
+              Dirección
+            </Link>
+          </div>
+
+          {/* La dirección entra a Mi día para mirar el de cada agente: acá
+              elige de quién. El agente no lo ve porque solo tiene el suyo. */}
+          {!esAgente && (
+            <div className="mt-3">
+              <select
+                value={agente}
+                onChange={(e) => elegirAgente(e.target.value)}
+                className="rounded-full px-4 py-2 text-[13px] bg-white outline-none"
+                style={{ border: "1px solid rgba(13,13,13,.10)" }}
+              >
+                <option value="todos">Toda la oficina</option>
+                {data?.agentes.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
           )}
 
+          <ArcoTemperatura
+            conteos={conteosPorEstado}
+            total={conteos.pendientes}
+            calientes={conteosPorEstado.caliente}
+          />
+          <LeyendaTemperatura conteos={conteosPorEstado} />
+
+          <button
+            onClick={() => setFiltro(conteos.calientes > 0 ? "caliente" : "todos")}
+            className="mt-4 rounded-full px-8 py-3.5 text-[14.5px] font-semibold text-white hover:opacity-90 w-full sm:w-auto"
+            style={{ background: NEGRO }}
+          >
+            {conteos.calientes > 0 ? `Ir a Calientes (${conteos.calientes}) →` : "Ver toda la lista →"}
+          </button>
+        </section>
+
+        {/* Filtros por bloque, con su cuenta. */}
+        <div className="flex items-center gap-2 flex-wrap mb-5">
           <Pildora activa={filtro === "todos"} onClick={() => setFiltro("todos")}>
-            Todos
+            Todos <b className="tabular-nums opacity-60 ml-1">{conteos.pendientes}</b>
           </Pildora>
           {bloques
             .filter((b) => b.total > 0)
@@ -306,54 +219,17 @@ export default function MiDiaPage() {
               <Pildora key={b.id} activa={filtro === b.id} onClick={() => setFiltro(b.id)}>
                 {b.id === "caliente" && "🔥 "}
                 {b.titulo}
+                <b className="tabular-nums opacity-60 ml-1">{b.total}</b>
               </Pildora>
             ))}
-        </div>
-
-        {/* Rango de fechas. La lista arranca con la última semana; lo de más
-            atrás se pide acá en vez de venir siempre y hacer de la pantalla un
-            rollo de diez mil píxeles. */}
-        <div className="flex items-center gap-2 flex-wrap mb-5">
-          <span className="text-[12.5px] shrink-0" style={{ color: GRIS }}>
-            {rangoPropio ? "Estás viendo:" : "Últimos 7 días ·"}
-          </span>
-          <input
-            type="date"
-            value={desde}
-            max={hasta}
-            onChange={(e) => setDesde(e.target.value)}
-            className="rounded-full px-3 py-1.5 text-[12.5px] bg-white outline-none"
-            style={{ border: `1px solid ${BORDE}` }}
-          />
-          <span className="text-[12.5px]" style={{ color: GRIS }}>
-            a
-          </span>
-          <input
-            type="date"
-            value={hasta}
-            min={desde}
-            max={hoyBogota()}
-            onChange={(e) => setHasta(e.target.value)}
-            className="rounded-full px-3 py-1.5 text-[12.5px] bg-white outline-none"
-            style={{ border: `1px solid ${BORDE}` }}
-          />
           <button
-            onClick={consultar}
+            onClick={() => cargar(agente)}
             disabled={cargando}
-            className="rounded-full px-4 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90 disabled:opacity-50"
-            style={{ background: "#17457F" }}
+            className="rounded-full px-4 py-2 text-[13px] font-semibold ml-auto disabled:opacity-60"
+            style={{ background: LIMA, color: NEGRO }}
           >
-            {cargando ? "Consultando…" : "Consultar"}
+            {cargando ? "Actualizando…" : "↻ Actualizar"}
           </button>
-          {rangoPropio && (
-            <button
-              onClick={volverALaSemana}
-              className="rounded-full px-3 py-1.5 text-[12.5px] bg-white hover:opacity-80"
-              style={{ border: `1px solid ${BORDE}`, color: GRIS }}
-            >
-              × Volver a los últimos 7 días
-            </button>
-          )}
         </div>
 
         {error && (
@@ -386,41 +262,6 @@ export default function MiDiaPage() {
   );
 }
 
-function Contador({
-  valor,
-  etiqueta,
-  color,
-  destacado,
-}: {
-  valor: number;
-  etiqueta: string;
-  color?: string;
-  destacado?: boolean;
-}) {
-  return (
-    <div className="flex items-start gap-2">
-      <div>
-        <div
-          className="text-3xl sm:text-4xl md:text-5xl font-extrabold tabular-nums leading-none tracking-tighter"
-          style={{ color: color ?? NEGRO }}
-        >
-          {valor}
-        </div>
-        <div className="text-[13px] mt-1.5" style={{ color: GRIS }}>
-          {etiqueta}
-        </div>
-      </div>
-      {destacado && valor > 0 && (
-        <span
-          className="text-[11px] font-semibold rounded-full px-2 py-0.5 mt-1"
-          style={{ background: LIMA, color: NEGRO }}
-        >
-          hoy
-        </span>
-      )}
-    </div>
-  );
-}
 
 function Pildora({
   activa,

@@ -146,17 +146,13 @@ function Quien({ lead, estado }: { lead: LeadItem; estado: EstadoLead }) {
   );
 }
 
-// Cuántas filas se ven de entrada y de a cuántas crece.
-//
-// Se muestran pocas y se agrega en bloques, en vez de paginar: la lista se
-// trabaja de arriba hacia abajo y con páginas se pierde el lugar en cada
-// salto. Además, agregar abajo funciona igual en el celular y en el
-// escritorio, mientras que los botones de página son incómodos con el pulgar.
-const AL_PRINCIPIO = 10;
-const DE_A = 20;
+// Cuántas filas por página. Se elige: diez para ir de a poco, cincuenta para
+// barrer una lista larga sin estar saltando de página.
+const TAMANOS = [10, 20, 50] as const;
 
 export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId: string }) {
-  const [visibles, setVisibles] = useState(AL_PRINCIPIO);
+  const [porPagina, setPorPagina] = useState<number>(TAMANOS[0]);
+  const [pagina, setPagina] = useState(0);
 
   if (bloque.total === 0) return null;
 
@@ -164,8 +160,11 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
   const conTemp = CON_TEMPERATURA.has(bloque.id);
   const crmDe = (id: string) => `https://app.gohighlevel.com/v2/location/${locationId}/contacts/detail/${id}`;
 
-  const items = bloque.items.slice(0, visibles);
-  const faltan = bloque.items.length - items.length;
+  const paginas = Math.max(1, Math.ceil(bloque.items.length / porPagina));
+  // Cambiar el tamaño puede dejar la página actual fuera de rango.
+  const actual = Math.min(pagina, paginas - 1);
+  const primero = actual * porPagina;
+  const items = bloque.items.slice(primero, primero + porPagina);
 
   const columnas = [
     ...(conTemp ? ["Temperatura"] : []),
@@ -325,21 +324,69 @@ export function TablaLeads({ bloque, locationId }: { bloque: Bloque; locationId:
       </div>
 
       <div className="flex items-center gap-3 flex-wrap mt-2.5 px-1">
-        {faltan > 0 && (
-          <button
-            onClick={() => setVisibles((n) => n + DE_A)}
-            className="rounded-full px-4 py-1.5 text-[12.5px] font-semibold text-white hover:opacity-90"
-            style={{ background: tono.c, color: tono.sob }}
-          >
-            Ver {Math.min(faltan, DE_A)} más
-          </button>
-        )}
         <p className="text-[12.5px]" style={{ color: GRIS }}>
-          {bloque.total > bloque.items.length
-            ? `Mostrando ${items.length} de ${bloque.total}. Para ver más atrás, usá el rango de fechas.`
-            : `Mostrando ${items.length} de ${bloque.total}.`}
+          {primero + 1}–{primero + items.length} de {bloque.items.length}
+          {bloque.total > bloque.items.length && ` (de ${bloque.total})`}
         </p>
+
+        {paginas > 1 && (
+          <span className="flex items-center gap-1.5">
+            <BotonPagina onClick={() => setPagina(actual - 1)} activo={actual > 0}>
+              ←
+            </BotonPagina>
+            <span className="text-[12.5px] tabular-nums" style={{ color: GRIS }}>
+              {actual + 1} / {paginas}
+            </span>
+            <BotonPagina onClick={() => setPagina(actual + 1)} activo={actual < paginas - 1}>
+              →
+            </BotonPagina>
+          </span>
+        )}
+
+        <span className="flex items-center gap-1.5 ml-auto">
+          <span className="text-[12px]" style={{ color: GRIS }}>
+            Ver de a
+          </span>
+          {TAMANOS.map((n) => (
+            <button
+              key={n}
+              onClick={() => {
+                setPorPagina(n);
+                setPagina(0);
+              }}
+              className="rounded-full px-2.5 py-1 text-[12px] font-semibold tabular-nums"
+              style={
+                porPagina === n
+                  ? { background: tono.c, color: tono.sob }
+                  : { background: "rgba(13,13,13,.05)", color: GRIS_2 }
+              }
+            >
+              {n}
+            </button>
+          ))}
+        </span>
       </div>
     </section>
+  );
+}
+
+function BotonPagina({
+  onClick,
+  activo,
+  children,
+}: {
+  onClick: () => void;
+  activo: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!activo}
+      className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] disabled:opacity-30"
+      style={{ background: "rgba(13,13,13,.05)", color: GRIS_2 }}
+    >
+      {children}
+    </button>
   );
 }
