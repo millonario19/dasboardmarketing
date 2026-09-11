@@ -28,8 +28,8 @@ export function PanelEstados({ datos }: { datos: Datos }) {
             </span>
           </div>
           {/* Sin esta aclaración el panel parece contradecir a Métricas: acá
-              Fuego y Venta salen más bajos porque solo cuentan lo que nació de
-              la pauta, mientras que los totales de arriba suman todas las
+              Caliente sale más bajo porque solo cuenta lo que nació de la
+              pauta, mientras que los totales de arriba suman todas las
               fuentes. */}
           <p className="text-[12px] text-ink-muted mt-0.5">
             Solo leads con tag de pauta. Los registros y FTD de otras fuentes no entran acá.
@@ -50,7 +50,7 @@ export function PanelEstados({ datos }: { datos: Datos }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {ESTADOS.map((estado) => (
           <Tarjeta
             key={estado}
