@@ -32,7 +32,8 @@ export function PanelEstados({ datos }: { datos: Datos }) {
               pauta, mientras que los totales de arriba suman todas las
               fuentes. */}
           <p className="text-[12px] text-ink-muted mt-0.5">
-            Solo leads con tag de pauta. Los registros y FTD de otras fuentes no entran acá.
+            Solo leads de la pauta que todavía no depositaron — los que ya depositaron están en FTD, arriba.
+            Una llama por acción.
           </p>
         </div>
         <div className="flex rounded-full border border-gridline overflow-hidden text-[13px]">
@@ -122,7 +123,7 @@ function Tarjeta({
   estado: EstadoLead;
   valor: number;
   total: number;
-  desglose: { etiqueta: string; valor: number }[];
+  desglose: { etiqueta: string; valor: number; llamas: number }[];
 }) {
   const meta = ESTADO_META[estado];
   const pct = total > 0 ? (valor / total) * 100 : 0;
@@ -144,10 +145,17 @@ function Tarjeta({
       {/* Qué hizo cada uno. Sin esto el estado es una caja negra: dos leads
           Tibios pueden ser uno que respondió y otro que solo entró al canal. */}
       {desglose.length > 0 && (
-        <ul className="flex flex-col gap-1 mb-3">
+        <ul className="flex flex-col gap-1.5 mb-3">
           {desglose.map((d) => (
             <li key={d.etiqueta} className="flex items-baseline justify-between gap-2 text-[11px]">
-              <span className="text-ink-secondary leading-snug">{d.etiqueta}</span>
+              <span className="leading-snug">
+                {/* Una llama por acción: se ve de un vistazo quién está más
+                    cerca de comprar, sin leer la etiqueta entera. */}
+                <span className="mr-1.5 whitespace-nowrap" title={`${d.llamas} acciones`}>
+                  {d.llamas === 0 ? "🧊" : "🔥".repeat(d.llamas)}
+                </span>
+                <span className="text-ink-secondary">{d.etiqueta}</span>
+              </span>
               <span className="text-ink-primary font-medium tabular-nums shrink-0">{d.valor}</span>
             </li>
           ))}

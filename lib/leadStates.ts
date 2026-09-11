@@ -36,9 +36,9 @@ export type EstadoLead = "frio" | "tibio" | "caliente";
 export const ESTADOS: EstadoLead[] = ["frio", "tibio", "caliente"];
 
 export const ESTADO_META: Record<EstadoLead, { nombre: string; emoji: string; color: string; que: string }> = {
-  frio: { nombre: "Frío", emoji: "🔵", color: "#7C8AA5", que: "No hizo nada" },
-  tibio: { nombre: "Tibio", emoji: "🟡", color: "#E0A800", que: "Respondió o entró al canal" },
-  caliente: { nombre: "Caliente", emoji: "🔥", color: "#D9481F", que: "Bajó a WhatsApp o se registró" },
+  frio: { nombre: "Frío", emoji: "🧊", color: "#7C8AA5", que: "No hizo nada" },
+  tibio: { nombre: "Tibio", emoji: "🔥", color: "#E0A800", que: "Respondió o entró al canal" },
+  caliente: { nombre: "Caliente", emoji: "🔥🔥", color: "#D9481F", que: "Bajó a WhatsApp o se registró" },
 };
 
 function tiene(contacto: GhlContact, tag: string): boolean {
@@ -93,14 +93,24 @@ export function conteoVacio(): Record<EstadoLead, number> {
  * desglosar cada estado en pantalla.
  */
 export function accionesDeLead(contacto: GhlContact): string[] {
-  const conLinkPropio = hasOwnAffiliateLink(contacto);
   const acciones: string[] = [];
+  // Los dos tags de interacción cuentan como una sola acción: son el mismo
+  // hecho visto por el flujo y por el agente, no dos cosas distintas.
   if (interactuo(contacto)) acciones.push("Respondió");
   if (tiene(contacto, TAG_CANAL_FREE)) acciones.push("Entró al canal");
   if (tiene(contacto, TAG_BUSINESS)) acciones.push("Bajó a WhatsApp");
-  if (isRegistrado(contacto) && conLinkPropio) acciones.push("Se registró");
-  if (isFtdEfectuado(contacto) && conLinkPropio) acciones.push("Depositó");
+  if (isRegistrado(contacto) && hasOwnAffiliateLink(contacto)) acciones.push("Se registró");
   return acciones;
+}
+
+// Intensidad del interés: una llama por acción, hasta cuatro.
+export function llamasDeLead(contacto: GhlContact): number {
+  return accionesDeLead(contacto).length;
+}
+
+// El depósito saca al lead del panel: ya se cuenta en las tarjetas de FTD.
+export function yaDeposito(contacto: GhlContact): boolean {
+  return isFtdEfectuado(contacto) && hasOwnAffiliateLink(contacto);
 }
 
 // Etiqueta legible del recorrido de un lead: "Respondió + Entró al canal".

@@ -11,6 +11,8 @@ import {
 import {
   estadoDeLead,
   recorridoDeLead,
+  llamasDeLead,
+  yaDeposito,
   interactuoAuto,
   conteoVacio,
   ESTADOS,
@@ -123,7 +125,7 @@ export type Alerta = {
 
 // Qué hizo la gente dentro de cada estado, para que "Tibio: 16" no sea una
 // caja negra sino "11 respondieron, 5 entraron al canal".
-export type Desglose = { etiqueta: string; valor: number }[];
+export type Desglose = { etiqueta: string; valor: number; llamas: number }[];
 
 export type PanelEstados = {
   hoy: Record<EstadoLead, number>;
@@ -183,8 +185,8 @@ function calcularPanel(
 ): PanelEstados {
   const hoy = conteoVacio();
   const mes = conteoVacio();
-  const recorridosHoy = new Map<EstadoLead, Map<string, number>>();
-  const recorridosMes = new Map<EstadoLead, Map<string, number>>();
+  const recorridosHoy = new Map<EstadoLead, Map<string, { valor: number; llamas: number }>>();
+  const recorridosMes = new Map<EstadoLead, Map<string, { valor: number; llamas: number }>>();
   const hoyStr = diaBogota(new Date(ahoraMs).toISOString());
   const desdeConfiable = TAG_CONFIABLE_DESDE[TAG_INTERACCION_AUTO];
 
@@ -193,20 +195,38 @@ function calcularPanel(
   // Por agente, solo lo de hoy y ya filtrado a leads maduros.
   const porAgente = new Map<string, { maduros: number; auto: number }>();
 
-  function anotarRecorrido(mapa: Map<EstadoLead, Map<string, number>>, estado: EstadoLead, recorrido: string) {
+  function anotarRecorrido(
+    mapa: Map<EstadoLead, Map<string, { valor: number; llamas: number }>>,
+    estado: EstadoLead,
+    recorrido: string,
+    llamas: number
+  ) {
     if (!mapa.has(estado)) mapa.set(estado, new Map());
     const m = mapa.get(estado)!;
-    m.set(recorrido, (m.get(recorrido) ?? 0) + 1);
+    const actual = m.get(recorrido);
+    if (actual) actual.valor += 1;
+    else m.set(recorrido, { valor: 1, llamas });
   }
 
   for (const contacto of leadContacts) {
-    const estado = estadoDeLead(contacto);
-    const recorrido = recorridoDeLead(contacto);
-    mes[estado] += 1;
-    anotarRecorrido(recorridosMes, estado, recorrido);
-
     const t = new Date(contacto.dateAdded).getTime();
     const dia = diaBogota(contacto.dateAdded);
+
+    // Los que ya depositaron salen del panel: su lugar es la tarjeta de FTD.
+    // Igual siguen contando para la tasa de interacción, que mide si el
+    // agente atendió al lead y no en qué estado terminó.
+    const enPanel = !yaDeposito(contacto);
+    if (enPanel) {
+      const estado = estadoDeLead(contacto);
+      const recorrido = recorridoDeLead(contacto);
+      const llamas = llamasDeLead(contacto);
+      mes[estado] += 1;
+      anotarRecorrido(recorridosMes, estado, recorrido, llamas);
+      if (t >= todayFromMs && t < todayToMs) {
+        hoy[estado] += 1;
+        anotarRecorrido(recorridosHoy, estado, recorrido, llamas);
+      }
+    }
 
     if (!porDia.has(dia)) porDia.set(dia, { leads: 0, auto: 0 });
     const d = porDia.get(dia)!;
@@ -214,8 +234,6 @@ function calcularPanel(
     if (interactuoAuto(contacto)) d.auto += 1;
 
     if (t >= todayFromMs && t < todayToMs) {
-      hoy[estado] += 1;
-      anotarRecorrido(recorridosHoy, estado, recorrido);
       if (ahoraMs - t >= MADUREZ_MS) {
         const id = contacto.assignedTo ?? "sin-asignar";
         if (!porAgente.has(id)) porAgente.set(id, { maduros: 0, auto: 0 });
@@ -316,13 +334,15 @@ function calcularPanel(
 
   alertas.sort((a, b) => (a.severidad === b.severidad ? 0 : a.severidad === "alta" ? -1 : 1));
 
-  function aDesglose(mapa: Map<EstadoLead, Map<string, number>>): Record<EstadoLead, Desglose> {
+  function aDesglose(
+    mapa: Map<EstadoLead, Map<string, { valor: number; llamas: number }>>
+  ): Record<EstadoLead, Desglose> {
     const salida = {} as Record<EstadoLead, Desglose>;
     for (const estado of ESTADOS) {
       const m = mapa.get(estado);
       salida[estado] = m
         ? [...m.entries()]
-            .map(([etiqueta, valor]) => ({ etiqueta, valor }))
+            .map(([etiqueta, { valor, llamas }]) => ({ etiqueta, valor, llamas }))
             .sort((a, b) => b.valor - a.valor)
         : [];
     }
