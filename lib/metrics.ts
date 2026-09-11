@@ -459,6 +459,59 @@ export async function computeAgentProduction(): Promise<AgentProduction> {
   };
 }
 
+export type EstadosDeUnRango = {
+  conteos: Record<EstadoLead, number>;
+  desglose: Record<EstadoLead, Desglose>;
+  total: number;
+  depositaron: number;
+};
+
+/**
+ * Los mismos estados del panel, pero para un rango de fechas cualquiera.
+ *
+ * Es una COHORTE por fecha de entrada: "los leads que entraron el 9 de
+ * septiembre, en el estado que tienen hoy". No es una foto congelada de cómo
+ * se veían ese día —GHL no guarda cuándo se puso cada etiqueta—, sino cómo
+ * terminaron madurando. Que es justamente lo que sirve para juzgar la pauta
+ * de un día: no cuántos habían respondido a las 6 de la tarde, sino cuántos
+ * respondieron en total.
+ */
+export async function computeEstadosDeUnRango(from: string, to: string): Promise<EstadosDeUnRango> {
+  const leadContacts = await searchContacts([
+    { field: "tags", operator: "contains", value: LEAD_TAG() },
+    { field: "dateAdded", operator: "range", value: { gte: from, lte: to } },
+  ]);
+
+  const conteos = conteoVacio();
+  const recorridos = new Map<EstadoLead, Map<string, number>>();
+  let depositaron = 0;
+
+  for (const contacto of leadContacts) {
+    // Los que depositaron salen de las tarjetas, igual que en el panel, pero
+    // se cuentan aparte para que el total del día cierre.
+    if (yaDeposito(contacto)) {
+      depositaron += 1;
+      continue;
+    }
+    const estado = estadoDeLead(contacto);
+    const recorrido = recorridoDeLead(contacto);
+    conteos[estado] += 1;
+    if (!recorridos.has(estado)) recorridos.set(estado, new Map());
+    const m = recorridos.get(estado)!;
+    m.set(recorrido, (m.get(recorrido) ?? 0) + 1);
+  }
+
+  const desglose = {} as Record<EstadoLead, Desglose>;
+  for (const estado of ESTADOS) {
+    const m = recorridos.get(estado);
+    desglose[estado] = m
+      ? [...m.entries()].map(([etiqueta, valor]) => ({ etiqueta, valor })).sort((a, b) => b.valor - a.valor)
+      : [];
+  }
+
+  return { conteos, desglose, total: leadContacts.length, depositaron };
+}
+
 // Igual que computeAgentProduction pero para un rango de fechas arbitrario
 // (el calendario "desde/hasta" del dashboard), sin distinción hoy/mes.
 export type AgentRangeRow = {

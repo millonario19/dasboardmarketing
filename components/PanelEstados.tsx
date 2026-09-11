@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ESTADOS, ESTADO_META, accionSugerida, type EstadoLead } from "@/lib/leadStates";
 import type { PanelEstados as Datos } from "@/lib/metrics";
 
@@ -9,10 +9,55 @@ const SEVERIDAD = {
   media: { borde: "#E0A800", fondo: "#FDF8E7", texto: "#8A6800" },
 } as const;
 
+const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
+
+function hoyBogota(): string {
+  return new Date(Date.now() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function ayerBogota(): string {
+  return new Date(Date.now() - BOGOTA_OFFSET_MS - 864e5).toISOString().slice(0, 10);
+}
+
+function enEspanol(iso: string): string {
+  const [a, m, d] = iso.split("-");
+  return `${d}/${m}/${a}`;
+}
+
+type Dia = {
+  fecha: string;
+  conteos: Record<EstadoLead, number>;
+  desglose: Record<EstadoLead, { etiqueta: string; valor: number }[]>;
+  total: number;
+  depositaron: number;
+};
+
 export function PanelEstados({ datos }: { datos: Datos }) {
   const [ventana, setVentana] = useState<"hoy" | "mes">("hoy");
-  const conteos = datos[ventana];
-  const desglose = ventana === "hoy" ? datos.desgloseHoy : datos.desgloseMes;
+  const [fecha, setFecha] = useState(ayerBogota);
+  const [dia, setDia] = useState<Dia | null>(null);
+  const [cargando, setCargando] = useState(false);
+  const [errorDia, setErrorDia] = useState<string | null>(null);
+
+  // El día elegido se pide aparte: el panel por defecto solo trae hoy y el mes.
+  const verDia = useCallback(() => {
+    const desde = new Date(`${fecha}T00:00:00-05:00`);
+    const hasta = new Date(desde);
+    hasta.setDate(hasta.getDate() + 1);
+    setCargando(true);
+    setErrorDia(null);
+    fetch(`/api/metrics/estados?from=${encodeURIComponent(desde.toISOString())}&to=${encodeURIComponent(hasta.toISOString())}`)
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).error ?? "Error al consultar el día");
+        return r.json();
+      })
+      .then((d) => setDia({ fecha, ...d }))
+      .catch((e) => setErrorDia(e.message))
+      .finally(() => setCargando(false));
+  }, [fecha]);
+
+  const conteos = dia ? dia.conteos : datos[ventana];
+  const desglose = dia ? dia.desglose : ventana === "hoy" ? datos.desgloseHoy : datos.desgloseMes;
   const total = ESTADOS.reduce((s, e) => s + conteos[e], 0);
 
   const { tasaHoy, madurosHoy, baseline, diasValidos } = datos.interaccion;
@@ -24,7 +69,7 @@ export function PanelEstados({ datos }: { datos: Datos }) {
           <div className="flex items-baseline gap-3">
             <h2 className="text-lg font-semibold text-ink-primary">Estado de los leads</h2>
             <span className="text-[13px] text-ink-secondary">
-              {total} {ventana === "hoy" ? "hoy" : "este mes"}
+              {total} {dia ? `del ${enEspanol(dia.fecha)}` : ventana === "hoy" ? "hoy" : "este mes"}
             </span>
           </div>
           {/* Sin esta aclaración el panel parece contradecir a Métricas: acá
@@ -35,20 +80,64 @@ export function PanelEstados({ datos }: { datos: Datos }) {
             Solo leads de la pauta que todavía no depositaron — los que ya depositaron están en FTD, arriba.
           </p>
         </div>
-        <div className="flex rounded-full border border-gridline overflow-hidden text-[13px]">
-          {(["hoy", "mes"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setVentana(v)}
-              className={`px-4 py-1.5 ${
-                ventana === v ? "bg-header text-header-ink font-medium" : "bg-surface text-ink-secondary hover:bg-page"
-              }`}
-            >
-              {v === "hoy" ? "Hoy" : "Este mes"}
-            </button>
-          ))}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex rounded-full border border-gridline overflow-hidden text-[13px]">
+            {(["hoy", "mes"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => {
+                  setVentana(v);
+                  setDia(null);
+                }}
+                className={`px-4 py-1.5 ${
+                  !dia && ventana === v
+                    ? "bg-header text-header-ink font-medium"
+                    : "bg-surface text-ink-secondary hover:bg-page"
+                }`}
+              >
+                {v === "hoy" ? "Hoy" : "Este mes"}
+              </button>
+            ))}
+          </div>
+
+          {/* Un día puntual: "¿cómo estuvo la pauta del 9?" */}
+          <input
+            type="date"
+            value={fecha}
+            max={hoyBogota()}
+            onChange={(e) => setFecha(e.target.value)}
+            className="border border-gridline rounded-full px-3 py-1.5 text-[13px] bg-surface text-ink-secondary"
+          />
+          <button
+            onClick={verDia}
+            disabled={cargando}
+            className="rounded-full border border-gridline bg-surface px-4 py-1.5 text-[13px] text-ink-primary hover:bg-page disabled:opacity-50"
+          >
+            {cargando ? "Cargando…" : "Ver ese día"}
+          </button>
         </div>
       </div>
+
+      {errorDia && (
+        <div className="rounded-xl bg-surface border border-series2 text-series2 px-4 py-3 mb-3 text-[13px]">
+          {errorDia}
+        </div>
+      )}
+
+      {dia && (
+        <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl px-4 py-2.5 mb-3 bg-[#fdeee7]">
+          <span className="text-[13px] font-medium text-[#b5501f]">
+            📅 Leads que entraron el {enEspanol(dia.fecha)} — {dia.total} en total
+            {dia.depositaron > 0 && `, de los cuales ${dia.depositaron} ya depositaron`}
+          </span>
+          <button
+            onClick={() => setDia(null)}
+            className="border border-gridline bg-surface text-header-ink rounded-lg px-3 py-1 text-[12.5px] font-medium hover:bg-page"
+          >
+            × Volver
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         {ESTADOS.map((estado) => (
@@ -62,6 +151,7 @@ export function PanelEstados({ datos }: { datos: Datos }) {
         ))}
       </div>
 
+      {!dia && (
       <div className="rounded-xl border border-gridline bg-surface px-4 py-3 mb-4">
         <p className="text-[13px] text-ink-secondary">
           <span className="font-medium text-ink-primary">Interacción real de hoy: </span>
@@ -80,6 +170,7 @@ export function PanelEstados({ datos }: { datos: Datos }) {
           )}
         </p>
       </div>
+      )}
 
       <div>
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted mb-2">
