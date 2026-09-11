@@ -40,10 +40,10 @@ export const ESTADO_META: Record<
   {
     nombre: string;
     que: string;
-    // Semáforo: rojo malo, verde bueno. Se eligió sobre la escala de
-    // temperatura —azul frío, rojo caliente— porque dice de un vistazo si algo
-    // está bien o mal, y porque los bloques saturados con letra encima tienen
-    // mucho más contraste que los tonos claros de antes.
+    // Escala de temperatura: azul frío, naranja tibio, rojo caliente. Los
+    // tres van en bloque saturado con letra blanca, que es lo que da el
+    // contraste; el semáforo se descartó porque leer "Caliente" en verde
+    // contradecía el nombre del estado.
     color: string;   // fondo del bloque
     sobre: string;   // texto encima del bloque
     fuerte: string;  // versión oscura, para el botón y los checks
@@ -53,25 +53,25 @@ export const ESTADO_META: Record<
   frio: {
     nombre: "Frío",
     que: "No hizo nada",
-    color: "#F2382C",
+    color: "#2A78D6",
     sobre: "#FFFFFF",
-    fuerte: "#BD1D13",
+    fuerte: "#1B5AA8",
     sobreFuerte: "#FFFFFF",
   },
   tibio: {
     nombre: "Tibio",
     que: "Respondió o entró al canal",
-    color: "#FACC15",
-    sobre: "#2A2100",
-    fuerte: "#EAB308",
-    sobreFuerte: "#2A2100",
+    color: "#F97316",
+    sobre: "#FFFFFF",
+    fuerte: "#C2560F",
+    sobreFuerte: "#FFFFFF",
   },
   caliente: {
     nombre: "Caliente",
     que: "Bajó a WhatsApp o se registró",
-    color: "#16A34A",
+    color: "#DC2626",
     sobre: "#FFFFFF",
-    fuerte: "#0F7A3C",
+    fuerte: "#A21C1C",
     sobreFuerte: "#FFFFFF",
   },
 };
