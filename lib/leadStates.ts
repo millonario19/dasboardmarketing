@@ -35,10 +35,43 @@ export type EstadoLead = "frio" | "tibio" | "caliente";
 
 export const ESTADOS: EstadoLead[] = ["frio", "tibio", "caliente"];
 
-export const ESTADO_META: Record<EstadoLead, { nombre: string; emoji: string; color: string; que: string }> = {
-  frio: { nombre: "Frío", emoji: "🧊", color: "#7C8AA5", que: "No hizo nada" },
-  tibio: { nombre: "Tibio", emoji: "🟡", color: "#E0A800", que: "Respondió o entró al canal" },
-  caliente: { nombre: "Caliente", emoji: "🔴", color: "#D9481F", que: "Bajó a WhatsApp o se registró" },
+export const ESTADO_META: Record<
+  EstadoLead,
+  {
+    nombre: string;
+    emoji: string;
+    color: string;
+    que: string;
+    // Franja de la acción sugerida, al pie de cada tarjeta. Va en color y no
+    // en gris: es lo único accionable del panel y en gris claro no se leía.
+    accionFondo: string;
+    accionTexto: string;
+  }
+> = {
+  frio: {
+    nombre: "Frío",
+    emoji: "🧊",
+    color: "#7C8AA5",
+    que: "No hizo nada",
+    accionFondo: "#EDF1F7",
+    accionTexto: "#3C536F",
+  },
+  tibio: {
+    nombre: "Tibio",
+    emoji: "🟡",
+    color: "#E0A800",
+    que: "Respondió o entró al canal",
+    accionFondo: "#FDF3DA",
+    accionTexto: "#8A6100",
+  },
+  caliente: {
+    nombre: "Caliente",
+    emoji: "🔴",
+    color: "#D9481F",
+    que: "Bajó a WhatsApp o se registró",
+    accionFondo: "#FCEAE3",
+    accionTexto: "#A63312",
+  },
 };
 
 function tiene(contacto: GhlContact, tag: string): boolean {

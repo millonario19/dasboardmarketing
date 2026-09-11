@@ -154,7 +154,12 @@ function Tarjeta({
         </ul>
       )}
 
-      <p className="text-[11px] text-ink-muted leading-snug mt-auto pt-2 border-t border-gridline">
+      {/* La acción sugerida es lo único accionable de la tarjeta. En gris
+          claro al pie pasaba desapercibida, así que va como franja de color. */}
+      <p
+        className="text-[12px] font-semibold leading-snug mt-auto rounded-lg px-3 py-2"
+        style={{ background: meta.accionFondo, color: meta.accionTexto }}
+      >
         {accionSugerida(estado)}
       </p>
     </div>
