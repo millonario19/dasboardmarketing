@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useState } from "react";
 import { ESTADOS, ESTADO_META, accionSugerida, type EstadoLead } from "@/lib/leadStates";
 import { ConfirmarBajada, guardarConfirmacion } from "@/components/ConfirmarBajada";
+import { ContactoRapido } from "@/components/ContactoRapido";
 import type { LeadDeEstado, PanelEstados as Datos } from "@/lib/metrics";
 
 const SEVERIDAD = {
@@ -594,8 +595,8 @@ function ListaDeLeads({
                       {l.nombre}
                       <Degradado estado={estado} lead={l} />
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] text-ink-secondary tabular-nums whitespace-nowrap">
-                      {l.telefono ?? <span className="text-ink-muted">Sin teléfono</span>}
+                    <td className="px-4 py-2.5 text-[13px]">
+                      <ContactoRapido telefono={l.telefono} nombre={l.nombre} tamano={28} />
                     </td>
                     <td className="px-4 py-2.5 text-[13px] text-ink-secondary tabular-nums whitespace-nowrap">
                       {fechaCorta(l.creado)}
@@ -635,8 +636,9 @@ function ListaDeLeads({
                     {l.nombre}
                     <Degradado estado={estado} lead={l} />
                   </p>
-                  <p className="text-[12.5px] text-ink-secondary tabular-nums mt-0.5">
-                    {l.telefono ?? "Sin teléfono"} · {fechaCorta(l.creado)}
+                  <p className="text-[12.5px] text-ink-secondary mt-1 flex items-center gap-2 flex-wrap">
+                    <ContactoRapido telefono={l.telefono} nombre={l.nombre} tamano={30} />
+                    <span className="tabular-nums">· {fechaCorta(l.creado)}</span>
                   </p>
                   {conAgente && <p className="text-[12px] text-ink-muted mt-0.5">{l.agente}</p>}
                   <div className="mt-1.5">

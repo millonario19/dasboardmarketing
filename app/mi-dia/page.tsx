@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { EscalaEmbudo, Inicial } from "@/components/EscalaEmbudo";
 import { CerrarSesion } from "@/components/CerrarSesion";
+import { formatearTelefono } from "@/components/ContactoRapido";
 import { useSesion } from "@/components/useSesion";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
 
@@ -359,17 +360,6 @@ function BloqueTarjetas({ bloque, locationId }: { bloque: Bloque; locationId: st
       )}
     </section>
   );
-}
-
-// Teléfonos de GHL vienen como "+573104804802"; cortarlos en grupos los hace
-// legibles de un vistazo cuando el agente compara con su WhatsApp.
-function formatearTelefono(bruto: string): string {
-  const d = bruto.replace(/\D/g, "");
-  if (d.length === 12 && d.startsWith("57")) {
-    return `+57 ${d.slice(2, 5)} ${d.slice(5, 8)} ${d.slice(8)}`;
-  }
-  if (d.length === 10) return `${d.slice(0, 3)} ${d.slice(3, 6)} ${d.slice(6)}`;
-  return bruto;
 }
 
 // Qué le falta al lead para avanzar. Es lo que convierte la tarjeta en algo
