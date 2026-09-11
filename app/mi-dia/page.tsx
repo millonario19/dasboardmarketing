@@ -49,7 +49,13 @@ export default function MiDiaPage() {
   // pasar de un agente a otro.
   const esAgente = sesion?.rol === "agente";
   const [agente, setAgente] = useState("todos");
-  const [filtro, setFiltro] = useState("todos");
+  // Arranca en los movimientos del día: es lo que trae la carga rápida y lo
+  // primero que el agente quiere ver. Si quedara en "todos", al llegar la
+  // lista completa la pantalla saltaría sola de un bloque a cinco.
+  const [filtro, setFiltro] = useState("movimiento");
+  // Una vez que el agente toca una píldora, la pantalla no vuelve a decidir
+  // por él.
+  const [filtroElegido, setFiltroElegido] = useState(false);
   const [data, setData] = useState<MiDia | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +131,20 @@ export default function MiDiaPage() {
   // Contarlo acá daría otro número: la pantalla solo recibe las primeras
   // filas de cada bloque.
   const conteosPorEstado = data?.porEstado ?? conteoVacio();
+
+  function elegirFiltro(id: string) {
+    setFiltroElegido(true);
+    setFiltro(id);
+  }
+
+  // Sin movimientos, quedarse en ese bloque sería mostrar una pantalla vacía
+  // teniendo la lista completa al lado.
+  useEffect(() => {
+    if (!filtroElegido && filtro === "movimiento" && data && !data.parcial) {
+      const movidos = data.bloques.find((b) => b.id === "movimiento")?.total ?? 0;
+      if (movidos === 0) setFiltro("todos");
+    }
+  }, [data, filtro, filtroElegido]);
 
   const visibles = filtro === "todos" ? bloques : bloques.filter((b) => b.id === filtro);
   const nombreAgente = esAgente
@@ -220,7 +240,7 @@ export default function MiDiaPage() {
           <LeyendaTemperatura conteos={conteosPorEstado} />
 
           <button
-            onClick={() => setFiltro(conteos.calientes > 0 ? "caliente" : "todos")}
+            onClick={() => elegirFiltro(conteos.calientes > 0 ? "caliente" : "todos")}
             className="mt-4 rounded-full px-8 py-3.5 text-[14.5px] font-semibold text-white hover:opacity-90 w-full sm:w-auto"
             style={{ background: NEGRO }}
           >
@@ -230,13 +250,13 @@ export default function MiDiaPage() {
 
         {/* Filtros por bloque, con su cuenta. */}
         <div className="flex items-center gap-2 flex-wrap mb-5">
-          <Pildora activa={filtro === "todos"} onClick={() => setFiltro("todos")}>
+          <Pildora activa={filtro === "todos"} onClick={() => elegirFiltro("todos")}>
             Todos <b className="tabular-nums opacity-60 ml-1">{conteos.pendientes}</b>
           </Pildora>
           {bloques
             .filter((b) => b.total > 0)
             .map((b) => (
-              <Pildora key={b.id} activa={filtro === b.id} onClick={() => setFiltro(b.id)}>
+              <Pildora key={b.id} activa={filtro === b.id} onClick={() => elegirFiltro(b.id)}>
                 {b.id === "caliente" && "🔥 "}
                 {b.titulo}
                 <b className="tabular-nums opacity-60 ml-1">{b.total}</b>
