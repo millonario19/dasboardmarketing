@@ -3,6 +3,7 @@ import { getPool } from "./db";
 import {
   estadoDeLead,
   recorridoDeLead,
+  accionesDeLead,
   yaDeposito,
   TAG_BUSINESS,
   TAG_CANAL_FREE,
@@ -30,6 +31,10 @@ export type LeadItem = {
   agente: string;
   estado: EstadoLead;
   recorrido: string;
+  // Acciones sueltas, para dibujar la escala de puntos del embudo. El
+  // recorrido ya viene armado como texto, pero la escala necesita saber cuáles
+  // se cumplieron y cuáles no, una por una.
+  acciones: string[];
   dias: number; // días desde que entró
   movimiento?: { que: string; cuando: string; cuandoMs: number; esRescate: boolean };
 };
@@ -136,6 +141,7 @@ export async function computeMiDia(agenteId?: string | null): Promise<MiDia> {
       agente: agent,
       estado: estadoDeLead(c),
       recorrido: recorridoDeLead(c),
+      acciones: accionesDeLead(c),
       dias: Math.floor((hoyMs - inicioDeHoyBogota(altaMs)) / DIA_MS),
       movimiento: mov
         ? {
