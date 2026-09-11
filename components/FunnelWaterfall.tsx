@@ -15,57 +15,6 @@ const px = (n: number) => n * S;
 
 // Lienzo de tamaño fijo: en pantallas angostas el contenedor scrollea en
 // horizontal en vez de escalar el SVG, para que el gráfico no se deforme.
-// Mezcla dos colores hex. Se usa para que el azul de la cima de cada barra
-// dependa de cuánta data tiene esa columna.
-function mezclar(desde: string, hasta: string, t: number): string {
-  const n = (c: string, i: number) => parseInt(c.slice(1 + i * 2, 3 + i * 2), 16);
-  const v = (i: number) => Math.round(n(desde, i) + (n(hasta, i) - n(desde, i)) * t);
-  const hex = (x: number) => x.toString(16).padStart(2, "0");
-  return `#${hex(v(0))}${hex(v(1))}${hex(v(2))}`;
-}
-
-/**
- * Intensidad de cada columna según su PUESTO, no según su proporción.
- *
- * Por proporción no funciona: con 682 en la primera, las otras cinco quedan
- * en 9%, 6%, 1%, 0% y todas terminan del mismo azul indistinguible. Por
- * puesto, en cambio, la escalera de azules siempre se ve —la de más data
- * oscura, la que sigue un poco menos, y así hasta la última.
- */
-function intensidadPorPuesto(valores: number[]): number[] {
-  const orden = valores
-    .map((v, i) => ({ v, i }))
-    .sort((a, b) => b.v - a.v)
-    .map((x) => x.i);
-  const ultimo = Math.max(valores.length - 1, 1);
-  const t = new Array<number>(valores.length);
-  orden.forEach((indice, puesto) => {
-    t[indice] = 1 - puesto / ultimo;
-  });
-  return t;
-}
-
-/**
- * Los dos extremos del degradado de una columna.
- *
- *   la de más data -> azul oscuro macizo, arriba y abajo igual
- *   las del medio  -> oscura arriba, clara abajo: degradado bien visible
- *   la última      -> celeste casi plano
- *
- * El tono de ABAJO también se mueve. Moviendo solo el de arriba, todas las
- * columnas se veían iguales porque el degradado terminaba siempre en el mismo
- * celeste.
- */
-function extremosDeLaBarra(t: number): { cima: string; base: string } {
-  return {
-    // Casi blanco arriba, azul abajo: el degradado se lee como si el color
-    // se llenara desde el piso. Cuanta más data tiene la columna, más fuerte
-    // es el azul al que llega.
-    cima: mezclar("#EFF4FF", "#FAFBFF", t),
-    base: mezclar("#8FAEF8", "#1B3FD6", t),
-  };
-}
-
 const WIDTH = px(980);
 const HEIGHT = px(384);
 const M_LEFT = px(52);
@@ -146,7 +95,6 @@ export function FunnelWaterfall({
 
   const laneW = (WIDTH - M_LEFT - M_RIGHT) / Math.max(stages.length, 1);
   const maxValue = Math.max(...stages.map((s) => s.value), 0);
-  const intensidades = intensidadPorPuesto(stages.map((s) => s.value));
   const ticks = niceTicks(maxValue);
   const scaleMax = ticks[ticks.length - 1] || 1;
   const yFor = (value: number) => PLOT_BOTTOM - (Math.max(value, 0) / scaleMax) * PLOT_H;
@@ -224,51 +172,36 @@ export function FunnelWaterfall({
             onMouseLeave={() => setActive(defaultActive)}
           >
             <defs>
-              {/* Rayas diagonales a 45°, como máscara: el blanco deja ver, el
-                  negro tapa. Así las rayas toman el color del degradado en vez
-                  de ser de un azul fijo. */}
+              {/* Rayas diagonales a 45° para las columnas inactivas. */}
               <pattern
-                id="fw-rayas"
+                id="fw-hatch"
                 width={px(7)}
                 height={px(7)}
                 patternUnits="userSpaceOnUse"
                 patternTransform="rotate(45)"
               >
-                <rect width={px(7)} height={px(7)} fill="#000000" />
-                <line x1="0" y1="0" x2="0" y2={px(7)} stroke="#FFFFFF" strokeWidth={px(3)} />
+                <line x1="0" y1="0" x2="0" y2={px(7)} stroke={BLUE_STRIPE} strokeWidth={px(3)} />
               </pattern>
-              <mask id="fw-mask-rayas" maskUnits="userSpaceOnUse" x="0" y="0" width={WIDTH} height={HEIGHT}>
-                <rect x="0" y="0" width={WIDTH} height={HEIGHT} fill="url(#fw-rayas)" />
-              </mask>
-
-              {/* Un degradado por barra: cada una arranca celeste abajo y sube
-                  hacia el azul. Como se ancla a la barra y no al gráfico, una
-                  columna chica igual se ve azul en vez de quedar en un hilito
-                  pálido al pie.
-
-                  Lo que cambia entre barras es HASTA QUÉ azul llegan: el tono
-                  de arriba se interpola según cuánta data tiene la columna
-                  respecto de la mayor. La de más data llega al azul más
-                  oscuro; las chicas se quedan en un azul medio. */}
-              {stages.map((s, i) => {
-                const { cima, base } = extremosDeLaBarra(intensidades[i]);
-                return (
-                  <linearGradient key={i} id={`fw-azul-${i}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={cima} />
-                    <stop offset="100%" stopColor={base} />
-                  </linearGradient>
-                );
-              })}
+              {/* Velo blanco: deja las rayas casi transparentes arriba y saturadas abajo.
+                  Sin gradientUnits, el gradiente se ajusta al alto de cada barra. */}
+              <linearGradient id="fw-scrim" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0.04" />
+              </linearGradient>
+              {/* Barra activa: degradado sólido, muy claro arriba y azul intenso abajo. */}
+              <linearGradient id="fw-active" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#FAFBFF" />
+                <stop offset="100%" stopColor={BLUE_DEEP} />
+              </linearGradient>
             </defs>
 
-            {/* Guías horizontales + eje Y.
-                En un teléfono la tarjeta se reduce a menos de la mitad y esos
-                números quedarían en 4 píxeles, ilegibles y sucios. Se ocultan:
-                las cifras grandes de arriba ya dicen el valor de cada columna,
-                y las guías solas alcanzan para leer las alturas. */}
+            {/* Guías horizontales + eje Y */}
             {ticks.map((t) => (
               <g key={t}>
                 <line x1={M_LEFT} x2={WIDTH - M_RIGHT} y1={yFor(t)} y2={yFor(t)} stroke={GRID} strokeWidth="1" />
+                {/* En un teléfono la tarjeta se reduce a menos de la mitad y
+                    estos números quedan en cuatro píxeles, ilegibles. Las
+                    cifras grandes de arriba ya dicen el valor de cada columna. */}
                 {escala > 0.75 && (
                   <text x={M_LEFT - px(12)} y={yFor(t) + px(4)} textAnchor="end" fontSize={px(13)} fill={GRAY_AXIS}>
                     {formatValue(t)}
@@ -305,33 +238,13 @@ export function FunnelWaterfall({
               const top = yFor(s.value);
               const h = PLOT_BOTTOM - top;
               if (h <= 0) return null;
-              // La columna con más data va maciza siempre, no solo al pasar el
-              // mouse: es la que manda en el gráfico y tiene que leerse de una.
-              // Las demás quedan rayadas hasta que se las apunta.
-              const isActive = i === active || s.value === maxValue;
+              const isActive = i === active;
               const fade = { transition: "opacity 200ms ease" } as const;
               return (
                 <g key={`bar-${s.label}`}>
-                  {/* Todas las barras van pintadas siempre: rayadas por defecto,
-                      macizas la activa. Las dos capas se cruzan por opacidad
-                      para que el cambio se pueda animar. */}
-                  <rect
-                    x={x}
-                    y={top}
-                    width={laneW}
-                    height={h}
-                    fill={`url(#fw-azul-${i})`}
-                    mask="url(#fw-mask-rayas)"
-                    style={{ ...fade, opacity: isActive ? 0 : 1 }}
-                  />
-                  <rect
-                    x={x}
-                    y={top}
-                    width={laneW}
-                    height={h}
-                    fill={`url(#fw-azul-${i})`}
-                    style={{ ...fade, opacity: isActive ? 1 : 0 }}
-                  />
+                  <rect x={x} y={top} width={laneW} height={h} fill="url(#fw-hatch)" style={{ ...fade, opacity: isActive ? 0 : 1 }} />
+                  <rect x={x} y={top} width={laneW} height={h} fill="url(#fw-scrim)" style={{ ...fade, opacity: isActive ? 0 : 1 }} />
+                  <rect x={x} y={top} width={laneW} height={h} fill="url(#fw-active)" style={{ ...fade, opacity: isActive ? 1 : 0 }} />
                   <rect
                     x={x + laneW / 2 - px(9)}
                     y={top - px(2.5)}
