@@ -213,7 +213,12 @@ export async function computeMiDia(agenteId?: string | null): Promise<MiDia> {
     {
       id: "rescate",
       titulo: "Rescates",
-      subtitulo: "Respondieron y quedaron ahí — acá deposita el 44%",
+      // Antes decía "acá deposita el 44%", que se leía como si el 44% de estos
+      // leads fuera a depositar. El 44% es la porción de TODOS los depósitos
+      // que hace gente entrada hace 2 a 4 semanas: es un argumento para
+      // priorizar el bloque, no un dato que el agente necesite mientras
+      // trabaja la lista.
+      subtitulo: "Respondieron y nadie los movió",
       tono: "rescate",
       ...rescates,
     },
