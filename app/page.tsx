@@ -51,7 +51,11 @@ export default function DashboardPage() {
             🔗
           </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Sin shrink-0 y con salto de línea: los cinco botones sumaban 535 px
+            y, al no poder encogerse ni bajar de renglón, estiraban el
+            documento a 559 px en una pantalla de 375. Todo el contenido
+            quedaba corrido a la izquierda con una franja vacía a la derecha. */}
+        <div className="flex items-center gap-2 flex-wrap">
           <CambiarVista actual="direccion" />
           <button
             onClick={load}
