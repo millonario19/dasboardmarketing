@@ -34,7 +34,10 @@ function permitido(url: URL): boolean {
 }
 
 async function convertir(entrada: Buffer, destino: string): Promise<void> {
-  const parcial = `${destino}.${process.pid}.parcial`;
+  // El archivo temporal termina en .m4a y además se le dice «-f mp4»: ffmpeg
+  // deduce el formato de la extensión, y con un nombre terminado en
+  // «.parcial» se negaba a escribir («Unable to choose an output format»).
+  const parcial = `${destino}.${process.pid}.parcial.m4a`;
   await new Promise<void>((resolver, rechazar) => {
     const ff = spawn("ffmpeg", [
       "-hide_banner", "-loglevel", "error",
@@ -43,6 +46,7 @@ async function convertir(entrada: Buffer, destino: string): Promise<void> {
       "-c:a", "aac",
       "-b:a", "64k",
       "-movflags", "+faststart",
+      "-f", "mp4",
       "-y", parcial,
     ]);
     let error = "";
