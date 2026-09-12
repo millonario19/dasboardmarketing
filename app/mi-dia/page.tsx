@@ -7,6 +7,7 @@ import { useSesion } from "@/components/useSesion";
 import { TablaLeads } from "@/components/TablaLeads";
 import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatura";
 import { conteoVacio } from "@/lib/leadStates";
+import { primerNombre } from "@/lib/nombre";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
 
 // Paleta tomada de la referencia: gris cálido de fondo, blanco para las
@@ -192,7 +193,7 @@ export default function MiDiaPage() {
           </div>
 
           <p className="text-[22px] sm:text-[27px] font-bold tracking-[-0.03em] pt-8 sm:pt-0">
-            Hola, {sesion?.nombre?.split(" ")[0] ?? "de nuevo"}
+            Hola, {primerNombre(sesion?.nombre) || "de nuevo"}
           </p>
           <p className="text-[19px] sm:text-[24px] tracking-[-0.02em] mt-0.5">Así viene tu día 🙂</p>
 
