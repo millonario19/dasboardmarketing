@@ -7,6 +7,7 @@ import {
   type GhlContact,
   type GhlMensaje,
 } from "./ghl";
+import { hitosDeContactos, type Hito } from "./hitos";
 
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 
@@ -84,6 +85,8 @@ export type LeadInteraccion = {
   pendiente: boolean;
   notasDeVoz: number;
   turnos: Turno[];
+  // Lo que pasó fuera del hilo: etiquetas del CRM y llamadas, con su hora.
+  hitos: Hito[];
 };
 
 export type Interaccion = {
@@ -193,7 +196,23 @@ function armarLead(c: GhlContact, agente: string, mensajes: GhlMensaje[]): LeadI
     pendiente,
     notasDeVoz: turnos.filter((t) => t.quien === "agente" && t.texto === null).length,
     turnos,
+    hitos: [],
   };
+}
+
+/**
+ * Los hitos se consultan de una sola vez para toda la lista, y si la base no
+ * responde la pantalla igual se muestra: la conversación es lo principal y los
+ * hitos son el contexto.
+ */
+async function pegarHitos(leads: LeadInteraccion[]): Promise<void> {
+  if (leads.length === 0) return;
+  try {
+    const porContacto = await hitosDeContactos(leads.map((l) => l.id));
+    for (const l of leads) l.hitos = porContacto.get(l.id) ?? [];
+  } catch {
+    /* sin hitos, pero con conversación */
+  }
 }
 
 /**
@@ -244,6 +263,8 @@ export async function computeInteraccion(
       }
     })
   ).filter((l): l is LeadInteraccion => l !== null);
+
+  await pegarHitos(leads);
 
   // Primero los que están esperando, después por espera más larga. Un lead sin
   // responder es trabajo pendiente; los demás ya son historia.
@@ -315,5 +336,6 @@ export async function buscarLeads(
     })
   ).filter((l): l is LeadInteraccion => l !== null);
 
+  await pegarHitos(leads);
   return { leads, encontrados: mios.length, noLeidas };
 }

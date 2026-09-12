@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { EditarNombre } from "@/components/EditarNombre";
 import { formatearTelefono } from "@/components/ContactoRapido";
 import type { Interaccion, LeadInteraccion, Turno } from "@/lib/interaccion";
+import type { Hito } from "@/lib/hitos";
 
 const AZUL = "#17457F";
 const AZUL_CLARO = "#EEF3FA";
@@ -142,6 +143,33 @@ function Onda() {
   );
 }
 
+/**
+ * Un hito: lo que pasó fuera del hilo, puesto en el hilo.
+ *
+ * Va centrado y con otra forma que los mensajes a propósito. No es algo que
+ * alguien dijo —es algo que el cliente hizo, o que el agente registró— y
+ * confundir las dos cosas sería peor que no mostrarlo.
+ */
+function MarcaHito({ hito }: { hito: Hito }) {
+  const malo = /NO bajó/.test(hito.texto);
+  const color = malo ? ROJO : hito.tipo === "llamada" ? AZUL : VERDE;
+  const fondo = malo ? ROJO_SUAVE : hito.tipo === "llamada" ? CELESTE : VERDE_SUAVE;
+
+  return (
+    <div className="flex justify-center my-3">
+      <span
+        className="inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] max-w-full"
+        style={{ background: fondo, color }}
+      >
+        <span aria-hidden>{hito.tipo === "llamada" ? "📞" : malo ? "⚠️" : "✓"}</span>
+        <b className="font-bold">{hito.texto}</b>
+        {hito.detalle && <span className="opacity-80 truncate">· {hito.detalle}</span>}
+        <span className="tabular-nums opacity-70">{hora(hito.hora)}</span>
+      </span>
+    </div>
+  );
+}
+
 function Corte({ min, texto }: { min: number | null; texto: string }) {
   const t = tono(min);
   return (
@@ -219,6 +247,34 @@ function Mensaje({ turno, agente }: { turno: Turno; agente: string }) {
   );
 }
 
+// Los tres pasos que cambian la lectura de una espera: si el cliente ya bajó,
+// ya se registró o ya depositó, «2 horas sin responder» significa otra cosa.
+const AVANCES = ["Bajó a WhatsApp Business", "Se registró en el broker", "Depositó (FTD)"];
+
+function ultimoAvance(hitos: Hito[]): Hito | null {
+  const avances = hitos.filter((h) => h.exacto && AVANCES.includes(h.texto));
+  return avances.length > 0 ? avances[avances.length - 1] : null;
+}
+
+type Evento =
+  | { tipo: "mensaje"; hora: string; turno: Turno }
+  | { tipo: "hito"; hora: string; hito: Hito };
+
+/**
+ * Los mensajes y los hitos en una sola línea de tiempo.
+ *
+ * Es el punto de todo esto: leídos por separado, «2 horas sin respuesta» y
+ * «bajó a WhatsApp 11:20» parecen contradecirse; en la misma columna se ve que
+ * la conversación no murió, se mudó.
+ */
+function mezclar(turnos: Turno[], hitos: Hito[]): Evento[] {
+  const eventos: Evento[] = turnos.map((t) => ({ tipo: "mensaje", hora: t.hora, turno: t }));
+  for (const h of hitos) {
+    if (h.exacto) eventos.push({ tipo: "hito", hora: h.hora, hito: h });
+  }
+  return eventos.sort((a, b) => a.hora.localeCompare(b.hora));
+}
+
 function Conversacion({
   lead,
   onCerrar,
@@ -286,28 +342,48 @@ function Conversacion({
       </div>
 
       <div className="px-5 sm:px-7 py-6" style={{ background: "#FCFCFA" }}>
-        {lead.turnos.map((t, i) => (
+        {/* Los hitos que ya existían cuando el sondeo empezó a registrar horas
+            no se pueden ubicar en la línea de tiempo: su hora es apenas una
+            cota superior. Van acá arriba, sin hora, en vez de inventarles un
+            lugar en el hilo. */}
+        {lead.hitos.some((h) => !h.exacto) && (
+          <p className="text-[11.5px] text-center mb-4" style={{ color: GRIS }}>
+            Ya traía estas marcas antes de que empezáramos a registrar horas:{" "}
+            {lead.hitos
+              .filter((h) => !h.exacto)
+              .map((h) => h.texto)
+              .join(" · ")}
+          </p>
+        )}
+
+        {mezclar(lead.turnos, lead.hitos).map((e, i, todos) => (
           <div key={i}>
             {/* Cambio de día. Una conversación puede empezar el 9 y seguir el
                 11: sin esta línea, las horas sueltas hacen creer que todo
                 pasó la misma mañana. */}
-            {(i === 0 || diaDe(lead.turnos[i - 1].hora) !== diaDe(t.hora)) && (
+            {(i === 0 || diaDe(todos[i - 1].hora) !== diaDe(e.hora)) && (
               <div className="flex items-center gap-3 my-5">
                 <i className="h-px flex-1" style={{ background: "#DEDCD4" }} />
                 <span
                   className="text-[11.5px] font-bold rounded-full px-3 py-1 whitespace-nowrap first-letter:uppercase"
                   style={{ background: CELESTE, color: AZUL }}
                 >
-                  {fechaLarga(t.hora)}
+                  {fechaLarga(e.hora)}
                 </span>
                 <i className="h-px flex-1" style={{ background: "#DEDCD4" }} />
               </div>
             )}
-            {/* El hueco de espera corta la conversación en dos: se ve, no se lee. */}
-            {t.quien === "agente" && t.esperaMin != null && (
-              <Corte min={t.esperaMin} texto={`${duracion(t.esperaMin)} sin respuesta`} />
+            {e.tipo === "hito" ? (
+              <MarcaHito hito={e.hito} />
+            ) : (
+              <>
+                {/* El hueco de espera corta la conversación en dos: se ve, no se lee. */}
+                {e.turno.quien === "agente" && e.turno.esperaMin != null && (
+                  <Corte min={e.turno.esperaMin} texto={`${duracion(e.turno.esperaMin)} sin respuesta`} />
+                )}
+                <Mensaje turno={e.turno} agente={lead.agente} />
+              </>
             )}
-            <Mensaje turno={t} agente={lead.agente} />
           </div>
         ))}
         {lead.pendiente && (
@@ -691,6 +767,20 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                             y contando
                           </small>
                         )}
+                        {/* Sin esto, la espera acusa a un agente que quizá no
+                            tiene la culpa: el cliente ya se fue a su otro
+                            WhatsApp y el hilo de GHL quedó muerto por eso. */}
+                        {(() => {
+                          const avance = ultimoAvance(l.hitos);
+                          return avance ? (
+                            <small
+                              className="block text-[10.5px] font-bold mt-1 whitespace-nowrap"
+                              style={{ color: VERDE }}
+                            >
+                              ✓ {avance.texto.replace("Bajó a WhatsApp Business", "bajó a WhatsApp")} {hora(avance.hora)}
+                            </small>
+                          ) : null;
+                        })()}
                       </td>
                       <td className="px-4 sm:px-[18px] py-3.5 text-right whitespace-nowrap">
                         <AbrirCrm url={l.crmUrl} />
