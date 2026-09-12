@@ -5,6 +5,8 @@ import type { Interaccion, LeadInteraccion, Turno } from "@/lib/interaccion";
 
 const AZUL = "#17457F";
 const AZUL_CLARO = "#EEF3FA";
+// El celeste que ya usa el resto del tablero para las franjas de encabezado.
+const CELESTE = "#EAF1FA";
 const ROJO = "#C0392B";
 const ROJO_SUAVE = "#FDF2F0";
 const AMBAR = "#B5701F";
@@ -136,7 +138,10 @@ function Mensaje({ turno, agente }: { turno: Turno; agente: string }) {
 function Conversacion({ lead, onCerrar }: { lead: LeadInteraccion; onCerrar: () => void }) {
   return (
     <section className="bg-surface border border-gridline rounded-[22px] overflow-hidden mb-4">
-      <div className="flex items-center gap-3.5 px-5 sm:px-7 py-5 border-b border-gridline flex-wrap">
+      <div
+        className="flex items-center gap-3.5 px-5 sm:px-7 py-5 border-b border-gridline flex-wrap"
+        style={{ background: CELESTE }}
+      >
         <Inicial nombre={lead.nombre} tamano={44} />
         <div>
           <div className="text-[17px] font-semibold tracking-[-0.02em]">{lead.nombre}</div>
@@ -146,8 +151,8 @@ function Conversacion({ lead, onCerrar }: { lead: LeadInteraccion; onCerrar: () 
         </div>
         <button
           onClick={onCerrar}
-          className="ml-auto text-[12.5px] border border-gridline rounded-full px-3.5 py-1.5 hover:bg-page"
-          style={{ color: GRIS_2 }}
+          className="ml-auto text-[12.5px] rounded-full px-3.5 py-1.5 bg-surface hover:opacity-80"
+          style={{ color: GRIS_2, border: "1px solid rgba(23,69,127,.18)" }}
         >
           Cerrar ✕
         </button>
@@ -222,10 +227,13 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
   return (
     <section className="mb-8">
       <div className="bg-surface border border-gridline rounded-[22px] overflow-hidden mb-4">
-        <div className="flex items-start gap-5 flex-wrap px-5 sm:px-7 pt-6 pb-5">
+        <div
+          className="flex items-start gap-5 flex-wrap px-5 sm:px-7 pt-6 pb-5"
+          style={{ background: AZUL, color: "#fff" }}
+        >
           <div>
             <h2 className="text-[19px] font-semibold tracking-[-0.02em]">Interacción leads</h2>
-            <p className="text-[13px] mt-0.5 first-letter:uppercase" style={{ color: GRIS }}>
+            <p className="text-[13px] mt-0.5 first-letter:uppercase" style={{ color: "rgba(255,255,255,.66)" }}>
               {new Date().toLocaleDateString("es-CO", {
                 weekday: "long",
                 day: "numeric",
@@ -239,12 +247,14 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
               <select
                 value={agente}
                 onChange={(e) => setAgente(e.target.value)}
-                className="border border-gridline rounded-full px-3.5 py-2 text-[12.5px] bg-surface outline-none"
-                style={{ color: GRIS_2 }}
+                className="rounded-full px-3.5 py-2 text-[12.5px] outline-none"
+                style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
               >
-                <option value="todos">Toda la oficina</option>
+                <option value="todos" style={{ color: GRIS_2 }}>
+                  Toda la oficina
+                </option>
                 {agentes.map((a) => (
-                  <option key={a.id} value={a.id}>
+                  <option key={a.id} value={a.id} style={{ color: GRIS_2 }}>
                     {a.nombre}
                   </option>
                 ))}
@@ -253,8 +263,8 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
             <button
               onClick={() => cargar(agente)}
               disabled={cargando}
-              className="border border-gridline rounded-full px-3.5 py-2 text-[12.5px] hover:bg-page disabled:opacity-50"
-              style={{ color: GRIS_2 }}
+              className="rounded-full px-3.5 py-2 text-[12.5px] disabled:opacity-50 hover:opacity-80"
+              style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
             >
               {cargando ? "Leyendo…" : "↻ Actualizar"}
             </button>
@@ -305,11 +315,11 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           <div className="overflow-x-auto">
             <table className="w-full border-collapse" style={{ minWidth: 860 }}>
               <thead>
-                <tr style={{ background: AZUL }}>
-                  {["Nombre", "Mensaje", "Escribió", "Respondió", "Esperó"].map((c) => (
+                <tr style={{ background: CELESTE }}>
+                  {["Nombre", "Mensaje lead", "Hora escribió", "Agente respondió", "Esperó"].map((c) => (
                     <th
                       key={c}
-                      className="px-4 sm:px-[18px] py-3 text-[10px] font-bold uppercase tracking-[.13em] text-white whitespace-nowrap"
+                      className="px-4 sm:px-[18px] py-3 text-[10px] font-bold uppercase tracking-[.13em] text-ink-primary whitespace-nowrap"
                       style={{ textAlign: c === "Esperó" ? "right" : "left" }}
                     >
                       {c}
@@ -341,7 +351,14 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                           </span>
                         </span>
                       </td>
-                      <td className="px-4 sm:px-[18px] py-3.5 text-[13.5px] leading-snug" style={{ color: GRIS_2, maxWidth: 340 }}>
+                      {/* Una sola línea: un mensaje de tres renglones estira
+                          la fila y descuadra toda la tabla. El texto completo
+                          está a un clic, en la conversación. */}
+                      <td
+                        className="px-4 sm:px-[18px] py-3.5 text-[13.5px] truncate"
+                        style={{ color: GRIS_2, maxWidth: 340 }}
+                        title={l.mensaje}
+                      >
                         {l.mensaje}
                       </td>
                       <td className="px-4 sm:px-[18px] py-3.5 text-[15px] font-semibold tabular-nums whitespace-nowrap">
