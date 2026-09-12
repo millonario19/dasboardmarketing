@@ -26,11 +26,27 @@ export const dynamic = "force-dynamic";
 // hacer que el servidor busque una URL interna y le devuelva el contenido.
 const HOSTS = [/\.usercontent\.site$/i, /\.leadconnectorhq\.com$/i, /\.msgsndr\.com$/i];
 
+/**
+ * Los audios que manda el flujo no viven donde los de las personas: están en
+ * un bucket de Google, y por eso quedaban afuera y el reproductor daba error
+ * justo en los mensajes automáticos.
+ *
+ * «storage.googleapis.com» a secas sería la puerta a cualquier bucket de
+ * Google, así que además se exige que la ruta sea la de las automatizaciones
+ * de esta subcuenta.
+ */
+function esBucketDelFlujo(url: URL): boolean {
+  if (url.hostname.toLowerCase() !== "storage.googleapis.com") return false;
+  const loc = process.env.GHL_LOCATION_ID;
+  return !!loc && url.pathname.startsWith(`/automation-workflows-production/location/${loc}/`);
+}
+
 const TOPE_BYTES = 25 * 1024 * 1024;
 const CARPETA = join(tmpdir(), "op-audio");
 
 function permitido(url: URL): boolean {
-  return url.protocol === "https:" && HOSTS.some((h) => h.test(url.hostname));
+  if (url.protocol !== "https:") return false;
+  return HOSTS.some((h) => h.test(url.hostname)) || esBucketDelFlujo(url);
 }
 
 async function convertir(entrada: Buffer, destino: string): Promise<void> {

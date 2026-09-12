@@ -186,6 +186,63 @@ function Corte({ min, texto }: { min: number | null; texto: string }) {
   );
 }
 
+const ES_IMAGEN = /\.(jpe?g|png|gif|webp)(\?|$)/i;
+
+/**
+ * Lo que viene colgado del mensaje cuando no hay texto.
+ *
+ * El flujo manda videos e imágenes además de audios, y todo eso se mostraba
+ * como «nota de voz» que no se podía leer. Los audios pasan por el conversor;
+ * las imágenes se ven; los videos quedan como enlace, que pesan diez megas y
+ * cargarlos dentro del hilo lo volvería inusable.
+ */
+function Adjuntos({ turno }: { turno: Turno }) {
+  if (!turno.audio && turno.adjuntos.length === 0) {
+    return (
+      <span className="inline-flex flex-col gap-1">
+        <span className="inline-flex items-center gap-2 text-[13.5px]">
+          <Onda /> nota de voz
+        </span>
+        <span className="text-[11px] italic opacity-70">GHL no devolvió el archivo</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex flex-col gap-2">
+      {turno.audio && (
+        <>
+          <span className="inline-flex items-center gap-2 text-[12.5px] opacity-80">
+            <Onda /> nota de voz
+          </span>
+          <audio
+            controls
+            preload="none"
+            src={`/api/audio?u=${encodeURIComponent(turno.audio)}`}
+            className="max-w-[260px] h-9"
+          />
+        </>
+      )}
+      {turno.adjuntos.map((a) =>
+        ES_IMAGEN.test(a) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img key={a} src={a} alt="Imagen enviada" className="max-w-[240px] rounded-xl" loading="lazy" />
+        ) : (
+          <a
+            key={a}
+            href={a}
+            target="_blank"
+            rel="noreferrer"
+            className="text-[12.5px] underline opacity-90"
+          >
+            📎 abrir archivo
+          </a>
+        )
+      )}
+    </span>
+  );
+}
+
 function Mensaje({ turno, agente }: { turno: Turno; agente: string }) {
   const lado =
     turno.quien === "cliente" ? "justify-start" : turno.quien === "agente" ? "justify-end" : "justify-center";
@@ -208,31 +265,7 @@ function Mensaje({ turno, agente }: { turno: Turno; agente: string }) {
           }`}
           style={estilo}
         >
-          {turno.texto ??
-            (turno.audio ? (
-              /* GHL sirve el .ogg directo, sin token. Antes acá decía «no se
-                 puede leer desde acá» y ahí terminaba: con agentes que
-                 contestan solo por audio, eso dejaba la mitad de la operación
-                 a ciegas. */
-              <span className="inline-flex flex-col gap-1.5">
-                <span className="inline-flex items-center gap-2 text-[12.5px] opacity-80">
-                  <Onda /> nota de voz
-                </span>
-                <audio
-                  controls
-                  preload="none"
-                  src={`/api/audio?u=${encodeURIComponent(turno.audio)}`}
-                  className="max-w-[260px] h-9"
-                />
-              </span>
-            ) : (
-              <span className="inline-flex flex-col gap-1">
-                <span className="inline-flex items-center gap-2 text-[13.5px]">
-                  <Onda /> nota de voz
-                </span>
-                <span className="text-[11px] italic opacity-70">GHL no devolvió el archivo</span>
-              </span>
-            ))}
+          {turno.texto ?? <Adjuntos turno={turno} />}
         </div>
         <div
           className={`text-[11px] mt-1.5 flex gap-2 ${

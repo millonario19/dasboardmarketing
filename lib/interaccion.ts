@@ -58,6 +58,9 @@ export type Turno = {
   // directa, así que se puede escuchar desde acá en vez de quedarse con «no
   // se puede leer».
   audio: string | null;
+  // Lo demás que venga colgado del mensaje: el flujo manda videos e imágenes,
+  // y antes se mostraban como «nota de voz» que no se podía leer.
+  adjuntos: string[];
   // null cuando el mensaje es una nota de voz o una imagen: GHL manda el
   // archivo, no su contenido. Se muestra como tal en vez de inventar texto.
   texto: string | null;
@@ -139,6 +142,7 @@ function armarLead(c: GhlContact, agente: string, mensajes: GhlMensaje[]): LeadI
     hora: m.dateAdded,
     texto: (m.body ?? "").trim() || null,
     audio: (m.attachments ?? []).find((a) => ES_AUDIO.test(a)) ?? null,
+    adjuntos: (m.attachments ?? []).filter((a) => !ES_AUDIO.test(a)),
   }));
 
   // El cliente "levanta la mano" con su primer mensaje propio.
