@@ -13,6 +13,10 @@ const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 // Cuántos leads se revisan por consulta. Cada uno cuesta dos llamadas a GHL.
 const TOPE_LEADS = 60;
 
+// El buscador lee menos: se usa para mirar un caso puntual, y cada resultado
+// cuesta las mismas dos llamadas a GHL que un lead del día.
+const TOPE_BUSQUEDA = 12;
+
 /**
  * Cuántas conversaciones se piden al mismo tiempo.
  *
@@ -57,6 +61,13 @@ export type LeadInteraccion = {
   id: string;
   nombre: string;
   agente: string;
+  telefono: string | null;
+  // Cuándo entró el lead. Una conversación puede empezar un día y seguir al
+  // siguiente, así que la hora sola no ubica nada.
+  creado: string;
+  // Enlace a la ficha en GHL: lo que se ve acá es una foto del momento en que
+  // se leyó; el CRM es la conversación en vivo.
+  crmUrl: string;
   // Lo que dijo el cliente, en sus palabras, para leerlo sin abrir el hilo.
   mensaje: string;
   escribio: string | null;
@@ -81,6 +92,12 @@ export type Interaccion = {
   noLeidas: number;
   generadoEn: string;
 };
+
+/** La ficha del contacto en GHL, en la marca blanca de la oficina. */
+function fichaEnCrm(contactId: string): string {
+  const base = (process.env.GHL_CRM_URL ?? "https://app.nexusia.com.co").replace(/\/+$/, "");
+  return `${base}/v2/location/${process.env.GHL_LOCATION_ID}/contacts/detail/${contactId}`;
+}
 
 function inicioDeHoyBogota(ms: number): number {
   const local = new Date(ms - BOGOTA_OFFSET_MS);
@@ -157,6 +174,9 @@ function armarLead(c: GhlContact, agente: string, mensajes: GhlMensaje[]): LeadI
     id: c.id,
     nombre: contactDisplayName(c),
     agente,
+    telefono: c.phone ?? null,
+    creado: c.dateAdded,
+    crmUrl: fichaEnCrm(c.id),
     mensaje: dichos.slice(0, 3).join(" · ") || "No escribió nada",
     escribio,
     respondio,
@@ -241,4 +261,50 @@ export async function computeInteraccion(
 
   if (noLeidas === 0) cache.set(llave, { en: ahora, datos });
   return datos;
+}
+
+/**
+ * Busca una persona por nombre o teléfono, sin importar el día en que entró.
+ *
+ * El módulo normal solo lee los leads de un día: es lo que se puede sostener
+ * contra el límite de GHL. Pero la pregunta «¿qué pasó con Julio?» no viene
+ * con la fecha puesta, y obligar a adivinar el día para encontrarlo hacía el
+ * buscador inútil. Acá se busca en toda la pauta y se arman las
+ * conversaciones de los primeros resultados.
+ */
+export async function buscarLeads(
+  soloAgente: string | null | undefined,
+  texto: string
+): Promise<{ leads: LeadInteraccion[]; encontrados: number; noLeidas: number }> {
+  const contactos = await searchContacts(
+    [{ field: "tags", operator: "contains", value: process.env.GHL_LEAD_TAG ?? "ingreso de pauta" }],
+    texto
+  );
+
+  const mios: { c: GhlContact; agente: string }[] = [];
+  for (const c of contactos) {
+    const { agent, agentId } = await extractAttribution(c);
+    if (soloAgente && agentId !== soloAgente) continue;
+    mios.push({ c, agente: agent });
+  }
+
+  // Los más recientes primero: quien busca un nombre suele querer la última
+  // vez que esa persona apareció, no la primera.
+  mios.sort((a, b) => b.c.dateAdded.localeCompare(a.c.dateAdded));
+
+  let noLeidas = 0;
+  const leads = (
+    await enTandas(mios.slice(0, TOPE_BUSQUEDA), async ({ c, agente }) => {
+      try {
+        const conversacionId = await buscarConversacion(c.id);
+        if (!conversacionId) return null;
+        return armarLead(c, agente, await mensajesDeConversacion(conversacionId));
+      } catch {
+        noLeidas += 1;
+        return null;
+      }
+    })
+  ).filter((l): l is LeadInteraccion => l !== null);
+
+  return { leads, encontrados: mios.length, noLeidas };
 }

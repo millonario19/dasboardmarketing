@@ -54,6 +54,32 @@ function hora(iso: string | null): string {
   });
 }
 
+// «10 sept» debajo de la hora. Sin esto, «10:05 a.m.» de un lead que entró
+// anteayer se lee como si fuera de hoy, que es justo el error que hace perder
+// gente: se ve una espera de un minuto y en realidad pasaron dos días.
+function fechaCorta(iso: string | null): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Bogota",
+  });
+}
+
+function fechaLarga(iso: string): string {
+  return new Date(iso).toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Bogota",
+  });
+}
+
+/** El día calendario en Bogotá, para saber cuándo cambia dentro del hilo. */
+function diaDe(iso: string): string {
+  return new Date(new Date(iso).getTime() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
 function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/).filter(Boolean).slice(0, 2);
   const t = partes.map((p) => p[0]).join("");
@@ -69,6 +95,33 @@ function Inicial({ nombre, tamano = 40 }: { nombre: string; tamano?: number }) {
     >
       {iniciales(nombre)}
     </span>
+  );
+}
+
+/**
+ * Salto a la ficha en GHL.
+ *
+ * Lo que se ve acá es una foto del momento en que se leyó la conversación. Si
+ * el agente está respondiendo ahora mismo, el CRM lo muestra y este tablero
+ * no, hasta el próximo Actualizar. El enlace evita que alguien tome una
+ * decisión sobre un lead mirando datos de hace cinco minutos.
+ */
+function AbrirCrm({ url, texto = false }: { url: string; texto?: boolean }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title="Ver la conversación en el CRM"
+      className={`inline-flex items-center gap-1.5 rounded-full font-semibold hover:opacity-80 ${
+        texto ? "px-3.5 py-1.5 text-[12.5px]" : "px-2.5 py-1.5 text-[11.5px]"
+      }`}
+      style={{ background: CELESTE, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
+    >
+      <span aria-hidden>↗</span>
+      {texto ? "Ver en el CRM" : "CRM"}
+    </a>
   );
 }
 
@@ -158,24 +211,33 @@ function Conversacion({ lead, onCerrar }: { lead: LeadInteraccion; onCerrar: () 
         <div>
           <div className="text-[17px] font-semibold tracking-[-0.02em]">{lead.nombre}</div>
           <div className="text-[12.5px]" style={{ color: GRIS }}>
-            {lead.agente}
+            {lead.agente} · entró el {fechaCorta(lead.creado)}
+            {lead.telefono && <> · {lead.telefono}</>}
           </div>
         </div>
-        <button
-          onClick={onCerrar}
-          className="ml-auto text-[12.5px] rounded-full px-3.5 py-1.5 bg-surface hover:opacity-80"
-          style={{ color: GRIS_2, border: "1px solid rgba(23,69,127,.18)" }}
-        >
-          Cerrar ✕
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          <AbrirCrm url={lead.crmUrl} texto />
+          <button
+            onClick={onCerrar}
+            className="text-[12.5px] rounded-full px-3.5 py-1.5 bg-surface hover:opacity-80"
+            style={{ color: GRIS_2, border: "1px solid rgba(23,69,127,.18)" }}
+          >
+            Cerrar ✕
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-wrap border-b border-gridline">
         {[
-          { r: "Escribió", v: hora(lead.escribio), c: undefined },
-          { r: "Respondió", v: lead.respondio ? hora(lead.respondio) : "sin responder", c: lead.respondio ? undefined : ROJO },
-          { r: "Esperó", v: duracion(lead.esperaMin), c: tono(lead.esperaMin).color },
-          { r: "Notas de voz", v: String(lead.notasDeVoz), c: undefined },
+          { r: "Escribió", v: hora(lead.escribio), d: fechaCorta(lead.escribio), c: undefined },
+          {
+            r: "Respondió",
+            v: lead.respondio ? hora(lead.respondio) : "sin responder",
+            d: fechaCorta(lead.respondio),
+            c: lead.respondio ? undefined : ROJO,
+          },
+          { r: "Esperó", v: duracion(lead.esperaMin), d: "", c: tono(lead.esperaMin).color },
+          { r: "Notas de voz", v: String(lead.notasDeVoz), d: "", c: undefined },
         ].map((x) => (
           <div key={x.r} className="flex-1 min-w-[150px] px-5 sm:px-7 py-3.5 border-r border-gridline last:border-r-0">
             <span className="block text-[10px] font-bold uppercase tracking-[.14em]" style={{ color: GRIS }}>
@@ -184,6 +246,11 @@ function Conversacion({ lead, onCerrar }: { lead: LeadInteraccion; onCerrar: () 
             <div className="text-[17px] font-semibold tracking-[-0.02em] tabular-nums mt-1" style={{ color: x.c }}>
               {x.v}
             </div>
+            {x.d && (
+              <div className="text-[11px] mt-0.5" style={{ color: GRIS }}>
+                {x.d}
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -191,6 +258,21 @@ function Conversacion({ lead, onCerrar }: { lead: LeadInteraccion; onCerrar: () 
       <div className="px-5 sm:px-7 py-6" style={{ background: "#FCFCFA" }}>
         {lead.turnos.map((t, i) => (
           <div key={i}>
+            {/* Cambio de día. Una conversación puede empezar el 9 y seguir el
+                11: sin esta línea, las horas sueltas hacen creer que todo
+                pasó la misma mañana. */}
+            {(i === 0 || diaDe(lead.turnos[i - 1].hora) !== diaDe(t.hora)) && (
+              <div className="flex items-center gap-3 my-5">
+                <i className="h-px flex-1" style={{ background: "#DEDCD4" }} />
+                <span
+                  className="text-[11.5px] font-bold rounded-full px-3 py-1 whitespace-nowrap first-letter:uppercase"
+                  style={{ background: CELESTE, color: AZUL }}
+                >
+                  {fechaLarga(t.hora)}
+                </span>
+                <i className="h-px flex-1" style={{ background: "#DEDCD4" }} />
+              </div>
+            )}
             {/* El hueco de espera corta la conversación en dos: se ve, no se lee. */}
             {t.quien === "agente" && t.esperaMin != null && (
               <Corte min={t.esperaMin} texto={`${duracion(t.esperaMin)} sin respuesta`} />
@@ -215,6 +297,14 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
   // lo que ya se cargó, y es null mientras se mira hoy.
   const [fecha, setFecha] = useState(hoyBogota);
   const [dia, setDia] = useState<string | null>(null);
+  // Buscar una persona concreta, sin importar el día en que entró.
+  const [texto, setTexto] = useState("");
+  const [busqueda, setBusqueda] = useState<{
+    texto: string;
+    leads: LeadInteraccion[];
+    encontrados: number;
+  } | null>(null);
+  const [buscando, setBuscando] = useState(false);
   const [abierto, setAbierto] = useState<string | null>(null);
   // La lista arranca plegada: arriba quedan los números, y el detalle se abre
   // cuando hace falta. La elección se recuerda para no tener que repetirla
@@ -261,11 +351,44 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
       .finally(() => setCargando(false));
   }, []);
 
+  const buscar = useCallback(
+    (quien: string, q: string) => {
+      const limpio = q.trim();
+      if (limpio.length < 3) {
+        setError("Escribí al menos 3 letras o dígitos para buscar");
+        return;
+      }
+      setBuscando(true);
+      setError(null);
+      fetch(`/api/interaccion/buscar?q=${encodeURIComponent(limpio)}&agente=${encodeURIComponent(quien)}`)
+        .then(async (r) => {
+          if (!r.ok) throw new Error((await r.json()).error ?? "Error al buscar");
+          return r.json();
+        })
+        .then((d: { leads: LeadInteraccion[]; encontrados: number }) => {
+          setBusqueda({ texto: limpio, leads: d.leads, encontrados: d.encontrados });
+          setAbierto(d.leads.length === 1 ? d.leads[0].id : null);
+          setLista(true);
+        })
+        .catch((e) => setError(e.message))
+        .finally(() => setBuscando(false));
+    },
+    []
+  );
+
+  const limpiarBusqueda = useCallback(() => {
+    setBusqueda(null);
+    setTexto("");
+    setAbierto(null);
+    setError(null);
+  }, []);
+
   useEffect(() => {
     cargar(agente, null);
   }, [agente, cargar]);
 
-  const lead = datos?.leads.find((l) => l.id === abierto) ?? null;
+  const enTabla = busqueda ? busqueda.leads : datos?.leads ?? [];
+  const lead = enTabla.find((l) => l.id === abierto) ?? null;
   const r = datos?.resumen;
 
   return (
@@ -335,6 +458,45 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           </div>
         </div>
 
+        {/* Buscar una persona. No filtra la lista del día: pregunta a GHL por
+            toda la pauta, porque «¿qué pasó con Julio?» no viene con la fecha
+            puesta y obligar a adivinar el día haría el buscador inútil. */}
+        <div className="flex items-center gap-2 px-5 sm:px-7 py-3 border-b border-gridline flex-wrap">
+          <input
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && buscar(agente, texto)}
+            placeholder="Buscar por nombre o teléfono…"
+            className="flex-1 min-w-[160px] rounded-full border border-gridline bg-page px-4 py-2 text-[13px] outline-none focus:border-[#2A6FB8]"
+          />
+          <button
+            onClick={() => buscar(agente, texto)}
+            disabled={buscando}
+            className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-white disabled:opacity-50 hover:opacity-90"
+            style={{ background: AZUL_BOTON }}
+          >
+            {buscando ? "Buscando…" : "Buscar"}
+          </button>
+          {busqueda && (
+            <button
+              onClick={limpiarBusqueda}
+              className="rounded-full px-3.5 py-2 text-[12.5px] border border-gridline hover:bg-page"
+              style={{ color: GRIS_2 }}
+            >
+              ✕ Volver al día
+            </button>
+          )}
+        </div>
+
+        {busqueda && (
+          <p className="px-5 sm:px-7 py-2.5 text-[12.5px] border-b border-gridline" style={{ background: CELESTE, color: AZUL }}>
+            <b>{busqueda.encontrados}</b> coincidencia{busqueda.encontrados === 1 ? "" : "s"} con «{busqueda.texto}»
+            {busqueda.encontrados > busqueda.leads.length &&
+              ` — se leyeron las ${busqueda.leads.length} conversaciones más recientes`}
+            . Los números de arriba siguen siendo los del día.
+          </p>
+        )}
+
         {/* Cuentas exactas. Un promedio de una hora, cuando alguien esperó
             cinco, esconde justo el caso que hay que ver. */}
         <div className="flex flex-wrap border-y border-gridline">
@@ -363,21 +525,21 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
 
         {/* El botón lleva encima lo urgente: aunque la lista esté cerrada, se
             ve si hay alguien esperando sin respuesta. */}
-        {datos && datos.leads.length > 0 && (
+        {enTabla.length > 0 && (
           <button
             onClick={alternarLista}
             aria-expanded={lista}
             className="w-full flex items-center gap-3 px-5 sm:px-7 py-3.5 hover:bg-page border-b border-gridline"
           >
             <span className="text-[13.5px] font-semibold">
-              {lista ? "Ocultar conversaciones" : `Ver las ${datos.leads.length} conversaciones`}
+              {lista ? "Ocultar conversaciones" : `Ver las ${enTabla.length} conversaciones`}
             </span>
-            {!lista && (datos.resumen.sinResponder > 0) && (
+            {!lista && !busqueda && (datos?.resumen.sinResponder ?? 0) > 0 && (
               <span
                 className="text-[11px] font-bold rounded-full px-2.5 py-1"
                 style={{ background: ROJO, color: "#fff" }}
               >
-                {datos.resumen.sinResponder} sin responder
+                {datos?.resumen.sinResponder} sin responder
               </span>
             )}
             <span className="ml-auto text-[13px]" style={{ color: GRIS }}>
@@ -393,22 +555,24 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           </p>
         )}
 
-        {datos && datos.leads.length === 0 && !cargando && (
+        {enTabla.length === 0 && !cargando && !buscando && (datos || busqueda) && (
           <p className="px-5 sm:px-7 py-5 text-[13px]" style={{ color: GRIS }}>
-            Todavía no hay conversaciones hoy.
+            {busqueda
+              ? `Nadie coincide con «${busqueda.texto}».`
+              : "Todavía no hay conversaciones ese día."}
           </p>
         )}
 
-        {datos && datos.leads.length > 0 && lista && (
+        {enTabla.length > 0 && lista && (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: 860 }}>
+            <table className="w-full border-collapse" style={{ minWidth: 960 }}>
               <thead>
                 <tr style={{ background: CELESTE }}>
-                  {["Nombre", "Mensaje lead", "Hora escribió", "Agente respondió", "Esperó"].map((c) => (
+                  {["Nombre", "Mensaje lead", "Hora escribió", "Agente respondió", "Esperó", "Acciones"].map((c) => (
                     <th
                       key={c}
                       className="px-4 sm:px-[18px] py-3 text-[10px] font-bold uppercase tracking-[.13em] text-ink-primary whitespace-nowrap"
-                      style={{ textAlign: c === "Esperó" ? "right" : "left" }}
+                      style={{ textAlign: c === "Esperó" || c === "Acciones" ? "right" : "left" }}
                     >
                       {c}
                     </th>
@@ -416,7 +580,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                 </tr>
               </thead>
               <tbody>
-                {datos.leads.map((l) => {
+                {enTabla.map((l) => {
                   const t = tono(l.esperaMin);
                   const sel = l.id === abierto;
                   return (
@@ -452,7 +616,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                       <td className="px-4 sm:px-[18px] py-3.5 text-[15px] font-semibold tabular-nums whitespace-nowrap">
                         {hora(l.escribio)}
                         <small className="block text-[10.5px] font-normal mt-0.5" style={{ color: GRIS }}>
-                          el cliente
+                          {fechaCorta(l.escribio)} · el cliente
                         </small>
                       </td>
                       <td className="px-4 sm:px-[18px] py-3.5 text-[15px] font-semibold tabular-nums whitespace-nowrap">
@@ -460,7 +624,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                           <>
                             {hora(l.respondio)}
                             <small className="block text-[10.5px] font-normal mt-0.5" style={{ color: GRIS }}>
-                              {l.agente.split(" ")[0]}
+                              {fechaCorta(l.respondio)} · {l.agente.split(" ")[0]}
                             </small>
                           </>
                         ) : (
@@ -482,6 +646,9 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                             y contando
                           </small>
                         )}
+                      </td>
+                      <td className="px-4 sm:px-[18px] py-3.5 text-right whitespace-nowrap">
+                        <AbrirCrm url={l.crmUrl} />
                       </td>
                     </tr>
                   );

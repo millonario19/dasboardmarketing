@@ -72,13 +72,20 @@ export type SearchFilter =
 // Búsqueda puntual server-side (POST /contacts/search): mucho más barata que
 // fetchAllContacts cuando ya sabemos qué tag/agente/rango de fecha buscamos —
 // GHL filtra en su lado y devuelve solo lo relevante (ms en vez de segundos).
-export async function searchContacts(filters: SearchFilter[]): Promise<GhlContact[]> {
+export async function searchContacts(
+  filters: SearchFilter[],
+  // Texto libre: GHL lo busca contra nombre, teléfono y correo. Se usa para el
+  // buscador de personas, donde el usuario escribe «julio» o los últimos
+  // dígitos de un número y no sabe en qué campo está.
+  query?: string
+): Promise<GhlContact[]> {
   const locationId = requireEnv("GHL_LOCATION_ID");
   const contacts: GhlContact[] = [];
   let searchAfter: [number, string] | undefined;
 
   for (let page = 0; page < HARD_CAP_PAGES; page++) {
     const body: Record<string, unknown> = { locationId, pageLimit: PAGE_LIMIT, filters };
+    if (query) body.query = query;
     if (searchAfter) body.searchAfter = searchAfter;
 
     const res = await fetchWithRetry(`${GHL_BASE_URL}/contacts/search`, {
