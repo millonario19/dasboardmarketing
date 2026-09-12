@@ -51,7 +51,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             {sesion && !esAdmin && (
               <span className="text-sm text-ink-secondary bg-surface border border-gridline rounded-full px-3 py-1.5">
-                Tus números, {nombreCorto(sesion.nombre)}
+                {nombreCorto(sesion.nombre)}
               </span>
             )}
             <span className="w-10 h-10 rounded-full border border-gridline bg-surface flex items-center justify-center text-ink-muted text-lg shrink-0">
