@@ -190,7 +190,12 @@ function Mensaje({ turno, agente }: { turno: Turno; agente: string }) {
                 <span className="inline-flex items-center gap-2 text-[12.5px] opacity-80">
                   <Onda /> nota de voz
                 </span>
-                <audio controls preload="none" src={turno.audio} className="max-w-[260px] h-9" />
+                <audio
+                  controls
+                  preload="none"
+                  src={`/api/audio?u=${encodeURIComponent(turno.audio)}`}
+                  className="max-w-[260px] h-9"
+                />
               </span>
             ) : (
               <span className="inline-flex flex-col gap-1">
