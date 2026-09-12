@@ -186,6 +186,56 @@ export async function obtenerContacto(contactId: string): Promise<GhlContact | n
   }
 }
 
+export type GhlMensaje = {
+  id: string;
+  direction: "inbound" | "outbound";
+  dateAdded: string;
+  messageType?: string;
+  // "workflow" cuando lo mandó una automatización, "app" cuando lo escribió
+  // una persona. Es la diferencia entre atender y no atender.
+  source?: string;
+  body?: string;
+  userId?: string;
+  attachments?: unknown[];
+};
+
+/** La conversación de un contacto, o null si nunca hubo uno. */
+export async function buscarConversacion(contactId: string): Promise<string | null> {
+  const locationId = requireEnv("GHL_LOCATION_ID");
+  try {
+    const res = await fetchWithRetry(
+      `${GHL_BASE_URL}/conversations/search?locationId=${encodeURIComponent(locationId)}&contactId=${encodeURIComponent(contactId)}`,
+      { headers: ghlHeaders(), cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.conversations?.[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Los mensajes de una conversación.
+ *
+ * GHL devuelve los últimos ~20 y pagina hacia atrás con lastMessageId. Para el
+ * día en curso alcanza con la primera página: una conversación de hoy rara vez
+ * pasa de veinte mensajes, y traer más multiplicaría las llamadas.
+ */
+export async function mensajesDeConversacion(conversacionId: string): Promise<GhlMensaje[]> {
+  try {
+    const res = await fetchWithRetry(
+      `${GHL_BASE_URL}/conversations/${encodeURIComponent(conversacionId)}/messages`,
+      { headers: ghlHeaders(), cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.messages?.messages ?? []) as GhlMensaje[];
+  } catch {
+    return [];
+  }
+}
+
 const userNameCache = new Map<string, string>();
 
 async function resolveUserName(userId: string): Promise<string> {

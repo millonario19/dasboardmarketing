@@ -6,6 +6,7 @@ import { FunnelWaterfall } from "@/components/FunnelWaterfall";
 import { PanelEstados } from "@/components/PanelEstados";
 import { CambiarVista } from "@/components/CambiarVista";
 import { TablaAgentes } from "@/components/TablaAgentes";
+import { InteraccionLeads } from "@/components/InteraccionLeads";
 import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
 import type { AgentProduction } from "@/lib/metrics";
@@ -96,7 +97,21 @@ export default function DashboardPage() {
 
       {!error && data && (
         <>
-          <div className="mb-8">
+          {/* Las conversaciones van primero: es lo único de la pantalla que
+              se puede atender hoy. Las métricas del mes quedan al final,
+              porque se miran una vez y no cambian nada del día. */}
+          <InteraccionLeads
+            esAdmin={esAdmin}
+            agentes={data.rows
+              .filter((r) => r.agentId)
+              .map((r) => ({ id: r.agentId as string, nombre: r.agent }))}
+          />
+
+          <PanelEstados datos={data.panel} propio={!esAdmin} />
+
+          <TablaAgentes data={data} />
+
+          <div className="mt-8">
             <FunnelWaterfall
               stages={[
                 { label: "Total leads mes", value: data.totals.leadsMes },
@@ -108,10 +123,6 @@ export default function DashboardPage() {
               ]}
             />
           </div>
-
-          <PanelEstados datos={data.panel} propio={!esAdmin} />
-
-          <TablaAgentes data={data} />
         </>
       )}
     </main>
