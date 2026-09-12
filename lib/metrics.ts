@@ -11,14 +11,14 @@ import {
 import {
   estadoDeLead,
   accionesDeLead,
+  pasosDeLead,
   confirmacionDeBajada,
   TAG_BUSINESS,
   yaDeposito,
   interactuoAuto,
   conteoVacio,
   ESTADOS,
-  ACCIONES_EMBUDO,
-  SIN_ACCIONES,
+  PASOS_EMBUDO,
   TAG_CONFIABLE_DESDE,
   TAG_INTERACCION_AUTO,
   type EstadoLead,
@@ -168,13 +168,13 @@ export type Alerta = {
 // mostrar las acciones que faltan con su casilla en cero.
 export type Desglose = { etiqueta: string; valor: number }[];
 
-// Cuenta, para cada estado, cuántos de sus leads hicieron cada paso del
-// embudo. Los pasos en cero se mantienen: son justamente los que faltan.
-function contarAcciones(porEstado: Map<EstadoLead, number[]>, estado: EstadoLead, acciones: string[]) {
-  if (!porEstado.has(estado)) porEstado.set(estado, ACCIONES_EMBUDO.map(() => 0));
+// Cuenta, para cada estado, cuántos de sus leads dieron cada paso del embudo.
+// Los pasos en cero se mantienen: son justamente los que faltan.
+function contarAcciones(porEstado: Map<EstadoLead, number[]>, estado: EstadoLead, pasos: boolean[]) {
+  if (!porEstado.has(estado)) porEstado.set(estado, PASOS_EMBUDO.map(() => 0));
   const cuenta = porEstado.get(estado)!;
-  ACCIONES_EMBUDO.forEach((a, i) => {
-    if (acciones.includes(a)) cuenta[i] += 1;
+  pasos.forEach((dado, i) => {
+    if (dado) cuenta[i] += 1;
   });
 }
 
@@ -184,12 +184,11 @@ function aDesglose(
 ): Record<EstadoLead, Desglose> {
   const salida = {} as Record<EstadoLead, Desglose>;
   for (const estado of ESTADOS) {
-    const cuenta = porEstado.get(estado) ?? ACCIONES_EMBUDO.map(() => 0);
-    // Frío por definición no hizo nada: listar cuatro ceros no dice nada, una
-    // sola línea con el total sí.
-    salida[estado] = cuenta.every((n) => n === 0)
-      ? [{ etiqueta: SIN_ACCIONES, valor: conteos[estado] }]
-      : ACCIONES_EMBUDO.map((a, i) => ({ etiqueta: a, valor: cuenta[i] }));
+    const cuenta = porEstado.get(estado) ?? PASOS_EMBUDO.map(() => 0);
+    // Los cinco pasos siempre, también los que nadie dio: una tarjeta de Frío
+    // con cuatro casillas vacías dice dónde se corta el camino, que es
+    // justamente lo que hay que ver.
+    salida[estado] = PASOS_EMBUDO.map((a, i) => ({ etiqueta: a, valor: cuenta[i] }));
   }
   return salida;
 }
@@ -278,12 +277,12 @@ function calcularPanel(
     const enPanel = !yaDeposito(contacto);
     if (enPanel) {
       const estado = estadoDeLead(contacto);
-      const acciones = accionesDeLead(contacto);
+      const pasos = pasosDeLead(contacto);
       mes[estado] += 1;
-      contarAcciones(accionesMes, estado, acciones);
+      contarAcciones(accionesMes, estado, pasos);
       if (t >= todayFromMs && t < todayToMs) {
         hoy[estado] += 1;
-        contarAcciones(accionesHoy, estado, acciones);
+        contarAcciones(accionesHoy, estado, pasos);
       }
     }
 
@@ -621,7 +620,7 @@ export async function computeEstadosDeUnRango(
     }
     const estado = estadoDeLead(contacto);
     conteos[estado] += 1;
-    contarAcciones(acciones, estado, accionesDeLead(contacto));
+    contarAcciones(acciones, estado, pasosDeLead(contacto));
   }
 
   return { conteos, desglose: aDesglose(acciones, conteos), total: leadContacts.length, depositaron };

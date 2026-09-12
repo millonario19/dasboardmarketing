@@ -82,9 +82,23 @@ export const ESTADO_META: Record<
   },
 };
 
-// Los cuatro pasos del embudo, en orden. El desglose de cada estado los cuenta
-// uno por uno: cuántos de esos leads hicieron cada cosa.
-export const ACCIONES_EMBUDO = ["Respondió", "Entró al canal", "Bajó a WhatsApp", "Se registró"] as const;
+/**
+ * El recorrido completo del lead, en orden, igual en las tres tarjetas.
+ *
+ * Antes cada tarjeta mostraba solo los pasos que alguno de sus leads había
+ * dado, así que Frío traía una sola línea —«Solo entró, sin responder»— y
+ * Caliente cuatro. Se leían como tres listas distintas y no se veía lo único
+ * que importa: dónde se corta el camino. Con los cinco pasos siempre a la
+ * vista, la tarjeta de Frío muestra cuatro casillas vacías, que es
+ * exactamente el problema.
+ */
+export const PASOS_EMBUDO = [
+  "Solicitó información",
+  "Cliente interactuó",
+  "Ingresó al canal",
+  "Bajó a WhatsApp Business",
+  "Se registró en el broker",
+] as const;
 
 export const SIN_ACCIONES = "Solo entró, sin responder";
 
@@ -157,11 +171,30 @@ export function accionesDeLead(contacto: GhlContact): string[] {
   const acciones: string[] = [];
   // Los dos tags de interacción cuentan como una sola acción: son el mismo
   // hecho visto por el flujo y por el agente, no dos cosas distintas.
-  if (interactuo(contacto)) acciones.push("Respondió");
+  if (interactuo(contacto)) acciones.push("Interactuó");
   if (tiene(contacto, TAG_CANAL_FREE)) acciones.push("Entró al canal");
   if (bajoAWhatsApp(contacto)) acciones.push("Bajó a WhatsApp");
   if (isRegistrado(contacto) && hasOwnAffiliateLink(contacto)) acciones.push("Se registró");
   return acciones;
+}
+
+/**
+ * Cuáles de los cinco pasos dio este lead, en el mismo orden que
+ * PASOS_EMBUDO.
+ *
+ * El primero es siempre verdadero y no es relleno: todos estos contactos
+ * entraron por la pauta, y pedir información es justamente lo que los trajo.
+ * Dejarlo a la vista da el punto de partida contra el que se leen los otros
+ * cuatro.
+ */
+export function pasosDeLead(contacto: GhlContact): boolean[] {
+  return [
+    true,
+    interactuo(contacto),
+    tiene(contacto, TAG_CANAL_FREE),
+    bajoAWhatsApp(contacto),
+    isRegistrado(contacto) && hasOwnAffiliateLink(contacto),
+  ];
 }
 
 // El depósito saca al lead del panel: ya se cuenta en las tarjetas de FTD.

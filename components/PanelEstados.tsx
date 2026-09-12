@@ -143,10 +143,10 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
 
   return (
     <section className="mb-8">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-3">
+      <div className="flex flex-col items-center text-center gap-3 mb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left">
         <div>
-          <div className="flex items-baseline gap-3">
-            <h2 className="text-lg font-semibold text-ink-primary">Estado de los leads</h2>
+          <div className="flex items-baseline justify-center gap-3 sm:justify-start">
+            <h2 className="text-lg font-semibold text-ink-primary">Temperatura del lead</h2>
             <span className="text-[13px] text-ink-secondary">
               {total} {dia ? `del ${enEspanol(dia.fecha)}` : ventana === "hoy" ? "hoy" : "este mes"}
             </span>
@@ -159,7 +159,7 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
             Solo leads de la pauta que todavía no depositaron — los que ya depositaron están en FTD, arriba.
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center justify-center gap-2 flex-wrap sm:justify-end">
           <div className="flex rounded-full border border-gridline overflow-hidden text-[13px]">
             {(["hoy", "mes"] as const).map((v) => (
               <button
@@ -194,7 +194,14 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
             className="rounded-full px-4 py-1.5 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
             style={{ background: "#17457F" }}
           >
-            {cargando ? "Consultando…" : "Consultar"}
+            {cargando ? (
+              "…"
+            ) : (
+              <>
+                <span className="sm:hidden">Ver</span>
+                <span className="hidden sm:inline">Consultar</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -256,7 +263,7 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
           - En escritorio, `sm:order-last` la manda al final de la grilla y
             `sm:col-span-3` la deja a lo ancho, debajo de las tres. En una
             columna de un tercio los nombres y teléfonos salían cortados. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-3 mb-4">
         {ESTADOS.map((estado) => (
           <Fragment key={estado}>
             <Tarjeta
@@ -403,11 +410,10 @@ function Tarjeta({
         >
           {desglose.map((d, i) => {
             const hecho = d.valor > 0;
-            const ancho = valor > 0 ? Math.round((d.valor / valor) * 100) : 0;
             return (
               <div
                 key={d.etiqueta}
-                className="flex items-center gap-2.5 py-2.5"
+                className="flex items-center gap-2.5 py-2"
                 style={{
                   borderTop: i === 0 ? undefined : `1px solid color-mix(in srgb, ${meta.color} 32%, var(--surface-1))`,
                   opacity: hecho ? 1 : 0.55,
@@ -424,12 +430,12 @@ function Tarjeta({
                   {hecho ? "✓" : i + 1}
                 </span>
 
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12.5px] font-bold leading-tight text-ink-primary truncate">{d.etiqueta}</p>
-                  <div className="h-1 rounded-full mt-1.5 overflow-hidden" style={{ background: "rgba(255,255,255,0.6)" }}>
-                    <span className="block h-full rounded-full" style={{ width: `${ancho}%`, background: meta.fuerte }} />
-                  </div>
-                </div>
+                {/* Sin la barrita de proporción de cada fila: con cinco
+                    pasos eran cinco barras compitiendo con el número que está
+                    al lado y diciendo lo mismo. */}
+                <p className="flex-1 min-w-0 text-[12.5px] font-bold leading-snug text-ink-primary">
+                  {d.etiqueta}
+                </p>
 
                 <span
                   className="min-w-[34px] h-8 px-1.5 rounded-lg flex items-center justify-center text-[15px] font-extrabold tabular-nums shrink-0"
@@ -446,23 +452,19 @@ function Tarjeta({
           })}
         </div>
 
-        {/* Lo único accionable de la tarjeta, como botón y no como nota al pie. */}
-        <div
-          className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 mt-auto"
-          style={{ background: meta.fuerte, color: meta.sobreFuerte }}
-        >
+        {/* Lo único accionable de la tarjeta. Ocupaba el ancho entero, con
+            recuadro de color, ícono y dos renglones: pesaba más que el número
+            del estado, que es lo que la tarjeta viene a decir. Ahora es una
+            etiqueta al pie, del ancho de su texto. */}
+        <div className="mt-auto pt-1">
+          <small className="block text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1">
+            Siguiente paso
+          </small>
           <span
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-[13px] shrink-0"
-            style={{ background: `color-mix(in srgb, ${meta.sobreFuerte} 20%, transparent)` }}
-            aria-hidden
+            className="inline-block max-w-full rounded-lg px-2.5 py-1.5 text-[12px] font-bold leading-snug"
+            style={{ background: `color-mix(in srgb, ${meta.fuerte} 12%, var(--surface-1))`, color: meta.fuerte }}
           >
-            ⚡
-          </span>
-          <span className="min-w-0">
-            <small className="block text-[10.5px] font-semibold" style={{ opacity: 0.75 }}>
-              Siguiente paso
-            </small>
-            <span className="block text-[12.5px] font-extrabold leading-tight">{accionSugerida(estado)}</span>
+            {accionSugerida(estado)}
           </span>
         </div>
 

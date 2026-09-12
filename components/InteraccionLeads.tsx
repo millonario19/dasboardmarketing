@@ -16,7 +16,17 @@ const VERDE_SUAVE = "#EEF7F2";
 const GRIS = "#9A998F";
 const GRIS_2 = "#5E5C56";
 
+// Un azul más claro que el del encabezado: sobre el azul oscuro, el mismo
+// tono desaparecería.
+const AZUL_BOTON = "#2A6FB8";
+
 const CLAVE_LISTA = "op_interaccion_abierta";
+
+const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
+
+function hoyBogota(): string {
+  return new Date(Date.now() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
+}
 
 /** Verde hasta 5 minutos, ámbar hasta una hora, rojo de ahí en adelante. */
 function tono(min: number | null | undefined): { color: string; fondo: string } {
@@ -201,6 +211,10 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [agente, setAgente] = useState("todos");
+  // El día que se está mirando. `fecha` es lo que dice el selector; `dia` es
+  // lo que ya se cargó, y es null mientras se mira hoy.
+  const [fecha, setFecha] = useState(hoyBogota);
+  const [dia, setDia] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   // La lista arranca plegada: arriba quedan los números, y el detalle se abre
   // cuando hace falta. La elección se recuerda para no tener que repetirla
@@ -227,10 +241,13 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
     });
   }
 
-  const cargar = useCallback((quien: string) => {
+  const cargar = useCallback((quien: string, cuando: string | null) => {
     setCargando(true);
     setError(null);
-    fetch(`/api/interaccion?agente=${encodeURIComponent(quien)}`)
+    fetch(
+      `/api/interaccion?agente=${encodeURIComponent(quien)}` +
+        (cuando ? `&dia=${encodeURIComponent(cuando)}` : "")
+    )
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error ?? "Error al leer las conversaciones");
         return r.json();
@@ -238,13 +255,14 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
       .then((d: Interaccion) => {
         setDatos(d);
         setAbierto(null);
+        setDia(cuando);
       })
       .catch((e) => setError(e.message))
       .finally(() => setCargando(false));
   }, []);
 
   useEffect(() => {
-    cargar(agente);
+    cargar(agente, null);
   }, [agente, cargar]);
 
   const lead = datos?.leads.find((l) => l.id === abierto) ?? null;
@@ -260,7 +278,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           <div>
             <h2 className="text-[19px] font-semibold tracking-[-0.02em]">Interacción leads</h2>
             <p className="text-[13px] mt-0.5 first-letter:uppercase" style={{ color: "rgba(255,255,255,.66)" }}>
-              {new Date().toLocaleDateString("es-CO", {
+              {(dia ? new Date(`${dia}T12:00:00-05:00`) : new Date()).toLocaleDateString("es-CO", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
@@ -287,12 +305,32 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
               </select>
             )}
             <button
-              onClick={() => cargar(agente)}
+              onClick={() => cargar(agente, dia)}
               disabled={cargando}
               className="rounded-full px-3.5 py-2 text-[12.5px] disabled:opacity-50 hover:opacity-80"
               style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
             >
               {cargando ? "Leyendo…" : "↻ Actualizar"}
+            </button>
+
+            {/* Un día puntual. En móvil el botón dice «Ver»: «Consultar» más
+                el selector de fecha no caben en el mismo renglón. */}
+            <input
+              type="date"
+              value={fecha}
+              max={hoyBogota()}
+              onChange={(e) => setFecha(e.target.value)}
+              className="rounded-full px-3 py-2 text-[12.5px] outline-none"
+              style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
+            />
+            <button
+              onClick={() => cargar(agente, fecha === hoyBogota() ? null : fecha)}
+              disabled={cargando}
+              className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-white disabled:opacity-50 hover:opacity-90"
+              style={{ background: AZUL_BOTON }}
+            >
+              <span className="sm:hidden">Ver</span>
+              <span className="hidden sm:inline">Consultar</span>
             </button>
           </div>
         </div>
@@ -303,9 +341,8 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           {[
             { r: "Leads", v: r?.leads, n: "recibidos hoy" },
             { r: "Te escribieron", v: r?.escribieron, n: "levantaron la mano" },
-            { r: "Esperaron +1 hora", v: r?.masDeUnaHora, n: "de los que escribieron", malo: true },
+            { r: "Esperaron +5 minutos", v: r?.masDe5Min, n: "sin ser atendidos", malo: true },
             { r: "Sin responder", v: r?.sinResponder, n: "ahora mismo", malo: true },
-            { r: "Registros", v: r?.registros, n: `${r?.ftd ?? 0} depósitos`, malo: (r?.registros ?? 0) === 0 },
           ].map((k) => (
             <div key={k.r} className="flex-1 min-w-[152px] px-5 sm:px-7 py-4 border-r border-gridline last:border-r-0">
               <span className="block text-[10px] font-bold uppercase tracking-[.14em] mb-1.5" style={{ color: GRIS }}>

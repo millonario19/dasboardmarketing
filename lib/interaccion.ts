@@ -4,9 +4,6 @@ import {
   mensajesDeConversacion,
   extractAttribution,
   contactDisplayName,
-  isRegistrado,
-  isFtdEfectuado,
-  hasOwnAffiliateLink,
   type GhlContact,
   type GhlMensaje,
 } from "./ghl";
@@ -75,10 +72,8 @@ export type Interaccion = {
   resumen: {
     leads: number;
     escribieron: number;
-    masDeUnaHora: number;
+    masDe5Min: number;
     sinResponder: number;
-    registros: number;
-    ftd: number;
   };
   recortado: boolean;
   // Conversaciones que GHL no dejó leer. Se muestran en pantalla: una lista
@@ -234,10 +229,10 @@ export async function computeInteraccion(
     resumen: {
       leads: mios.length,
       escribieron: escribieron.length,
-      masDeUnaHora: escribieron.filter((l) => (l.esperaMin ?? 0) > 60).length,
+      // Cinco minutos, no una hora: a la hora el lead ya se enfrió y el dato
+      // llega tarde para hacer algo con él.
+      masDe5Min: escribieron.filter((l) => (l.esperaMin ?? 0) > 5).length,
       sinResponder: leads.filter((l) => l.pendiente).length,
-      registros: mios.filter(({ c }) => isRegistrado(c) && hasOwnAffiliateLink(c)).length,
-      ftd: mios.filter(({ c }) => isFtdEfectuado(c) && hasOwnAffiliateLink(c)).length,
     },
     recortado,
     noLeidas,
