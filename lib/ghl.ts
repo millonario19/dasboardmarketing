@@ -42,6 +42,13 @@ async function fetchWithRetry(url: string, init: RequestInit, retries = 3): Prom
   for (let attempt = 0; ; attempt++) {
     try {
       const res = await fetch(url, init);
+      // 429 es el límite de ráfaga de GHL, que se mide en ventanas de diez
+      // segundos: reintentar a los 500 ms vuelve a chocar. Por eso espera
+      // bastante más que un error de servidor común.
+      if (!res.ok && res.status === 429 && attempt < retries) {
+        await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+        continue;
+      }
       if (!res.ok && res.status >= 500 && attempt < retries) {
         await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
         continue;
@@ -200,6 +207,8 @@ export type GhlMensaje = {
 };
 
 /** La conversación de un contacto, o null si nunca hubo uno. */
+export class ConversacionNoLeida extends Error {}
+
 export async function buscarConversacion(contactId: string): Promise<string | null> {
   const locationId = requireEnv("GHL_LOCATION_ID");
   try {
@@ -207,11 +216,14 @@ export async function buscarConversacion(contactId: string): Promise<string | nu
       `${GHL_BASE_URL}/conversations/search?locationId=${encodeURIComponent(locationId)}&contactId=${encodeURIComponent(contactId)}`,
       { headers: ghlHeaders(), cache: "no-store" }
     );
-    if (!res.ok) return null;
+    // Sin conversación es un dato (el lead nunca escribió); un error es otra
+    // cosa y no puede confundirse con eso, o la lista miente por lo bajo.
+    if (!res.ok) throw new ConversacionNoLeida(`GHL ${res.status}`);
     const data = await res.json();
     return data.conversations?.[0]?.id ?? null;
-  } catch {
-    return null;
+  } catch (e) {
+    if (e instanceof ConversacionNoLeida) throw e;
+    throw new ConversacionNoLeida(e instanceof Error ? e.message : "error de red");
   }
 }
 
@@ -228,11 +240,12 @@ export async function mensajesDeConversacion(conversacionId: string): Promise<Gh
       `${GHL_BASE_URL}/conversations/${encodeURIComponent(conversacionId)}/messages`,
       { headers: ghlHeaders(), cache: "no-store" }
     );
-    if (!res.ok) return [];
+    if (!res.ok) throw new ConversacionNoLeida(`GHL ${res.status}`);
     const data = await res.json();
     return (data.messages?.messages ?? []) as GhlMensaje[];
-  } catch {
-    return [];
+  } catch (e) {
+    if (e instanceof ConversacionNoLeida) throw e;
+    throw new ConversacionNoLeida(e instanceof Error ? e.message : "error de red");
   }
 }
 

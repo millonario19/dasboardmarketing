@@ -386,9 +386,11 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           </div>
         )}
 
-        {datos?.recortado && (
+        {(datos?.recortado || (datos?.noLeidas ?? 0) > 0) && (
           <p className="px-5 sm:px-7 py-3 text-[12px] border-t border-gridline" style={{ color: GRIS }}>
-            Se revisaron las primeras 80 conversaciones del día.
+            {datos?.recortado && "Se revisaron las primeras 60 conversaciones del día. "}
+            {(datos?.noLeidas ?? 0) > 0 &&
+              `${datos!.noLeidas} conversaciones no se pudieron leer (GHL limitó las consultas). Probá Actualizar en un minuto.`}
           </p>
         )}
       </div>

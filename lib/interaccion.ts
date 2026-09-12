@@ -21,10 +21,11 @@ const TOPE_LEADS = 60;
  *
  * Con Promise.all sobre 47 leads salían 94 peticiones de golpe y GHL respondía
  * 429 «Too Many Requests» — no solo a esto, también a las búsquedas de la
- * pantalla, que quedaba en blanco. De a seis alcanza para que la lista cargue
- * en pocos segundos sin pisar el límite.
+ * pantalla, que quedaba en blanco. De a cuatro la lista carga en pocos
+ * segundos y deja aire para las otras consultas del tablero, que corren al
+ * mismo tiempo.
  */
-const EN_PARALELO = 6;
+const EN_PARALELO = 4;
 
 // Releer las mismas conversaciones cada vez que alguien abre el tablero es
 // gastar el límite de GHL en datos que no cambiaron. Un minuto es suficiente:
@@ -80,6 +81,9 @@ export type Interaccion = {
     ftd: number;
   };
   recortado: boolean;
+  // Conversaciones que GHL no dejó leer. Se muestran en pantalla: una lista
+  // corta sin explicación se lee como "hoy hubo poco", que es falso.
+  noLeidas: number;
   generadoEn: string;
 };
 
@@ -203,11 +207,17 @@ export async function computeInteraccion(
   const recortado = mios.length > TOPE_LEADS;
   const aRevisar = mios.slice(0, TOPE_LEADS);
 
+  let noLeidas = 0;
   const leads = (
     await enTandas(aRevisar, async ({ c, agente }) => {
-      const conversacionId = await buscarConversacion(c.id);
-      if (!conversacionId) return null;
-      return armarLead(c, agente, await mensajesDeConversacion(conversacionId));
+      try {
+        const conversacionId = await buscarConversacion(c.id);
+        if (!conversacionId) return null;
+        return armarLead(c, agente, await mensajesDeConversacion(conversacionId));
+      } catch {
+        noLeidas += 1;
+        return null;
+      }
     })
   ).filter((l): l is LeadInteraccion => l !== null);
 
@@ -230,9 +240,10 @@ export async function computeInteraccion(
       ftd: mios.filter(({ c }) => isFtdEfectuado(c) && hasOwnAffiliateLink(c)).length,
     },
     recortado,
+    noLeidas,
     generadoEn: new Date(ahora).toISOString(),
   };
 
-  cache.set(llave, { en: ahora, datos });
+  if (noLeidas === 0) cache.set(llave, { en: ahora, datos });
   return datos;
 }
