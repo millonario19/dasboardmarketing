@@ -16,6 +16,8 @@ const VERDE_SUAVE = "#EEF7F2";
 const GRIS = "#9A998F";
 const GRIS_2 = "#5E5C56";
 
+const CLAVE_LISTA = "op_interaccion_abierta";
+
 /** Verde hasta 5 minutos, ámbar hasta una hora, rojo de ahí en adelante. */
 function tono(min: number | null | undefined): { color: string; fondo: string } {
   if (min == null) return { color: GRIS_2, fondo: "#F3F2ED" };
@@ -200,6 +202,30 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
   const [error, setError] = useState<string | null>(null);
   const [agente, setAgente] = useState("todos");
   const [abierto, setAbierto] = useState<string | null>(null);
+  // La lista arranca plegada: arriba quedan los números, y el detalle se abre
+  // cuando hace falta. La elección se recuerda para no tener que repetirla
+  // cada vez que se entra al tablero.
+  const [lista, setLista] = useState(false);
+
+  useEffect(() => {
+    try {
+      setLista(localStorage.getItem(CLAVE_LISTA) === "1");
+    } catch {
+      /* modo privado */
+    }
+  }, []);
+
+  function alternarLista() {
+    setLista((v) => {
+      const nuevo = !v;
+      try {
+        localStorage.setItem(CLAVE_LISTA, nuevo ? "1" : "0");
+      } catch {
+        /* modo privado */
+      }
+      return nuevo;
+    });
+  }
 
   const cargar = useCallback((quien: string) => {
     setCargando(true);
@@ -211,7 +237,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
       })
       .then((d: Interaccion) => {
         setDatos(d);
-        setAbierto(d.leads[0]?.id ?? null);
+        setAbierto(null);
       })
       .catch((e) => setError(e.message))
       .finally(() => setCargando(false));
@@ -298,6 +324,31 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           ))}
         </div>
 
+        {/* El botón lleva encima lo urgente: aunque la lista esté cerrada, se
+            ve si hay alguien esperando sin respuesta. */}
+        {datos && datos.leads.length > 0 && (
+          <button
+            onClick={alternarLista}
+            aria-expanded={lista}
+            className="w-full flex items-center gap-3 px-5 sm:px-7 py-3.5 hover:bg-page border-b border-gridline"
+          >
+            <span className="text-[13.5px] font-semibold">
+              {lista ? "Ocultar conversaciones" : `Ver las ${datos.leads.length} conversaciones`}
+            </span>
+            {!lista && (datos.resumen.sinResponder > 0) && (
+              <span
+                className="text-[11px] font-bold rounded-full px-2.5 py-1"
+                style={{ background: ROJO, color: "#fff" }}
+              >
+                {datos.resumen.sinResponder} sin responder
+              </span>
+            )}
+            <span className="ml-auto text-[13px]" style={{ color: GRIS }}>
+              {lista ? "▲" : "▼"}
+            </span>
+          </button>
+        )}
+
         {error && <p className="px-5 sm:px-7 py-5 text-[13px] text-series2">{error}</p>}
         {cargando && !datos && (
           <p className="px-5 sm:px-7 py-5 text-[13px]" style={{ color: GRIS }}>
@@ -311,7 +362,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           </p>
         )}
 
-        {datos && datos.leads.length > 0 && (
+        {datos && datos.leads.length > 0 && lista && (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse" style={{ minWidth: 860 }}>
               <thead>
@@ -403,7 +454,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           </div>
         )}
 
-        {(datos?.recortado || (datos?.noLeidas ?? 0) > 0) && (
+        {lista && (datos?.recortado || (datos?.noLeidas ?? 0) > 0) && (
           <p className="px-5 sm:px-7 py-3 text-[12px] border-t border-gridline" style={{ color: GRIS }}>
             {datos?.recortado && "Se revisaron las primeras 60 conversaciones del día. "}
             {(datos?.noLeidas ?? 0) > 0 &&
@@ -412,7 +463,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
         )}
       </div>
 
-      {lead && <Conversacion lead={lead} onCerrar={() => setAbierto(null)} />}
+      {lista && lead && <Conversacion lead={lead} onCerrar={() => setAbierto(null)} />}
     </section>
   );
 }
