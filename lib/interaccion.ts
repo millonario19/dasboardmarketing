@@ -46,9 +46,17 @@ async function enTandas<T, R>(items: T[], hacer: (x: T) => Promise<R>): Promise<
 // mensaje entrante del cliente, pero no lo escribió nadie.
 const ES_FORMULARIO = /^\*Headline:\*/;
 
+// WhatsApp manda las notas de voz en .ogg; el resto de adjuntos (fotos,
+// documentos) no se reproducen y quedan afuera.
+const ES_AUDIO = /\.(ogg|oga|mp3|m4a|aac|wav|opus)(\?|$)/i;
+
 export type Turno = {
   quien: "cliente" | "flujo" | "agente";
   hora: string;
+  // URL del adjunto cuando el mensaje es una nota de voz. GHL la sirve
+  // directa, así que se puede escuchar desde acá en vez de quedarse con «no
+  // se puede leer».
+  audio: string | null;
   // null cuando el mensaje es una nota de voz o una imagen: GHL manda el
   // archivo, no su contenido. Se muestra como tal en vez de inventar texto.
   texto: string | null;
@@ -127,6 +135,7 @@ function armarLead(c: GhlContact, agente: string, mensajes: GhlMensaje[]): LeadI
     quien: quienEs(m),
     hora: m.dateAdded,
     texto: (m.body ?? "").trim() || null,
+    audio: (m.attachments ?? []).find((a) => ES_AUDIO.test(a)) ?? null,
   }));
 
   // El cliente "levanta la mano" con su primer mensaje propio.

@@ -142,6 +142,29 @@ async function cambiarTag(contactId: string, tag: string, metodo: "POST" | "DELE
 export const agregarTag = (contactId: string, tag: string) => cambiarTag(contactId, tag, "POST");
 export const quitarTag = (contactId: string, tag: string) => cambiarTag(contactId, tag, "DELETE");
 
+/**
+ * Corrige el nombre de un contacto en GHL.
+ *
+ * Media base viene del formulario de Facebook con lo que el cliente quiso
+ * escribir: «mi guía», «mi hijo», un corazón. El agente que ya habló con esa
+ * persona sabe cómo se llama, y es el único que lo sabe.
+ */
+export async function actualizarNombreContacto(
+  contactId: string,
+  firstName: string,
+  lastName: string
+): Promise<void> {
+  const res = await fetchWithRetry(`${GHL_BASE_URL}/contacts/${encodeURIComponent(contactId)}`, {
+    method: "PUT",
+    headers: ghlHeaders(),
+    body: JSON.stringify({ firstName, lastName }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`GHL no aceptó el nombre (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+}
+
 export type UsuarioGhl = { id: string; nombre: string; email: string | null };
 
 /**
@@ -210,7 +233,9 @@ export type GhlMensaje = {
   source?: string;
   body?: string;
   userId?: string;
-  attachments?: unknown[];
+  // WhatsApp manda las notas de voz y las imágenes como adjuntos, con el
+  // cuerpo vacío. La URL del .ogg es directa y se puede reproducir.
+  attachments?: string[];
 };
 
 /** La conversación de un contacto, o null si nunca hubo uno. */

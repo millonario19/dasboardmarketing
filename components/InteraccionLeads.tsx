@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { EditarNombre } from "@/components/EditarNombre";
+import { formatearTelefono } from "@/components/ContactoRapido";
 import type { Interaccion, LeadInteraccion, Turno } from "@/lib/interaccion";
 
 const AZUL = "#17457F";
@@ -178,14 +180,26 @@ function Mensaje({ turno, agente }: { turno: Turno; agente: string }) {
           }`}
           style={estilo}
         >
-          {turno.texto ?? (
-            <span className="inline-flex flex-col gap-1">
-              <span className="inline-flex items-center gap-2 text-[13.5px]">
-                <Onda /> nota de voz
+          {turno.texto ??
+            (turno.audio ? (
+              /* GHL sirve el .ogg directo, sin token. Antes acá decía «no se
+                 puede leer desde acá» y ahí terminaba: con agentes que
+                 contestan solo por audio, eso dejaba la mitad de la operación
+                 a ciegas. */
+              <span className="inline-flex flex-col gap-1.5">
+                <span className="inline-flex items-center gap-2 text-[12.5px] opacity-80">
+                  <Onda /> nota de voz
+                </span>
+                <audio controls preload="none" src={turno.audio} className="max-w-[260px] h-9" />
               </span>
-              <span className="text-[11px] italic opacity-70">no se puede leer desde acá</span>
-            </span>
-          )}
+            ) : (
+              <span className="inline-flex flex-col gap-1">
+                <span className="inline-flex items-center gap-2 text-[13.5px]">
+                  <Onda /> nota de voz
+                </span>
+                <span className="text-[11px] italic opacity-70">GHL no devolvió el archivo</span>
+              </span>
+            ))}
         </div>
         <div
           className={`text-[11px] mt-1.5 flex gap-2 ${
@@ -200,7 +214,15 @@ function Mensaje({ turno, agente }: { turno: Turno; agente: string }) {
   );
 }
 
-function Conversacion({ lead, onCerrar }: { lead: LeadInteraccion; onCerrar: () => void }) {
+function Conversacion({
+  lead,
+  onCerrar,
+  onRenombrado,
+}: {
+  lead: LeadInteraccion;
+  onCerrar: () => void;
+  onRenombrado: (nombre: string) => void;
+}) {
   return (
     <section className="bg-surface border border-gridline rounded-[22px] overflow-hidden mb-4">
       <div
@@ -209,7 +231,10 @@ function Conversacion({ lead, onCerrar }: { lead: LeadInteraccion; onCerrar: () 
       >
         <Inicial nombre={lead.nombre} tamano={44} />
         <div>
-          <div className="text-[17px] font-semibold tracking-[-0.02em]">{lead.nombre}</div>
+          <div className="text-[17px] font-semibold tracking-[-0.02em] flex items-center gap-2">
+            {lead.nombre}
+            <EditarNombre contactId={lead.id} nombre={lead.nombre} onCambiado={onRenombrado} />
+          </div>
           <div className="text-[12.5px]" style={{ color: GRIS }}>
             {lead.agente} · entró el {fechaCorta(lead.creado)}
             {lead.telefono && <> · {lead.telefono}</>}
@@ -375,6 +400,12 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
     },
     []
   );
+
+  const renombrado = useCallback((contactId: string, nombre: string) => {
+    const cambiar = (l: LeadInteraccion) => (l.id === contactId ? { ...l, nombre } : l);
+    setDatos((prev) => (prev ? { ...prev, leads: prev.leads.map(cambiar) } : prev));
+    setBusqueda((prev) => (prev ? { ...prev, leads: prev.leads.map(cambiar) } : prev));
+  }, []);
 
   const limpiarBusqueda = useCallback(() => {
     setBusqueda(null);
@@ -594,11 +625,20 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                         <span className="flex items-center gap-3">
                           <Inicial nombre={l.nombre} />
                           <span className="min-w-0">
-                            <span className="block text-[14.5px] font-semibold tracking-[-0.015em] whitespace-nowrap">
+                            <span className="flex items-center gap-1.5 text-[14.5px] font-semibold tracking-[-0.015em] whitespace-nowrap">
                               {l.nombre}
+                              <EditarNombre
+                                contactId={l.id}
+                                nombre={l.nombre}
+                                onCambiado={(n) => renombrado(l.id, n)}
+                              />
                             </span>
+                            {/* El teléfono al lado del agente: media base llega
+                                del formulario con nombres como «.» o «mi guía»,
+                                y sin el número esa fila no identifica a nadie. */}
                             <span className="block text-[11.5px] mt-0.5 whitespace-nowrap" style={{ color: GRIS }}>
                               {l.agente}
+                              {l.telefono && <> · {formatearTelefono(l.telefono)}</>}
                             </span>
                           </span>
                         </span>
@@ -667,7 +707,13 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
         )}
       </div>
 
-      {lista && lead && <Conversacion lead={lead} onCerrar={() => setAbierto(null)} />}
+      {lista && lead && (
+        <Conversacion
+          lead={lead}
+          onCerrar={() => setAbierto(null)}
+          onRenombrado={(n) => renombrado(lead.id, n)}
+        />
+      )}
     </section>
   );
 }

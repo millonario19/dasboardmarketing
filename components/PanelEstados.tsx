@@ -4,6 +4,7 @@ import { Fragment, useCallback, useState } from "react";
 import { ESTADOS, ESTADO_META, accionSugerida, type EstadoLead } from "@/lib/leadStates";
 import { ConfirmarBajada, guardarConfirmacion } from "@/components/ConfirmarBajada";
 import { ContactoRapido } from "@/components/ContactoRapido";
+import { EditarNombre } from "@/components/EditarNombre";
 import type { LeadDeEstado, PanelEstados as Datos } from "@/lib/metrics";
 
 const SEVERIDAD = {
@@ -113,6 +114,14 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
     },
     [abierto, cerrarLista, rangoActual]
   );
+
+  // Igual que la confirmación: el nombre se corrige en memoria en vez de
+  // recargar la lista entera desde GHL.
+  const renombrado = useCallback((contactId: string, nombre: string) => {
+    setLeads((prev) =>
+      prev ? { ...prev, leads: prev.leads.map((l) => (l.id === contactId ? { ...l, nombre } : l)) } : prev
+    );
+  }, []);
 
   // La respuesta se guarda en GHL y el lead se actualiza en memoria. Recargar
   // la lista entera volvería a pegarle a GHL y haría parpadear la tabla en
@@ -284,6 +293,7 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
                   conAgente={!propio}
                   onCerrar={cerrarLista}
                   onResponder={responder}
+                  onRenombrado={renombrado}
                 />
               </div>
             )}
@@ -507,6 +517,7 @@ function ListaDeLeads({
   conAgente,
   onCerrar,
   onResponder,
+  onRenombrado,
 }: {
   estado: EstadoLead;
   datos: { leads: LeadDeEstado[]; total: number } | null;
@@ -515,6 +526,7 @@ function ListaDeLeads({
   conAgente: boolean;
   onCerrar: () => void;
   onResponder: (contactId: string, confirmado: boolean) => void;
+  onRenombrado: (contactId: string, nombre: string) => void;
 }) {
   const meta = ESTADO_META[estado];
   const leads = datos?.leads ?? [];
@@ -594,11 +606,14 @@ function ListaDeLeads({
                     className="border-t border-gridline"
                   >
                     <td className="px-4 py-2.5 text-[13.5px] font-bold text-ink-primary">
-                      {l.nombre}
+                      <span className="inline-flex items-center gap-1.5">
+                        {l.nombre}
+                        <EditarNombre contactId={l.id} nombre={l.nombre} onCambiado={(n) => onRenombrado(l.id, n)} />
+                      </span>
                       <Degradado estado={estado} lead={l} />
                     </td>
                     <td className="px-4 py-2.5 text-[13px]">
-                      <ContactoRapido telefono={l.telefono} nombre={l.nombre} tamano={28} />
+                      <ContactoRapido telefono={l.telefono} nombre={l.nombre} contactId={l.id} tamano={28} />
                     </td>
                     <td className="px-4 py-2.5 text-[13px] text-ink-secondary tabular-nums whitespace-nowrap">
                       {fechaCorta(l.creado)}
@@ -634,12 +649,13 @@ function ListaDeLeads({
                   className="flex-1 min-w-0 px-3.5 py-3"
                   style={{ background: `${meta.color}0D`, opacity: bajaDeTemperatura(estado, l) ? 0.6 : 1 }}
                 >
-                  <p className="text-[14.5px] font-bold text-ink-primary truncate">
+                  <p className="text-[14.5px] font-bold text-ink-primary flex items-center gap-1.5 flex-wrap">
                     {l.nombre}
+                    <EditarNombre contactId={l.id} nombre={l.nombre} onCambiado={(n) => onRenombrado(l.id, n)} />
                     <Degradado estado={estado} lead={l} />
                   </p>
                   <p className="text-[12.5px] text-ink-secondary mt-1 flex items-center gap-2 flex-wrap">
-                    <ContactoRapido telefono={l.telefono} nombre={l.nombre} tamano={30} />
+                    <ContactoRapido telefono={l.telefono} nombre={l.nombre} contactId={l.id} tamano={30} />
                     <span className="tabular-nums">· {fechaCorta(l.creado)}</span>
                   </p>
                   {conAgente && <p className="text-[12px] text-ink-muted mt-0.5">{l.agente}</p>}

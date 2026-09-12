@@ -240,7 +240,7 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
                     </td>
                     <td className="px-4 py-2.5 font-bold text-ink-primary">{c.name}</td>
                     <td className="px-4 py-2.5 text-ink-secondary tabular-nums whitespace-nowrap">
-                      <ContactoRapido telefono={c.phone} nombre={c.name} tamano={28} />
+                      <ContactoRapido telefono={c.phone} nombre={c.name} contactId={c.id} tamano={28} />
                     </td>
                     <td className="px-4 py-2.5 text-ink-secondary tabular-nums whitespace-nowrap">
                       {fecha(c.dateAdded)}
@@ -285,7 +285,7 @@ export function AgentDetail({ agentId, from, to }: { agentId: string | null; fro
                 <p className="text-[15px] font-extrabold text-ink-primary truncate">{c.name}</p>
                 <div className="flex items-center gap-2 text-[13px] text-ink-secondary mt-1.5">
                   <IconoTelefono />
-                  <ContactoRapido telefono={c.phone} nombre={c.name} tamano={28} />
+                  <ContactoRapido telefono={c.phone} nombre={c.name} contactId={c.id} tamano={28} />
                 </div>
                 <div className="flex items-center gap-2 text-[13px] text-ink-secondary mt-1">
                   <IconoReloj />

@@ -3,7 +3,8 @@
 import { useState } from "react";
 
 import { ESTADO_META, type EstadoLead } from "@/lib/leadStates";
-import { BotonLlamar, BotonWhatsApp, formatearTelefono } from "@/components/ContactoRapido";
+import { BotonWhatsApp, formatearTelefono } from "@/components/ContactoRapido";
+import { BotonLlamar, ReporteLlamada } from "@/components/Llamada";
 import { Inicial } from "@/components/EscalaEmbudo";
 import type { Bloque, LeadItem } from "@/lib/miDia";
 
@@ -99,7 +100,8 @@ function PildoraTemperatura({ estado }: { estado: EstadoLead }) {
 function Acciones({ lead, crm }: { lead: LeadItem; crm: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 justify-end">
-      <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} tamano={32} />
+      <ReporteLlamada contactId={lead.id} />
+      <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} contactId={lead.id} tamano={32} />
       <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={32} />
       <a
         href={crm}
