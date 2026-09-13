@@ -503,26 +503,28 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
     <section className="mb-8">
       <div className="bg-surface border border-gridline rounded-[22px] overflow-hidden mb-4">
         <div
-          className="flex items-start gap-5 flex-wrap px-5 sm:px-7 pt-6 pb-5"
+          className="flex items-center gap-x-3 gap-y-1.5 flex-wrap px-5 sm:px-7 py-2"
           style={{ background: AZUL, color: "#fff" }}
         >
-          <div>
-            <h2 className="text-[19px] font-semibold tracking-[-0.02em]">Interacción leads</h2>
-            <p className="text-[13px] mt-0.5 first-letter:uppercase" style={{ color: "rgba(255,255,255,.66)" }}>
+          {/* Título y fecha en el mismo renglón: en dos, la franja medía el
+              doble de lo que el contenido necesita. */}
+          <h2 className="text-[15px] font-semibold tracking-[-0.02em] leading-tight">
+            Interacción leads
+            <span className="font-normal text-[12px] ml-2 first-letter:uppercase" style={{ color: "rgba(255,255,255,.6)" }}>
               {(dia ? new Date(`${dia}T12:00:00-05:00`) : new Date()).toLocaleDateString("es-CO", {
                 weekday: "long",
                 day: "numeric",
                 month: "long",
                 timeZone: "America/Bogota",
               })}
-            </p>
-          </div>
-          <div className="ml-auto flex items-center gap-2 flex-wrap">
+            </span>
+          </h2>
+          <div className="ml-auto flex items-center gap-1.5 flex-wrap">
             {esAdmin && (
               <select
                 value={agente}
                 onChange={(e) => setAgente(e.target.value)}
-                className="rounded-full px-3.5 py-2 text-[12.5px] outline-none"
+                className="rounded-full px-3 py-1 text-[11.5px] outline-none"
                 style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
               >
                 <option value="todos" style={{ color: GRIS_2 }}>
@@ -538,7 +540,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
             <button
               onClick={() => cargar(agente, dia)}
               disabled={cargando}
-              className="rounded-full px-3.5 py-2 text-[12.5px] disabled:opacity-50 hover:opacity-80"
+              className="rounded-full px-3 py-1 text-[11.5px] disabled:opacity-50 hover:opacity-80"
               style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
             >
               {cargando ? "Leyendo…" : "↻ Actualizar"}
@@ -551,13 +553,13 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
               value={fecha}
               max={hoyBogota()}
               onChange={(e) => setFecha(e.target.value)}
-              className="rounded-full px-3 py-2 text-[12.5px] outline-none"
+              className="rounded-full px-2.5 py-1 text-[11.5px] outline-none"
               style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
             />
             <button
               onClick={() => cargar(agente, fecha === hoyBogota() ? null : fecha)}
               disabled={cargando}
-              className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-white disabled:opacity-50 hover:opacity-90"
+              className="rounded-full px-3 py-1 text-[11.5px] font-semibold text-white disabled:opacity-50 hover:opacity-90"
               style={{ background: AZUL_BOTON }}
             >
               <span className="sm:hidden">Ver</span>
