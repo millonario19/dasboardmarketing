@@ -510,7 +510,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           {/* En móvil los tres van apilados y centrados —título, controles,
               fecha—; desde sm vuelven a un renglón con la fecha al lado del
               título y los controles contra el borde. */}
-          <h2 className="order-1 text-[19px] sm:text-[16px] font-semibold tracking-[-0.02em] leading-tight">
+          <h2 className="order-1 text-[22px] sm:text-[17px] font-semibold tracking-[-0.02em] leading-tight">
             Interacción leads
           </h2>
           <span
@@ -529,7 +529,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
               <select
                 value={agente}
                 onChange={(e) => setAgente(e.target.value)}
-                className="rounded-full px-3 py-1 text-[11.5px] outline-none"
+                className="rounded-full px-2.5 py-[3px] text-[11px] outline-none"
                 style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
               >
                 <option value="todos" style={{ color: GRIS_2 }}>
@@ -545,7 +545,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
             <button
               onClick={() => cargar(agente, dia)}
               disabled={cargando}
-              className="rounded-full px-3 py-1 text-[11.5px] disabled:opacity-50 hover:opacity-80"
+              className="rounded-full px-2.5 py-[3px] text-[11px] disabled:opacity-50 hover:opacity-80"
               style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
             >
               {cargando ? "Leyendo…" : "↻ Actualizar"}
@@ -558,13 +558,13 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
               value={fecha}
               max={hoyBogota()}
               onChange={(e) => setFecha(e.target.value)}
-              className="rounded-full px-2.5 py-1 text-[11.5px] outline-none"
+              className="rounded-full px-2 py-[3px] text-[11px] outline-none w-[112px]"
               style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
             />
             <button
               onClick={() => cargar(agente, fecha === hoyBogota() ? null : fecha)}
               disabled={cargando}
-              className="rounded-full px-3 py-1 text-[11.5px] font-semibold text-white disabled:opacity-50 hover:opacity-90"
+              className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold text-white disabled:opacity-50 hover:opacity-90"
               style={{ background: AZUL_BOTON }}
             >
               <span className="sm:hidden">Ver</span>
