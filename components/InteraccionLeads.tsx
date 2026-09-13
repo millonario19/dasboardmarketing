@@ -510,7 +510,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           {/* En móvil los tres van apilados y centrados —título, controles,
               fecha—; desde sm vuelven a un renglón con la fecha al lado del
               título y los controles contra el borde. */}
-          <h2 className="order-1 text-[15px] font-semibold tracking-[-0.02em] leading-tight">
+          <h2 className="order-1 text-[19px] sm:text-[16px] font-semibold tracking-[-0.02em] leading-tight">
             Interacción leads
           </h2>
           <span
