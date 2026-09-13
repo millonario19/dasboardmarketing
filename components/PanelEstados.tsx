@@ -361,8 +361,11 @@ function Tarjeta({
         </span>
       </div>
 
-      <div className="px-4 pt-4 pb-3.5 flex-1">
-        <div className="flex items-baseline gap-1.5">
+      {/* En móvil las tarjetas ocupan el ancho entero y el contenido pegado
+          a la izquierda deja una franja muerta a la derecha. Centrado, la
+          tarjeta se lee como una unidad. */}
+      <div className="px-4 pt-4 pb-3.5 flex-1 text-center sm:text-left">
+        <div className="flex items-baseline gap-1.5 justify-center sm:justify-start">
           <strong
             className="text-[34px] font-extrabold leading-none tracking-[-0.045em] tabular-nums"
             style={{ color: valor > 0 ? meta.color : undefined }}
@@ -375,7 +378,7 @@ function Tarjeta({
         {/* Lo que define esta temperatura, un paso por renglón. No son las
             acciones de estos leads: son la regla por la que están acá, y por
             eso siguen estando cuando la tarjeta marca cero. */}
-        <div className="flex flex-col gap-[7px] mt-3.5">
+        <div className="flex flex-col gap-[7px] mt-3.5 items-center sm:items-start">
           {PASOS_DEL_ESTADO[estado].map((paso) => (
             <FilaDePaso key={paso} paso={paso} />
           ))}
@@ -387,7 +390,7 @@ function Tarjeta({
         onClick={onVerLeads}
         disabled={valor === 0}
         aria-expanded={abierto}
-        className="flex items-center justify-between w-full px-4 py-3 border-t border-gridline text-[13px] font-bold disabled:cursor-default enabled:hover:bg-page"
+        className="flex items-center justify-center sm:justify-between gap-2 w-full px-4 py-3 border-t border-gridline text-[13px] font-bold disabled:cursor-default enabled:hover:bg-page"
         style={valor === 0 ? { color: "var(--text-muted)", fontWeight: 500 } : { color: meta.color }}
       >
         {valor === 0 ? "Sin leads" : abierto ? "Ocultar la lista" : `Ver los ${valor} leads`}
