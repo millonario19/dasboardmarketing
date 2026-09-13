@@ -600,9 +600,9 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           <button
             onClick={alternarLista}
             aria-expanded={lista}
-            className="w-full flex items-center gap-3 px-5 sm:px-7 py-3.5 hover:bg-page border-b border-gridline"
+            className="w-full flex items-center gap-3 px-5 sm:px-7 py-2.5 hover:bg-page border-b border-gridline"
           >
-            <span className="text-[13.5px] font-semibold">
+            <span className="text-[12.5px] font-semibold">
               {lista ? "Ocultar conversaciones" : `Ver las ${enTabla.length} conversaciones`}
             </span>
             {!lista && (datos?.resumen.sinResponder ?? 0) > 0 && (
@@ -634,13 +634,13 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
 
         {enTabla.length > 0 && lista && (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: 960 }}>
+            <table className="w-full border-collapse" style={{ minWidth: 880 }}>
               <thead>
                 <tr style={{ background: CELESTE }}>
                   {["Nombre", "Mensaje lead", "Hora escribió", "Agente respondió", "Esperó", "Acciones"].map((c) => (
                     <th
                       key={c}
-                      className="px-4 sm:px-[18px] py-3 text-[10px] font-bold uppercase tracking-[.13em] text-ink-primary whitespace-nowrap"
+                      className="px-3 sm:px-4 py-2 text-[9.5px] font-bold uppercase tracking-[.12em] text-ink-secondary whitespace-nowrap"
                       style={{ textAlign: c === "Esperó" || c === "Acciones" ? "right" : "left" }}
                     >
                       {c}
@@ -659,11 +659,11 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                       className="border-b border-gridline last:border-b-0 cursor-pointer hover:bg-page"
                       style={{ background: sel ? AZUL_CLARO : l.pendiente ? ROJO_SUAVE : undefined }}
                     >
-                      <td className="px-4 sm:px-[18px] py-3.5" style={{ boxShadow: sel ? `inset 3px 0 0 ${AZUL}` : undefined }}>
-                        <span className="flex items-center gap-3">
-                          <Inicial nombre={l.nombre} />
+                      <td className="px-3 sm:px-4 py-2" style={{ boxShadow: sel ? `inset 3px 0 0 ${AZUL}` : undefined }}>
+                        <span className="flex items-center gap-2.5">
+                          <Inicial nombre={l.nombre} tamano={28} />
                           <span className="min-w-0">
-                            <span className="flex items-center gap-1.5 text-[14.5px] font-semibold tracking-[-0.015em] whitespace-nowrap">
+                            <span className="flex items-center gap-1.5 text-[13px] font-semibold tracking-[-0.015em] whitespace-nowrap">
                               {l.nombre}
                               <EditarNombre
                                 contactId={l.id}
@@ -674,7 +674,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                             {/* El teléfono al lado del agente: media base llega
                                 del formulario con nombres como «.» o «mi guía»,
                                 y sin el número esa fila no identifica a nadie. */}
-                            <span className="block text-[11.5px] mt-0.5 whitespace-nowrap" style={{ color: GRIS }}>
+                            <span className="block text-[10.5px] mt-px whitespace-nowrap" style={{ color: GRIS }}>
                               {l.agente}
                               {l.telefono && <> · {formatearTelefono(l.telefono)}</>}
                             </span>
@@ -685,29 +685,29 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                           la fila y descuadra toda la tabla. El texto completo
                           está a un clic, en la conversación. */}
                       <td
-                        className="px-4 sm:px-[18px] py-3.5 text-[13.5px] truncate"
-                        style={{ color: GRIS_2, maxWidth: 340 }}
+                        className="px-3 sm:px-4 py-2 text-[12.5px] truncate"
+                        style={{ color: GRIS_2, maxWidth: 300 }}
                         title={l.mensaje}
                       >
                         {l.mensaje}
                       </td>
-                      <td className="px-4 sm:px-[18px] py-3.5 text-[15px] font-semibold tabular-nums whitespace-nowrap">
+                      <td className="px-3 sm:px-4 py-2 text-[13.5px] font-semibold tabular-nums whitespace-nowrap">
                         {hora(l.escribio)}
-                        <small className="block text-[10.5px] font-normal mt-0.5" style={{ color: GRIS }}>
+                        <small className="block text-[10px] font-normal mt-px" style={{ color: GRIS }}>
                           {fechaCorta(l.escribio)} · el cliente
                         </small>
                       </td>
-                      <td className="px-4 sm:px-[18px] py-3.5 text-[15px] font-semibold tabular-nums whitespace-nowrap">
+                      <td className="px-3 sm:px-4 py-2 text-[13.5px] font-semibold tabular-nums whitespace-nowrap">
                         {l.respondio ? (
                           <>
                             {hora(l.respondio)}
-                            <small className="block text-[10.5px] font-normal mt-0.5" style={{ color: GRIS }}>
+                            <small className="block text-[10px] font-normal mt-px" style={{ color: GRIS }}>
                               {fechaCorta(l.respondio)} · {l.agente.split(" ")[0]}
                             </small>
                           </>
                         ) : (
                           <span
-                            className="inline-block rounded-full px-2.5 py-1 text-[10.5px] font-bold text-white"
+                            className="inline-block rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
                             style={{ background: ROJO }}
                           >
                             SIN RESPONDER
@@ -715,12 +715,12 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                         )}
                       </td>
                       <td
-                        className="px-4 sm:px-[18px] py-3.5 text-right text-[16px] font-bold tabular-nums whitespace-nowrap"
+                        className="px-3 sm:px-4 py-2 text-right text-[14px] font-bold tabular-nums whitespace-nowrap"
                         style={{ color: t.color }}
                       >
                         {duracion(l.esperaMin)}
                         {l.pendiente && (
-                          <small className="block text-[10.5px] font-normal" style={{ color: GRIS }}>
+                          <small className="block text-[10px] font-normal" style={{ color: GRIS }}>
                             y contando
                           </small>
                         )}
@@ -731,7 +731,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                           const avance = ultimoAvance(l.hitos);
                           return avance ? (
                             <small
-                              className="block text-[10.5px] font-bold mt-1 whitespace-nowrap"
+                              className="block text-[10px] font-bold mt-0.5 whitespace-nowrap"
                               style={{ color: VERDE }}
                             >
                               ✓ {avance.texto.replace("Bajó a WhatsApp Business", "bajó a WhatsApp")} {hora(avance.hora)}
@@ -739,7 +739,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                           ) : null;
                         })()}
                       </td>
-                      <td className="px-4 sm:px-[18px] py-3.5 text-right whitespace-nowrap">
+                      <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap">
                         <AbrirCrm url={l.crmUrl} />
                       </td>
                     </tr>
