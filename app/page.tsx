@@ -45,8 +45,8 @@ export default function DashboardPage() {
           ancho del documento. */}
       <div className="flex flex-col items-center text-center gap-3 mb-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left sm:gap-4">
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
-          <h1 className="text-[30px] sm:text-4xl md:text-5xl font-semibold text-ink-primary tracking-tight leading-[1.1]">
-            Marketing y Ventas
+          <h1 className="text-[21px] sm:text-[25px] font-semibold text-ink-primary tracking-tight leading-[1.15]">
+            CRM - Marketing
           </h1>
           <div className="flex items-center gap-2">
             {sesion && !esAdmin && (
