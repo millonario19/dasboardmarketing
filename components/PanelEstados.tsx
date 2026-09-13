@@ -238,31 +238,6 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
         </div>
       )}
 
-      {/* Barra de distribución: la proporción de los tres estados en una sola
-          línea, antes de entrar a los números. */}
-      {total > 0 && (
-        <div className="rounded-2xl bg-surface border border-gridline p-4 mb-3">
-          <div className="flex gap-1 h-3">
-            {ESTADOS.filter((e) => conteos[e] > 0).map((e) => (
-              <span
-                key={e}
-                className="rounded-full"
-                style={{ flex: conteos[e], background: ESTADO_META[e].color }}
-              />
-            ))}
-          </div>
-          <div className="grid grid-cols-3 gap-2 mt-3">
-            {ESTADOS.map((e) => (
-              <div key={e} className="flex items-center gap-2 text-[13px] font-semibold text-ink-secondary">
-                <i className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: ESTADO_META[e].color }} />
-                {ESTADO_META[e].nombre}
-                <b className="text-ink-primary tabular-nums">{conteos[e]}</b>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* La lista vive dentro de la grilla, justo detrás de su tarjeta, y se
           acomoda sola a cada pantalla:
 
@@ -473,10 +448,10 @@ function ListaDeLeads({
       {/* La cabecera iba en dos renglones y el siguiente paso ya está en la
           tarjeta, a dos centímetros: acá solo repetía. */}
       <header
-        className="flex items-center justify-between gap-3 px-3.5 py-2"
+        className="flex items-center justify-between gap-3 px-3.5 py-1.5"
         style={{ background: meta.color, color: meta.sobre }}
       >
-        <strong className="text-[13.5px] font-bold truncate">
+        <strong className="text-[12.5px] font-bold truncate">
           Leads en {meta.nombre}
           <span className="font-semibold ml-1.5" style={{ opacity: 0.8 }}>
             {datos ? `${datos.total}` : "…"}
@@ -484,7 +459,7 @@ function ListaDeLeads({
         </strong>
         <button
           onClick={onCerrar}
-          className="shrink-0 rounded-full px-3 py-1 text-[12px] font-bold hover:opacity-90"
+          className="shrink-0 rounded-full px-3 py-[3px] text-[11.5px] font-bold hover:opacity-90"
           style={{ background: `color-mix(in srgb, ${meta.sobre} 22%, transparent)`, color: meta.sobre }}
         >
           ← Regresar
