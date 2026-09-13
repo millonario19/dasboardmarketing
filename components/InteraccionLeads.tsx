@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { EditarNombre } from "@/components/EditarNombre";
 import { formatearTelefono } from "@/components/ContactoRapido";
+import { nombreCorto } from "@/lib/nombre";
 import type { Interaccion, LeadInteraccion, Turno } from "@/lib/interaccion";
 import type { Hito } from "@/lib/hitos";
 
@@ -634,13 +635,13 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
 
         {enTabla.length > 0 && lista && (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse" style={{ minWidth: 880 }}>
+            <table className="w-full border-collapse" style={{ minWidth: 720 }}>
               <thead>
                 <tr style={{ background: CELESTE }}>
                   {["Nombre", "Mensaje lead", "Hora escribió", "Agente respondió", "Esperó", "Acciones"].map((c) => (
                     <th
                       key={c}
-                      className="px-3 sm:px-4 py-2 text-[9.5px] font-bold uppercase tracking-[.12em] text-ink-secondary whitespace-nowrap"
+                      className="px-2.5 sm:px-3 py-2 text-[9.5px] font-bold uppercase tracking-[.12em] text-ink-secondary whitespace-nowrap"
                       style={{ textAlign: c === "Esperó" || c === "Acciones" ? "right" : "left" }}
                     >
                       {c}
@@ -659,7 +660,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                       className="border-b border-gridline last:border-b-0 cursor-pointer hover:bg-page"
                       style={{ background: sel ? AZUL_CLARO : l.pendiente ? ROJO_SUAVE : undefined }}
                     >
-                      <td className="px-3 sm:px-4 py-2" style={{ boxShadow: sel ? `inset 3px 0 0 ${AZUL}` : undefined }}>
+                      <td className="px-2.5 sm:px-3 py-2" style={{ boxShadow: sel ? `inset 3px 0 0 ${AZUL}` : undefined }}>
                         <span className="flex items-center gap-2.5">
                           <Inicial nombre={l.nombre} tamano={28} />
                           <span className="min-w-0">
@@ -675,7 +676,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                                 del formulario con nombres como «.» o «mi guía»,
                                 y sin el número esa fila no identifica a nadie. */}
                             <span className="block text-[10.5px] mt-px whitespace-nowrap" style={{ color: GRIS }}>
-                              {l.agente}
+                              {nombreCorto(l.agente)}
                               {l.telefono && <> · {formatearTelefono(l.telefono)}</>}
                             </span>
                           </span>
@@ -685,19 +686,19 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                           la fila y descuadra toda la tabla. El texto completo
                           está a un clic, en la conversación. */}
                       <td
-                        className="px-3 sm:px-4 py-2 text-[12.5px] truncate"
-                        style={{ color: GRIS_2, maxWidth: 300 }}
+                        className="px-2.5 sm:px-3 py-2 text-[12.5px] truncate"
+                        style={{ color: GRIS_2, maxWidth: 230 }}
                         title={l.mensaje}
                       >
                         {l.mensaje}
                       </td>
-                      <td className="px-3 sm:px-4 py-2 text-[13.5px] font-semibold tabular-nums whitespace-nowrap">
+                      <td className="px-2.5 sm:px-3 py-2 text-[13.5px] font-semibold tabular-nums whitespace-nowrap">
                         {hora(l.escribio)}
                         <small className="block text-[10px] font-normal mt-px" style={{ color: GRIS }}>
                           {fechaCorta(l.escribio)} · el cliente
                         </small>
                       </td>
-                      <td className="px-3 sm:px-4 py-2 text-[13.5px] font-semibold tabular-nums whitespace-nowrap">
+                      <td className="px-2.5 sm:px-3 py-2 text-[13.5px] font-semibold tabular-nums whitespace-nowrap">
                         {l.respondio ? (
                           <>
                             {hora(l.respondio)}
@@ -715,7 +716,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                         )}
                       </td>
                       <td
-                        className="px-3 sm:px-4 py-2 text-right text-[14px] font-bold tabular-nums whitespace-nowrap"
+                        className="px-2.5 sm:px-3 py-2 text-right text-[14px] font-bold tabular-nums whitespace-nowrap"
                         style={{ color: t.color }}
                       >
                         {duracion(l.esperaMin)}
@@ -739,7 +740,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
                           ) : null;
                         })()}
                       </td>
-                      <td className="px-3 sm:px-4 py-2 text-right whitespace-nowrap">
+                      <td className="px-2.5 sm:px-3 py-2 text-right whitespace-nowrap">
                         <AbrirCrm url={l.crmUrl} />
                       </td>
                     </tr>
