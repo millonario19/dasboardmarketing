@@ -11,14 +11,12 @@ import {
 import {
   estadoDeLead,
   accionesDeLead,
-  pasosDeLead,
   confirmacionDeBajada,
   TAG_BUSINESS,
   yaDeposito,
   interactuoAuto,
   conteoVacio,
   ESTADOS,
-  PASOS_EMBUDO,
   TAG_CONFIABLE_DESDE,
   TAG_INTERACCION_AUTO,
   type EstadoLead,
@@ -159,45 +157,9 @@ export type Alerta = {
   detalle: string;
 };
 
-// Qué hizo la gente dentro de cada estado, para que "Tibio: 36" no sea una
-// caja negra sino "36 respondieron, 12 además entraron al canal".
-//
-// Son totales POR ACCIÓN, no recorridos exclusivos: un mismo lead aparece en
-// varias filas y las filas NO suman el total del estado. Se eligió así porque
-// se lee mucho más rápido que listar cada combinación, y porque permite
-// mostrar las acciones que faltan con su casilla en cero.
-export type Desglose = { etiqueta: string; valor: number }[];
-
-// Cuenta, para cada estado, cuántos de sus leads dieron cada paso del embudo.
-// Los pasos en cero se mantienen: son justamente los que faltan.
-function contarAcciones(porEstado: Map<EstadoLead, number[]>, estado: EstadoLead, pasos: boolean[]) {
-  if (!porEstado.has(estado)) porEstado.set(estado, PASOS_EMBUDO.map(() => 0));
-  const cuenta = porEstado.get(estado)!;
-  pasos.forEach((dado, i) => {
-    if (dado) cuenta[i] += 1;
-  });
-}
-
-function aDesglose(
-  porEstado: Map<EstadoLead, number[]>,
-  conteos: Record<EstadoLead, number>
-): Record<EstadoLead, Desglose> {
-  const salida = {} as Record<EstadoLead, Desglose>;
-  for (const estado of ESTADOS) {
-    const cuenta = porEstado.get(estado) ?? PASOS_EMBUDO.map(() => 0);
-    // Los cinco pasos siempre, también los que nadie dio: una tarjeta de Frío
-    // con cuatro casillas vacías dice dónde se corta el camino, que es
-    // justamente lo que hay que ver.
-    salida[estado] = PASOS_EMBUDO.map((a, i) => ({ etiqueta: a, valor: cuenta[i] }));
-  }
-  return salida;
-}
-
 export type PanelEstados = {
   hoy: Record<EstadoLead, number>;
   mes: Record<EstadoLead, number>;
-  desgloseHoy: Record<EstadoLead, Desglose>;
-  desgloseMes: Record<EstadoLead, Desglose>;
   interaccion: {
     tasaHoy: number | null; // % sobre leads maduros de hoy, solo tag automático
     madurosHoy: number;
@@ -257,8 +219,6 @@ function calcularPanel(
 ): Omit<PanelEstados, "rango"> {
   const hoy = conteoVacio();
   const mes = conteoVacio();
-  const accionesHoy = new Map<EstadoLead, number[]>();
-  const accionesMes = new Map<EstadoLead, number[]>();
   const hoyStr = diaBogota(new Date(ahoraMs).toISOString());
   const desdeConfiable = TAG_CONFIABLE_DESDE[TAG_INTERACCION_AUTO];
 
@@ -277,13 +237,8 @@ function calcularPanel(
     const enPanel = !yaDeposito(contacto);
     if (enPanel) {
       const estado = estadoDeLead(contacto);
-      const pasos = pasosDeLead(contacto);
       mes[estado] += 1;
-      contarAcciones(accionesMes, estado, pasos);
-      if (t >= todayFromMs && t < todayToMs) {
-        hoy[estado] += 1;
-        contarAcciones(accionesHoy, estado, pasos);
-      }
+      if (t >= todayFromMs && t < todayToMs) hoy[estado] += 1;
     }
 
     if (!porDia.has(dia)) porDia.set(dia, { leads: 0, auto: 0 });
@@ -395,8 +350,6 @@ function calcularPanel(
   return {
     hoy,
     mes,
-    desgloseHoy: aDesglose(accionesHoy, hoy),
-    desgloseMes: aDesglose(accionesMes, mes),
     interaccion: { tasaHoy, madurosHoy, baseline, diasValidos: tasasPrevias.length },
     alertas,
   };
@@ -579,7 +532,6 @@ export async function listarLeadsPorEstado(
 
 export type EstadosDeUnRango = {
   conteos: Record<EstadoLead, number>;
-  desglose: Record<EstadoLead, Desglose>;
   total: number;
   depositaron: number;
 };
@@ -608,7 +560,6 @@ export async function computeEstadosDeUnRango(
   );
 
   const conteos = conteoVacio();
-  const acciones = new Map<EstadoLead, number[]>();
   let depositaron = 0;
 
   for (const contacto of leadContacts) {
@@ -618,12 +569,10 @@ export async function computeEstadosDeUnRango(
       depositaron += 1;
       continue;
     }
-    const estado = estadoDeLead(contacto);
-    conteos[estado] += 1;
-    contarAcciones(acciones, estado, pasosDeLead(contacto));
+    conteos[estadoDeLead(contacto)] += 1;
   }
 
-  return { conteos, desglose: aDesglose(acciones, conteos), total: leadContacts.length, depositaron };
+  return { conteos, total: leadContacts.length, depositaron };
 }
 
 // Igual que computeAgentProduction pero para un rango de fechas arbitrario

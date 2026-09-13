@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useState } from "react";
 import { ESTADOS, ESTADO_META, accionSugerida, type EstadoLead } from "@/lib/leadStates";
 import { ConfirmarBajada, guardarConfirmacion } from "@/components/ConfirmarBajada";
+import { FilaDePaso, PASOS_DEL_ESTADO } from "@/components/IconosEmbudo";
 import { ContactoRapido } from "@/components/ContactoRapido";
 import { EditarNombre } from "@/components/EditarNombre";
 import type { LeadDeEstado, PanelEstados as Datos } from "@/lib/metrics";
@@ -30,7 +31,6 @@ function enEspanol(iso: string): string {
 type Dia = {
   fecha: string;
   conteos: Record<EstadoLead, number>;
-  desglose: Record<EstadoLead, { etiqueta: string; valor: number }[]>;
   total: number;
   depositaron: number;
 };
@@ -145,7 +145,6 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
   }, []);
 
   const conteos = dia ? dia.conteos : datos[ventana];
-  const desglose = dia ? dia.desglose : ventana === "hoy" ? datos.desgloseHoy : datos.desgloseMes;
   const total = ESTADOS.reduce((s, e) => s + conteos[e], 0);
 
   const { tasaHoy, madurosHoy, baseline, diasValidos } = datos.interaccion;
@@ -279,7 +278,6 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
               estado={estado}
               valor={conteos[estado]}
               total={total}
-              desglose={desglose[estado] ?? []}
               abierto={abierto === estado}
               onVerLeads={() => verLeads(estado)}
             />
@@ -361,14 +359,12 @@ function Tarjeta({
   estado,
   valor,
   total,
-  desglose,
   abierto,
   onVerLeads,
 }: {
   estado: EstadoLead;
   valor: number;
   total: number;
-  desglose: { etiqueta: string; valor: number }[];
   abierto: boolean;
   onVerLeads: () => void;
 }) {
@@ -376,119 +372,59 @@ function Tarjeta({
   const pct = total > 0 ? (valor / total) * 100 : 0;
 
   return (
-    <article
-      className="rounded-2xl overflow-hidden flex flex-col"
-      style={{
-        background: `color-mix(in srgb, ${meta.color} 14%, var(--surface-1))`,
-        border: `2px solid ${meta.color}`,
-      }}
-    >
-      {/* Bloque de color macizo: el número y el estado se leen de lejos. */}
-      <div className="p-4 pb-4" style={{ background: meta.color, color: meta.sobre }}>
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-[17px] font-extrabold tracking-tight">{meta.nombre}</span>
-          <span
-            className="text-[13px] font-extrabold rounded-full px-2.5 py-1 tabular-nums"
-            style={{ background: `color-mix(in srgb, ${meta.sobre} 20%, transparent)` }}
+    <article className="rounded-[18px] overflow-hidden flex flex-col bg-surface border border-gridline">
+      {/* Franja delgada: alcanza para saber de qué tarjeta se trata. Antes era
+          un bloque macizo con el número gigante adentro, y el color pesaba más
+          que el dato. */}
+      <div
+        className="flex items-center px-4 py-2.5 text-[13px] font-bold tracking-tight"
+        style={{ background: meta.color, color: meta.sobre }}
+      >
+        {meta.nombre}
+        <span className="ml-auto text-[12px] font-semibold tabular-nums" style={{ opacity: 0.85 }}>
+          {pct.toFixed(0)}%
+        </span>
+      </div>
+
+      <div className="px-4 pt-4 pb-3.5 flex-1">
+        <div className="flex items-baseline gap-1.5">
+          <strong
+            className="text-[34px] font-extrabold leading-none tracking-[-0.045em] tabular-nums"
+            style={{ color: valor > 0 ? meta.color : undefined }}
           >
-            {pct.toFixed(1)}%
-          </span>
+            {valor}
+          </strong>
+          <span className="text-[13px] font-semibold text-ink-muted">de {total}</span>
         </div>
 
-        <div className="flex items-baseline gap-2 mt-2.5">
-          <strong className="text-[44px] font-extrabold leading-none tracking-tighter tabular-nums">{valor}</strong>
-          <span className="text-[14px] font-semibold" style={{ opacity: 0.75 }}>
-            de {total}
-          </span>
-        </div>
-        <p className="text-[14px] font-semibold mt-1">{meta.que}</p>
-
-        <div
-          className="h-1.5 rounded-full mt-3 overflow-hidden"
-          style={{ background: `color-mix(in srgb, ${meta.sobre} 25%, transparent)` }}
-        >
-          <span className="block h-full rounded-full" style={{ width: `${pct}%`, background: meta.sobre }} />
+        {/* Lo que define esta temperatura, un paso por renglón. No son las
+            acciones de estos leads: son la regla por la que están acá, y por
+            eso siguen estando cuando la tarjeta marca cero. */}
+        <div className="flex flex-col gap-[7px] mt-3.5">
+          {PASOS_DEL_ESTADO[estado].map((paso) => (
+            <FilaDePaso key={paso} paso={paso} />
+          ))}
         </div>
       </div>
 
-      {/* Checklist: cuántos de estos leads hicieron cada paso del embudo. Los
-          pasos en cero quedan apagados a propósito: son los que faltan. */}
-      <div className="p-3 flex flex-col gap-3 flex-1">
-        <div
-          className="rounded-xl px-3"
-          style={{ background: `color-mix(in srgb, ${meta.color} 24%, var(--surface-1))` }}
-        >
-          {desglose.map((d, i) => {
-            const hecho = d.valor > 0;
-            return (
-              <div
-                key={d.etiqueta}
-                className="flex items-center gap-2.5 py-2"
-                style={{
-                  borderTop: i === 0 ? undefined : `1px solid color-mix(in srgb, ${meta.color} 32%, var(--surface-1))`,
-                  opacity: hecho ? 1 : 0.55,
-                }}
-              >
-                <span
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-extrabold shrink-0"
-                  style={
-                    hecho
-                      ? { background: meta.fuerte, color: meta.sobreFuerte }
-                      : { background: "var(--surface-1)", color: "var(--text-muted)", boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.12)" }
-                  }
-                >
-                  {hecho ? "✓" : i + 1}
-                </span>
-
-                {/* Sin la barrita de proporción de cada fila: con cinco
-                    pasos eran cinco barras compitiendo con el número que está
-                    al lado y diciendo lo mismo. */}
-                <p className="flex-1 min-w-0 text-[12.5px] font-bold leading-snug text-ink-primary">
-                  {d.etiqueta}
-                </p>
-
-                <span
-                  className="min-w-[34px] h-8 px-1.5 rounded-lg flex items-center justify-center text-[15px] font-extrabold tabular-nums shrink-0"
-                  style={
-                    hecho
-                      ? { background: meta.color, color: meta.sobre }
-                      : { background: "var(--surface-1)", color: "var(--text-muted)" }
-                  }
-                >
-                  {d.valor}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Lo único accionable de la tarjeta. Ocupaba el ancho entero, con
-            recuadro de color, ícono y dos renglones: pesaba más que el número
-            del estado, que es lo que la tarjeta viene a decir. Ahora es una
-            etiqueta al pie, del ancho de su texto. */}
-        <div className="mt-auto pt-1">
-          <small className="block text-[10px] font-semibold uppercase tracking-wider text-ink-muted mb-1">
-            Siguiente paso
-          </small>
-          <span
-            className="inline-block max-w-full rounded-lg px-2.5 py-1.5 text-[12px] font-bold leading-snug"
-            style={{ background: `color-mix(in srgb, ${meta.fuerte} 12%, var(--surface-1))`, color: meta.fuerte }}
-          >
-            {accionSugerida(estado)}
-          </span>
-        </div>
-
-        {/* De número a lista: sin esto, "Frío: 47" no se puede trabajar. */}
-        <button
-          onClick={onVerLeads}
-          disabled={valor === 0}
-          aria-expanded={abierto}
-          className="w-full rounded-xl px-3 py-2.5 text-[12.5px] font-extrabold disabled:opacity-40 disabled:cursor-default hover:opacity-90"
-          style={{ background: meta.color, color: meta.sobre }}
-        >
-          {valor === 0 ? "Sin leads" : abierto ? "Ocultar lista ▲" : `Ver leads (${valor}) ▼`}
-        </button>
+      <div className="px-4 py-3 border-t border-gridline">
+        <small className="block text-[9.5px] font-bold uppercase tracking-wider text-ink-muted mb-0.5">
+          Siguiente paso
+        </small>
+        <p className="text-[12.5px] font-semibold leading-snug">{accionSugerida(estado)}</p>
       </div>
+
+      {/* De número a lista: sin esto, "Frío: 47" no se puede trabajar. */}
+      <button
+        onClick={onVerLeads}
+        disabled={valor === 0}
+        aria-expanded={abierto}
+        className="flex items-center justify-between w-full px-4 py-3 border-t border-gridline text-[13px] font-bold disabled:cursor-default enabled:hover:bg-page"
+        style={valor === 0 ? { color: "var(--text-muted)", fontWeight: 500 } : { color: meta.color }}
+      >
+        {valor === 0 ? "Sin leads" : abierto ? "Ocultar la lista" : `Ver los ${valor} leads`}
+        <span className="text-[10px] opacity-50">{valor === 0 ? "" : abierto ? "▲" : "▼"}</span>
+      </button>
     </article>
   );
 }
@@ -502,13 +438,6 @@ function fechaCorta(iso: string): string {
   });
 }
 
-/**
- * La lista de una tarjeta, desplegada a lo ancho.
- *
- * Muestra qué hizo cada lead y no solo su nombre: dos leads Tibios pueden ser
- * uno que respondió y otro que solo entró al canal, y el siguiente paso del
- * agente no es el mismo.
- */
 function ListaDeLeads({
   estado,
   datos,
