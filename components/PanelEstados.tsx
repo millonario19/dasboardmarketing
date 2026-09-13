@@ -352,11 +352,13 @@ function Tarjeta({
           un bloque macizo con el número gigante adentro, y el color pesaba más
           que el dato. */}
       <div
-        className="flex items-center px-4 py-2.5 text-[13px] font-bold tracking-tight"
+        className="flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 text-[13px] font-bold tracking-tight"
         style={{ background: meta.color, color: meta.sobre }}
       >
         {meta.plural}
-        <span className="ml-auto text-[12px] font-semibold tabular-nums" style={{ opacity: 0.85 }}>
+        {/* En móvil el porcentaje viaja pegado al título, centrado con él; en
+            pantallas anchas se va al borde derecho. */}
+        <span className="sm:ml-auto text-[12px] font-semibold tabular-nums" style={{ opacity: 0.85 }}>
           {pct.toFixed(0)}%
         </span>
       </div>
