@@ -355,7 +355,7 @@ function Tarjeta({
         className="flex items-center px-4 py-2.5 text-[13px] font-bold tracking-tight"
         style={{ background: meta.color, color: meta.sobre }}
       >
-        {meta.nombre}
+        {meta.plural}
         <span className="ml-auto text-[12px] font-semibold tabular-nums" style={{ opacity: 0.85 }}>
           {pct.toFixed(0)}%
         </span>
@@ -447,7 +447,7 @@ function ListaDeLeads({
         style={{ background: meta.color, color: meta.sobre }}
       >
         <strong className="text-[10px] font-bold uppercase tracking-[.1em] leading-[15px] truncate">
-          Leads en {meta.nombre}
+          {meta.plural}
           <span className="font-semibold ml-1.5 tracking-normal" style={{ opacity: 0.85 }}>
             {datos ? `${datos.total}` : "…"}
           </span>

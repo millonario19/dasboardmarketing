@@ -44,6 +44,9 @@ export const ESTADO_META: Record<
   EstadoLead,
   {
     nombre: string;
+    // Cómo se titula la tarjeta: «Frío» solo describe la temperatura, «Leads
+    // fríos» dice de qué está hablando la tarjeta.
+    plural: string;
     que: string;
     // Escala de temperatura: azul frío, naranja tibio, rojo caliente. Los
     // tres van en bloque saturado con letra blanca, que es lo que da el
@@ -57,6 +60,7 @@ export const ESTADO_META: Record<
 > = {
   frio: {
     nombre: "Frío",
+    plural: "Leads fríos",
     que: "No hizo nada",
     color: "#2A78D6",
     sobre: "#FFFFFF",
@@ -65,6 +69,7 @@ export const ESTADO_META: Record<
   },
   tibio: {
     nombre: "Tibio",
+    plural: "Leads tibios",
     que: "Respondió o entró al canal",
     color: "#FACC15",
     // Único estado con texto oscuro: sobre amarillo, el blanco no se lee.
@@ -74,6 +79,7 @@ export const ESTADO_META: Record<
   },
   caliente: {
     nombre: "Caliente",
+    plural: "Leads calientes",
     que: "Bajó a WhatsApp o se registró",
     color: "#DC2626",
     sobre: "#FFFFFF",
