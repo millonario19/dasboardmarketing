@@ -504,23 +504,27 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
     <section className="mb-8">
       <div className="bg-surface border border-gridline rounded-[22px] overflow-hidden mb-4">
         <div
-          className="flex items-center gap-x-3 gap-y-1.5 flex-wrap px-5 sm:px-7 py-2"
+          className="flex flex-col items-center text-center gap-1.5 px-5 sm:px-7 py-2 sm:flex-row sm:flex-wrap sm:items-center sm:text-left sm:gap-x-3"
           style={{ background: AZUL, color: "#fff" }}
         >
-          {/* Título y fecha en el mismo renglón: en dos, la franja medía el
-              doble de lo que el contenido necesita. */}
-          <h2 className="text-[15px] font-semibold tracking-[-0.02em] leading-tight">
+          {/* En móvil los tres van apilados y centrados —título, controles,
+              fecha—; desde sm vuelven a un renglón con la fecha al lado del
+              título y los controles contra el borde. */}
+          <h2 className="order-1 text-[15px] font-semibold tracking-[-0.02em] leading-tight">
             Interacción leads
-            <span className="font-normal text-[12px] ml-2 first-letter:uppercase" style={{ color: "rgba(255,255,255,.6)" }}>
-              {(dia ? new Date(`${dia}T12:00:00-05:00`) : new Date()).toLocaleDateString("es-CO", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                timeZone: "America/Bogota",
-              })}
-            </span>
           </h2>
-          <div className="ml-auto flex items-center gap-1.5 flex-wrap">
+          <span
+            className="order-3 sm:order-2 text-[12px] first-letter:uppercase"
+            style={{ color: "rgba(255,255,255,.6)" }}
+          >
+            {(dia ? new Date(`${dia}T12:00:00-05:00`) : new Date()).toLocaleDateString("es-CO", {
+              weekday: "long",
+              day: "numeric",
+              month: "long",
+              timeZone: "America/Bogota",
+            })}
+          </span>
+          <div className="order-2 sm:order-3 sm:ml-auto flex items-center justify-center gap-1.5 flex-wrap">
             {esAdmin && (
               <select
                 value={agente}
