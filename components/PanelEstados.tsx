@@ -448,10 +448,10 @@ function ListaDeLeads({
       {/* La cabecera iba en dos renglones y el siguiente paso ya está en la
           tarjeta, a dos centímetros: acá solo repetía. */}
       <header
-        className="flex items-center justify-between gap-3 px-3.5 py-1.5"
+        className="flex items-center justify-between gap-3 px-3.5 py-1"
         style={{ background: meta.color, color: meta.sobre }}
       >
-        <strong className="text-[12.5px] font-bold truncate">
+        <strong className="text-[11.5px] font-bold truncate">
           Leads en {meta.nombre}
           <span className="font-semibold ml-1.5" style={{ opacity: 0.8 }}>
             {datos ? `${datos.total}` : "…"}
@@ -459,7 +459,7 @@ function ListaDeLeads({
         </strong>
         <button
           onClick={onCerrar}
-          className="shrink-0 rounded-full px-3 py-[3px] text-[11.5px] font-bold hover:opacity-90"
+          className="shrink-0 rounded-full px-2.5 py-0 text-[11px] font-bold leading-[18px] hover:opacity-90"
           style={{ background: `color-mix(in srgb, ${meta.sobre} 22%, transparent)`, color: meta.sobre }}
         >
           ← Regresar
