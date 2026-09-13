@@ -436,14 +436,6 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
   // lo que ya se cargó, y es null mientras se mira hoy.
   const [fecha, setFecha] = useState(hoyBogota);
   const [dia, setDia] = useState<string | null>(null);
-  // Buscar una persona concreta, sin importar el día en que entró.
-  const [texto, setTexto] = useState("");
-  const [busqueda, setBusqueda] = useState<{
-    texto: string;
-    leads: LeadInteraccion[];
-    encontrados: number;
-  } | null>(null);
-  const [buscando, setBuscando] = useState(false);
   const [abierto, setAbierto] = useState<string | null>(null);
   // La lista arranca plegada: arriba quedan los números, y el detalle se abre
   // cuando hace falta. La elección se recuerda para no tener que repetirla
@@ -490,49 +482,20 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
       .finally(() => setCargando(false));
   }, []);
 
-  const buscar = useCallback(
-    (quien: string, q: string) => {
-      const limpio = q.trim();
-      if (limpio.length < 3) {
-        setError("Escribí al menos 3 letras o dígitos para buscar");
-        return;
-      }
-      setBuscando(true);
-      setError(null);
-      fetch(`/api/interaccion/buscar?q=${encodeURIComponent(limpio)}&agente=${encodeURIComponent(quien)}`)
-        .then(async (r) => {
-          if (!r.ok) throw new Error((await r.json()).error ?? "Error al buscar");
-          return r.json();
-        })
-        .then((d: { leads: LeadInteraccion[]; encontrados: number }) => {
-          setBusqueda({ texto: limpio, leads: d.leads, encontrados: d.encontrados });
-          setAbierto(d.leads.length === 1 ? d.leads[0].id : null);
-          setLista(true);
-        })
-        .catch((e) => setError(e.message))
-        .finally(() => setBuscando(false));
-    },
-    []
-  );
-
+  // El nombre corregido se refleja en la lista sin volver a pedirla a GHL.
   const renombrado = useCallback((contactId: string, nombre: string) => {
-    const cambiar = (l: LeadInteraccion) => (l.id === contactId ? { ...l, nombre } : l);
-    setDatos((prev) => (prev ? { ...prev, leads: prev.leads.map(cambiar) } : prev));
-    setBusqueda((prev) => (prev ? { ...prev, leads: prev.leads.map(cambiar) } : prev));
-  }, []);
-
-  const limpiarBusqueda = useCallback(() => {
-    setBusqueda(null);
-    setTexto("");
-    setAbierto(null);
-    setError(null);
+    setDatos((prev) =>
+      prev
+        ? { ...prev, leads: prev.leads.map((l) => (l.id === contactId ? { ...l, nombre } : l)) }
+        : prev
+    );
   }, []);
 
   useEffect(() => {
     cargar(agente, null);
   }, [agente, cargar]);
 
-  const enTabla = busqueda ? busqueda.leads : datos?.leads ?? [];
+  const enTabla = datos?.leads ?? [];
   const lead = enTabla.find((l) => l.id === abierto) ?? null;
   const r = datos?.resumen;
 
@@ -603,45 +566,6 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           </div>
         </div>
 
-        {/* Buscar una persona. No filtra la lista del día: pregunta a GHL por
-            toda la pauta, porque «¿qué pasó con Julio?» no viene con la fecha
-            puesta y obligar a adivinar el día haría el buscador inútil. */}
-        <div className="flex items-center gap-2 px-5 sm:px-7 py-3 border-b border-gridline flex-wrap">
-          <input
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && buscar(agente, texto)}
-            placeholder="Buscar por nombre o teléfono…"
-            className="flex-1 min-w-[160px] rounded-full border border-gridline bg-page px-4 py-2 text-[13px] outline-none focus:border-[#2A6FB8]"
-          />
-          <button
-            onClick={() => buscar(agente, texto)}
-            disabled={buscando}
-            className="rounded-full px-4 py-2 text-[12.5px] font-semibold text-white disabled:opacity-50 hover:opacity-90"
-            style={{ background: AZUL_BOTON }}
-          >
-            {buscando ? "Buscando…" : "Buscar"}
-          </button>
-          {busqueda && (
-            <button
-              onClick={limpiarBusqueda}
-              className="rounded-full px-3.5 py-2 text-[12.5px] border border-gridline hover:bg-page"
-              style={{ color: GRIS_2 }}
-            >
-              ✕ Volver al día
-            </button>
-          )}
-        </div>
-
-        {busqueda && (
-          <p className="px-5 sm:px-7 py-2.5 text-[12.5px] border-b border-gridline" style={{ background: CELESTE, color: AZUL }}>
-            <b>{busqueda.encontrados}</b> coincidencia{busqueda.encontrados === 1 ? "" : "s"} con «{busqueda.texto}»
-            {busqueda.encontrados > busqueda.leads.length &&
-              ` — se leyeron las ${busqueda.leads.length} conversaciones más recientes`}
-            . Los números de arriba siguen siendo los del día.
-          </p>
-        )}
-
         {/* Cuentas exactas. Un promedio de una hora, cuando alguien esperó
             cinco, esconde justo el caso que hay que ver. */}
         <div className="flex flex-wrap border-y border-gridline">
@@ -679,7 +603,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
             <span className="text-[13.5px] font-semibold">
               {lista ? "Ocultar conversaciones" : `Ver las ${enTabla.length} conversaciones`}
             </span>
-            {!lista && !busqueda && (datos?.resumen.sinResponder ?? 0) > 0 && (
+            {!lista && (datos?.resumen.sinResponder ?? 0) > 0 && (
               <span
                 className="text-[11px] font-bold rounded-full px-2.5 py-1"
                 style={{ background: ROJO, color: "#fff" }}
@@ -700,11 +624,9 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
           </p>
         )}
 
-        {enTabla.length === 0 && !cargando && !buscando && (datos || busqueda) && (
+        {enTabla.length === 0 && !cargando && datos && (
           <p className="px-5 sm:px-7 py-5 text-[13px]" style={{ color: GRIS }}>
-            {busqueda
-              ? `Nadie coincide con «${busqueda.texto}».`
-              : "Todavía no hay conversaciones ese día."}
+            Todavía no hay conversaciones ese día.
           </p>
         )}
 
