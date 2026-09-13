@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useState } from "react";
-import { ESTADOS, ESTADO_META, accionSugerida, type EstadoLead } from "@/lib/leadStates";
+import { ESTADOS, ESTADO_META, type EstadoLead } from "@/lib/leadStates";
 import { ConfirmarBajada, guardarConfirmacion } from "@/components/ConfirmarBajada";
 import { FilaDePaso, PASOS_DEL_ESTADO } from "@/components/IconosEmbudo";
 import { ContactoRapido } from "@/components/ContactoRapido";
@@ -380,13 +380,6 @@ function Tarjeta({
             <FilaDePaso key={paso} paso={paso} />
           ))}
         </div>
-      </div>
-
-      <div className="px-4 py-3 border-t border-gridline">
-        <small className="block text-[9.5px] font-bold uppercase tracking-wider text-ink-muted mb-0.5">
-          Siguiente paso
-        </small>
-        <p className="text-[12.5px] font-semibold leading-snug">{accionSugerida(estado)}</p>
       </div>
 
       {/* De número a lista: sin esto, "Frío: 47" no se puede trabajar. */}

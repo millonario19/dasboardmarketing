@@ -170,18 +170,3 @@ export function recorridoDeLead(contacto: GhlContact): string {
   const acciones = accionesDeLead(contacto);
   return acciones.length === 0 ? "Solo entró, sin responder" : acciones.join(" + ");
 }
-
-/**
- * Qué le falta a un lead para subir un escalón. Es lo que convierte el panel
- * en algo accionable en vez de un gráfico más.
- */
-export function accionSugerida(estado: EstadoLead): string {
-  switch (estado) {
-    case "frio":
-      return "Nunca respondió — revisar si el agente escribió";
-    case "tibio":
-      return "Falta bajarlo a WhatsApp";
-    case "caliente":
-      return "Cerrar: registro y primer depósito";
-  }
-}
