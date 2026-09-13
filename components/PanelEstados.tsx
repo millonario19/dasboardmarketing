@@ -440,20 +440,22 @@ function ListaDeLeads({
     >
       {/* La cabecera iba en dos renglones y el siguiente paso ya está en la
           tarjeta, a dos centímetros: acá solo repetía. */}
+      {/* Una cinta, no una barra: el botón dejó de ser una pastilla con fondo
+          propio, que era lo que le daba el alto y el peso. */}
       <header
-        className="flex items-center justify-between gap-3 px-3 py-0.5"
+        className="flex items-center justify-between gap-3 px-3 py-[1px]"
         style={{ background: meta.color, color: meta.sobre }}
       >
-        <strong className="text-[11px] font-bold truncate leading-[16px]">
+        <strong className="text-[10px] font-bold uppercase tracking-[.1em] leading-[15px] truncate">
           Leads en {meta.nombre}
-          <span className="font-semibold ml-1.5" style={{ opacity: 0.8 }}>
+          <span className="font-semibold ml-1.5 tracking-normal" style={{ opacity: 0.85 }}>
             {datos ? `${datos.total}` : "…"}
           </span>
         </strong>
         <button
           onClick={onCerrar}
-          className="shrink-0 rounded-full px-2 py-0 text-[10.5px] font-bold leading-[16px] hover:opacity-90"
-          style={{ background: `color-mix(in srgb, ${meta.sobre} 22%, transparent)`, color: meta.sobre }}
+          className="shrink-0 text-[10.5px] font-semibold leading-[15px] hover:underline underline-offset-2"
+          style={{ color: meta.sobre, opacity: 0.9 }}
         >
           ← Regresar
         </button>
