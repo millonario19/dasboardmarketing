@@ -468,24 +468,23 @@ function ListaDeLeads({
   return (
     <section
       className="rounded-2xl overflow-hidden"
-      style={{ border: `2px solid ${meta.color}` }}
+      style={{ border: `1px solid ${meta.color}` }}
     >
+      {/* La cabecera iba en dos renglones y el siguiente paso ya está en la
+          tarjeta, a dos centímetros: acá solo repetía. */}
       <header
-        className="flex items-center justify-between gap-3 px-4 py-3"
+        className="flex items-center justify-between gap-3 px-3.5 py-2"
         style={{ background: meta.color, color: meta.sobre }}
       >
-        <div className="min-w-0">
-          <strong className="text-[15px] font-extrabold">Leads en {meta.nombre}</strong>
-          <span className="text-[13px] font-semibold ml-2" style={{ opacity: 0.8 }}>
+        <strong className="text-[13.5px] font-bold truncate">
+          Leads en {meta.nombre}
+          <span className="font-semibold ml-1.5" style={{ opacity: 0.8 }}>
             {datos ? `${datos.total}` : "…"}
           </span>
-          <p className="text-[12px] font-semibold" style={{ opacity: 0.8 }}>
-            {accionSugerida(estado)}
-          </p>
-        </div>
+        </strong>
         <button
           onClick={onCerrar}
-          className="shrink-0 rounded-full px-4 py-2 text-[12.5px] font-extrabold hover:opacity-90"
+          className="shrink-0 rounded-full px-3 py-1 text-[12px] font-bold hover:opacity-90"
           style={{ background: `color-mix(in srgb, ${meta.sobre} 22%, transparent)`, color: meta.sobre }}
         >
           ← Regresar
@@ -520,7 +519,7 @@ function ListaDeLeads({
                   ].map((c) => (
                     <th
                       key={c}
-                      className="px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap"
+                      className="px-3.5 py-2 text-[10px] font-bold uppercase tracking-wider whitespace-nowrap"
                     >
                       {c}
                     </th>
@@ -534,27 +533,27 @@ function ListaDeLeads({
                     style={{ background: `${meta.color}0D`, opacity: bajaDeTemperatura(estado, l) ? 0.6 : 1 }}
                     className="border-t border-gridline"
                   >
-                    <td className="px-4 py-2.5 text-[13.5px] font-bold text-ink-primary">
+                    <td className="px-3.5 py-1.5 text-[13px] font-bold text-ink-primary">
                       <span className="inline-flex items-center gap-1.5">
                         {l.nombre}
                         <EditarNombre contactId={l.id} nombre={l.nombre} onCambiado={(n) => onRenombrado(l.id, n)} />
                       </span>
                       <Degradado estado={estado} lead={l} />
                     </td>
-                    <td className="px-4 py-2.5 text-[13px]">
-                      <ContactoRapido telefono={l.telefono} nombre={l.nombre} contactId={l.id} tamano={28} />
+                    <td className="px-3.5 py-1.5 text-[13px]">
+                      <ContactoRapido telefono={l.telefono} nombre={l.nombre} contactId={l.id} tamano={26} />
                     </td>
-                    <td className="px-4 py-2.5 text-[13px] text-ink-secondary tabular-nums whitespace-nowrap">
+                    <td className="px-3.5 py-1.5 text-[12.5px] text-ink-secondary tabular-nums whitespace-nowrap">
                       {fechaCorta(l.creado)}
                     </td>
                     {conAgente && (
-                      <td className="px-4 py-2.5 text-[13px] text-ink-secondary whitespace-nowrap">{l.agente}</td>
+                      <td className="px-3.5 py-1.5 text-[12.5px] text-ink-secondary whitespace-nowrap">{l.agente}</td>
                     )}
-                    <td className="px-4 py-2.5">
+                    <td className="px-3.5 py-1.5">
                       <Acciones acciones={l.acciones} />
                     </td>
                     {conBajada && (
-                      <td className="px-4 py-2.5">
+                      <td className="px-3.5 py-1.5">
                         <ConfirmarBajada
                           marcado={l.marcadoBajada}
                           confirmacion={l.confirmacion}
@@ -632,7 +631,7 @@ function Acciones({ acciones }: { acciones: string[] }) {
       {acciones.map((a) => (
         <span
           key={a}
-          className="text-[11.5px] font-semibold rounded-full px-2 py-0.5 bg-page text-ink-secondary whitespace-nowrap"
+          className="text-[11px] font-semibold rounded-full px-2 py-[1px] bg-page text-ink-secondary whitespace-nowrap"
         >
           {a}
         </span>
