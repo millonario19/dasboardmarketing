@@ -638,7 +638,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
             <table className="w-full border-collapse" style={{ minWidth: 720 }}>
               <thead>
                 <tr style={{ background: CELESTE }}>
-                  {["Nombre", "Mensaje lead", "Hora escribió", "Agente respondió", "Esperó", "Acciones"].map((c) => (
+                  {["Nombre", "Mensaje lead", "Escribió", "Respondió", "Esperó", "Acciones"].map((c) => (
                     <th
                       key={c}
                       className="px-2.5 sm:px-3 py-2 text-[9.5px] font-bold uppercase tracking-[.12em] text-ink-secondary whitespace-nowrap"
