@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ESTADO_META } from "@/lib/leadStates";
 import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar, ReporteLlamada } from "@/components/Llamada";
+import { ConversacionLead } from "@/components/ConversacionLead";
 import type { DiaDeSeguimiento, LeadDeSeguimiento, Promesa, Seguimiento as Datos } from "@/lib/seguimiento";
 
 /**
@@ -39,7 +40,12 @@ const RESULTADO: Record<string, string> = {
 
 function FilaLead({ lead }: { lead: LeadDeSeguimiento }) {
   const meta = ESTADO_META[lead.estado];
+  // La lista dice a quién atender; la conversación dice qué decirle. Se carga
+  // solo al abrirla.
+  const [abierta, setAbierta] = useState(false);
+
   return (
+    <>
     <article className="flex items-center gap-2.5 px-4 sm:px-5 py-2 border-t border-gridline">
       <i className="w-1.5 h-8 rounded-full shrink-0" style={{ background: meta.color }} />
       <div className="min-w-0 flex-1">
@@ -57,11 +63,21 @@ function FilaLead({ lead }: { lead: LeadDeSeguimiento }) {
         </p>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          onClick={() => setAbierta((v) => !v)}
+          title="Ver la conversación"
+          className="rounded-full px-2 py-1 text-[11px] font-semibold"
+          style={{ background: CELESTE, color: AZUL }}
+        >
+          {abierta ? "Cerrar" : "Ver"}
+        </button>
         <ReporteLlamada contactId={lead.id} />
         <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} contactId={lead.id} tamano={26} />
         <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={26} />
       </div>
     </article>
+    {abierta && <ConversacionLead contactId={lead.id} />}
+    </>
   );
 }
 

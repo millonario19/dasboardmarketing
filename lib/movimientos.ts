@@ -38,6 +38,8 @@ export type Movimiento = {
   tipo: "mensaje" | "etiqueta";
   /** Lo que pasó, en una línea: el mensaje del cliente o el paso que dio. */
   detalle: string;
+  /** Quién escribió ese mensaje, cuando el movimiento es un mensaje. */
+  loDijo: "cliente" | "oficina" | null;
   /** Qué hacer con esto. Es lo único que convierte el feed en trabajo. */
   siguiente: string;
   estado: EstadoLead;
@@ -170,9 +172,13 @@ async function leerMovimientos(ahora: number): Promise<Movimiento[]> {
       hora: porMensaje ? new Date(horaMensaje).toISOString() : etiqueta!.hora,
       dia: horaFinal >= arrancaHoy ? "hoy" : "ayer",
       tipo: porMensaje ? "mensaje" : "etiqueta",
+      // Quién dijo la frase. Sin esto, el último mensaje del flujo automático
+      // —«Así es como operamos en vivo…»— se leía como si lo hubiera escrito
+      // el cliente, y las tres filas mostraban lo mismo.
       detalle: porMensaje
         ? (c.lastMessageBody || "").trim().slice(0, 160) || "Mandó un audio o una imagen"
         : etiqueta!.texto,
+      loDijo: porMensaje ? (c.lastMessageDirection === "inbound" ? "cliente" : "oficina") : null,
       siguiente: queHacer(c, estado, ahora),
       estado,
       llegado: new Date(c.dateAdded).toISOString(),

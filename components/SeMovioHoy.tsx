@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ESTADO_META } from "@/lib/leadStates";
 import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar, ReporteLlamada } from "@/components/Llamada";
+import { ConversacionLead } from "@/components/ConversacionLead";
 import type { Movimiento } from "@/lib/movimientos";
 
 /**
@@ -41,6 +42,9 @@ export function SeMovioHoy() {
   const [movimientos, setMovimientos] = useState<Movimiento[] | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Una conversación abierta a la vez: dos hilos largos obligan a bajar hasta
+  // el final para comparar.
+  const [abierto, setAbierto] = useState<string | null>(null);
 
   const cargar = useCallback(() => {
     setCargando(true);
@@ -142,9 +146,18 @@ export function SeMovioHoy() {
                   </span>
                 </div>
 
-                {/* Lo que dijo o lo que hizo, en una línea. */}
+                {/* Lo que dijo o lo que hizo, en una línea, y quién lo dijo. */}
                 <p className="text-[12.5px] mt-1 truncate" style={{ color: "#5E5C56" }}>
-                  {m.tipo === "mensaje" ? `«${m.detalle}»` : `✓ ${m.detalle}`}
+                  {m.tipo === "mensaje" ? (
+                    <>
+                      <b className="font-semibold" style={{ color: m.loDijo === "cliente" ? AZUL : GRIS }}>
+                        {m.loDijo === "cliente" ? "Él: " : "Nosotros: "}
+                      </b>
+                      «{m.detalle}»
+                    </>
+                  ) : (
+                    `✓ ${m.detalle}`
+                  )}
                 </p>
 
                 {/* Y lo único que convierte esto en trabajo. */}
@@ -160,11 +173,20 @@ export function SeMovioHoy() {
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={() => setAbierto(abierto === m.contactId ? null : m.contactId)}
+                  title="Ver la conversación"
+                  className="rounded-full px-2 py-1 text-[11px] font-semibold"
+                  style={{ background: CELESTE, color: AZUL }}
+                >
+                  {abierto === m.contactId ? "Cerrar" : "Ver"}
+                </button>
                 <ReporteLlamada contactId={m.contactId} />
                 <BotonLlamar telefono={m.telefono} nombre={m.nombre} contactId={m.contactId} tamano={28} />
                 <BotonWhatsApp telefono={m.telefono} nombre={m.nombre} tamano={28} />
               </div>
             </article>
+            {abierto === m.contactId && <ConversacionLead contactId={m.contactId} />}
             </div>
           );
         })}

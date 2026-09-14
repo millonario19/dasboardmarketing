@@ -4,6 +4,7 @@ import {
   mensajesDeConversacion,
   extractAttribution,
   contactDisplayName,
+  obtenerContacto,
   type GhlContact,
   type GhlMensaje,
 } from "./ghl";
@@ -291,4 +292,23 @@ export async function computeInteraccion(
 
   if (noLeidas === 0) cache.set(llave, { en: ahora, datos });
   return datos;
+}
+
+/**
+ * La conversación de un solo lead, para abrirla desde cualquier lista.
+ *
+ * Las listas muestran nombre, estado y una línea de contexto; eso alcanza para
+ * elegir a quién atender, no para saber qué decirle. Esto trae el hilo
+ * completo —lo que dijo, cuándo, qué contestó el agente, los audios— sin que
+ * haya que cargarlo de antemano para los cincuenta leads de la pantalla.
+ */
+export async function conversacionDeUnLead(contactId: string): Promise<LeadInteraccion | null> {
+  const contacto = await obtenerContacto(contactId);
+  if (!contacto) return null;
+  const { agent } = await extractAttribution(contacto);
+  const conversacionId = await buscarConversacion(contactId);
+  if (!conversacionId) return null;
+  const lead = armarLead(contacto, agent, await mensajesDeConversacion(conversacionId));
+  if (lead) await pegarHitos([lead]);
+  return lead;
 }
