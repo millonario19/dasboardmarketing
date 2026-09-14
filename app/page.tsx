@@ -105,18 +105,17 @@ export default function DashboardPage() {
 
       {!error && data && (
         <>
-          {/* Arriba del todo, lo que contesta «¿cómo venimos?» en dos
-              segundos. Debajo, las conversaciones, que es lo que se puede
-              atender ahora. Las métricas del mes quedan al final, porque se
-              miran una vez y no cambian nada del día. */}
-          <ProduccionHoy serie={data.serie} totals={data.totals} propio={!esAdmin} />
-
+          {/* Las conversaciones van primero: es lo único de la pantalla que
+              se puede atender hoy. Las métricas del mes quedan al final,
+              porque se miran una vez y no cambian nada del día. */}
           <InteraccionLeads
             esAdmin={esAdmin}
             agentes={data.rows
               .filter((r) => r.agentId)
               .map((r) => ({ id: r.agentId as string, nombre: r.agent }))}
           />
+
+          <ProduccionHoy serie={data.serie} totals={data.totals} propio={!esAdmin} />
 
           <PanelEstados datos={data.panel} propio={!esAdmin} />
 
