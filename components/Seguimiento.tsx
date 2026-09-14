@@ -16,7 +16,7 @@ import type {
 // datos, y traérselo a un componente de cliente arrastra el driver de Postgres
 // al paquete del navegador.
 const VIA_TITULO: Record<Via, string> = {
-  llego: "Llegó al Business · falta cerrar",
+  llego: "Confirmados en WhatsApp · falta cerrar",
   "clic-sin-llegar": "Hizo clic y no llegó",
   "tibio-sin-bajar": "Tibio sin bajar",
   "no-responde": "No responde",

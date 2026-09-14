@@ -76,6 +76,18 @@ export function FilaSeguimiento({ lead }: { lead: LeadDeSeguimiento }) {
             <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
               {contexto}
             </span>
+            {/* En este grupo hay dos cosas distintas: los que el agente
+                confirmó en el paso 3 y los que el flujo de GHL marcó y nadie
+                verificó. Sobre el primero se hace seguimiento; al segundo
+                todavía hay que ir a buscarlo. */}
+            {lead.via === "llego" && lead.confirmado !== "si" && (
+              <span
+                className="inline-block text-[10px] font-bold rounded-full px-1.5 py-[1px] mt-1"
+                style={{ background: "#FDF3E6", color: "#A56A11" }}
+              >
+                falta confirmar
+              </span>
+            )}
           </span>
         </span>
 

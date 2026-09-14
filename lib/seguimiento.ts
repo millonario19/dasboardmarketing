@@ -65,6 +65,18 @@ export type LeadDeSeguimiento = {
   estado: EstadoLead;
   acciones: string[];
   via: Via;
+  /**
+   * Lo que el agente contestó en el paso 3.
+   *
+   *   "si"  -> él dijo que el cliente llegó a su WhatsApp Business
+   *   "no"  -> dijo que no llegó
+   *   null  -> todavía no le preguntaron, o no contestó
+   *
+   * Sin esto, «Llegó al Business» junta a los que él confirmó con los que el
+   * flujo de GHL marcó y nadie verificó, que no son lo mismo: sobre uno se
+   * hace seguimiento y al otro todavía hay que ir a buscarlo.
+   */
+  confirmado: "si" | "no" | null;
   /** Lo que el agente escribió de su puño; vacío hasta que escriba. */
   nota: Nota | null;
 };
@@ -237,6 +249,7 @@ export async function computeSeguimiento(
       estado,
       acciones: accionesDeLead(contacto),
       via: viaDeLead(contacto, estado),
+      confirmado: confirmacionDeBajada(contacto),
       nota: notas.get(contacto.id) ?? null,
     });
     porDia.set(dia, lista);
