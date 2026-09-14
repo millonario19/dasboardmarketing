@@ -520,12 +520,11 @@ export function InteraccionLeads({
           {/* En móvil los tres van apilados y centrados —título, controles,
               fecha—; desde sm vuelven a un renglón con la fecha al lado del
               título y los controles contra el borde. */}
-          <h2 className="order-1 text-[22px] sm:text-[17px] font-semibold tracking-[-0.02em] leading-tight">
-            Interacción leads
-          </h2>
+          {/* Sin título: el encabezado del paso, justo arriba, ya dice de qué
+              se trata. Repetirlo dejaba dos títulos pegados. */}
           <span
-            className="order-3 sm:order-2 text-[12px] first-letter:uppercase"
-            style={{ color: "rgba(255,255,255,.6)" }}
+            className="order-1 text-[13px] first-letter:uppercase"
+            style={{ color: "rgba(255,255,255,.72)" }}
           >
             {(dia ? new Date(`${dia}T12:00:00-05:00`) : new Date()).toLocaleDateString("es-CO", {
               weekday: "long",
@@ -534,7 +533,7 @@ export function InteraccionLeads({
               timeZone: "America/Bogota",
             })}
           </span>
-          <div className="order-2 sm:order-3 sm:ml-auto flex items-center justify-center gap-1.5 flex-wrap">
+          <div className="order-2 sm:ml-auto flex items-center justify-center gap-1.5 flex-wrap">
             {esAdmin && (
               <select
                 value={agente}

@@ -154,7 +154,7 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
       <div className="flex flex-col items-center text-center gap-3 mb-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left">
         <div>
           <div className="flex items-baseline justify-center gap-3 sm:justify-start">
-            <h2 className="text-lg font-semibold text-ink-primary">Temperatura del lead</h2>
+            {/* El encabezado del paso ya nombra esta sección. */}
             <span className="text-[13px] text-ink-secondary">
               {total} {dia ? `del ${enEspanol(dia.fecha)}` : ventana === "hoy" ? "hoy" : "este mes"}
             </span>
