@@ -139,7 +139,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         <div className="flex items-stretch gap-0 flex-col sm:flex-row">
           {/* Izquierda: de qué mes hablamos. */}
           <div
-            className="flex flex-col items-center text-center sm:items-start sm:text-left justify-center px-5 sm:px-7 py-5 sm:py-7 sm:w-[34%]"
+            className="flex flex-col items-center text-center justify-center px-5 sm:px-7 py-5 sm:py-7 sm:w-[34%]"
             style={{ borderBottom: `1px solid ${BORDE}` }}
           >
             <MarcaNexus />
@@ -187,7 +187,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
 
           {/* Derecha: la frase. Es lo único de la tarjeta que no es un dato. */}
           <div
-            className="hidden sm:flex items-center px-6 py-7 sm:w-[28%]"
+            className="hidden sm:flex items-center justify-center text-center px-6 py-7 sm:w-[28%]"
             style={{ borderBottom: `1px solid ${BORDE}`, borderLeft: `1px solid ${BORDE}` }}
           >
             <span
