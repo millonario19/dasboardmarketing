@@ -137,7 +137,6 @@ export default function DashboardPage() {
                 numero={3}
                 titulo="Confirmar cliente potencial"
                 detalle="¿Llegaron de verdad a tu WhatsApp Business? Hasta que respondas, el paso 2 puede estar mal"
-                color="#C0392B"
               />
               <ConfirmarBajadas />
             </>
