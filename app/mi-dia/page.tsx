@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { CerrarSesion } from "@/components/CerrarSesion";
+import { CambiarVista } from "@/components/CambiarVista";
 import { useSesion } from "@/components/useSesion";
 import { TablaLeads } from "@/components/TablaLeads";
 import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatura";
@@ -10,38 +11,13 @@ import { SeMovioHoy } from "@/components/SeMovioHoy";
 import { Seguimiento } from "@/components/Seguimiento";
 import { TareasDeHoy } from "@/components/TareasDeHoy";
 import { PasoSistema } from "@/components/PasoSistema";
+import { MetaDelMes } from "@/components/MetaDelMes";
 import { conteoVacio } from "@/lib/leadStates";
-import { primerNombre } from "@/lib/nombre";
+import { nombreCorto } from "@/lib/nombre";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
+import type { AgentProduction } from "@/lib/metrics";
 
-// Paleta tomada de la referencia: gris cálido de fondo, blanco para las
-// tarjetas, negro para la barra y el título, y un verde ácido como única nota
-// de color. El verde siempre lleva texto negro encima: sobre blanco no tiene
-// contraste suficiente.
-const FONDO = "#E6E6E2";
-
-/**
- * Fondo del día: el gris de siempre con manchas muy suaves de la propia
- * paleta.
- *
- * No es decoración: los paneles de leads son de vidrio translúcido, y sobre un
- * gris plano una tarjeta transparente se ve idéntica a una blanca. Lo que se
- * asoma por debajo es lo que la hace flotar.
- *
- * Sin background-attachment: fixed — deja rastros al desplazar y en Safari de
- * iPhone se rompe.
- */
-const FONDO_DEGRADADO = [
-  "radial-gradient(820px 460px at 8% -8%, rgba(198,242,78,.62), transparent 58%)",
-  "radial-gradient(680px 460px at 95% 2%, rgba(255,255,255,.95), transparent 60%)",
-  "radial-gradient(760px 520px at 78% 62%, rgba(120,155,205,.34), transparent 58%)",
-  "radial-gradient(820px 560px at 26% 105%, rgba(224,168,0,.24), transparent 58%)",
-  FONDO,
-].join(", ");
-const LIMA = "#C6F24E";
-const NEGRO = "#0D0D0D";
 const GRIS = "#8E8E88";
-const BORDE = "#D8D8D3";
 
 // El agente se elige a sí mismo una vez y el navegador lo recuerda: mientras
 // el dashboard tenga una sola contraseña compartida no puede saber quién entró.
@@ -66,6 +42,19 @@ export default function MiDiaPage() {
   const [error, setError] = useState<string | null>(null);
   // Lo informa el módulo de tareas cuando termina de cargar.
   const [porHacer, setPorHacer] = useState<number | null>(null);
+  // La meta va en las dos pantallas: es lo único que habla de la plata del
+  // agente y el motivo por el que abre el tablero, mire donde mire. Los FTD
+  // salen del mismo endpoint que usa Dirección, ya recortados a su sesión.
+  const [ftdMes, setFtdMes] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch("/api/metrics/production")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: AgentProduction | null) => d && setFtdMes(d.totals.ftdMes))
+      .catch(() => {
+        /* sin este número la meta no se muestra, el resto de la pantalla sí */
+      });
+  }, []);
 
 
   useEffect(() => {
@@ -159,112 +148,80 @@ export default function MiDiaPage() {
     : data?.agentes.find((a) => a.id === agente)?.nombre ?? "Toda la oficina";
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: FONDO_DEGRADADO, backgroundRepeat: "no-repeat", color: NEGRO }}
-    >
-      <div className="max-w-6xl mx-auto px-5 py-5">
-        {/* Cabecera: saludo, las dos pantallas, y el reparto del día en un
-            arco. Antes eran cinco cosas sueltas —cápsula, tira de
-            movimientos, título gigante, contadores, botones— repartidas por
-            la pantalla sin alineación entre sí. */}
-        <section
-          className="relative rounded-[30px] px-6 pt-6 pb-7 mb-5 text-center overflow-hidden"
-          style={{
-            background: [
-              "radial-gradient(700px 420px at 6% 0%, rgba(120,180,235,.55), transparent 62%)",
-              "radial-gradient(760px 480px at 96% 34%, rgba(198,242,78,.50), transparent 64%)",
-              "radial-gradient(620px 420px at 52% 108%, rgba(255,255,255,.85), transparent 62%)",
-              "#EFF3F0",
-            ].join(", "),
-            backgroundRepeat: "no-repeat",
-            boxShadow: "0 1px 2px rgba(13,13,13,.03), 0 20px 44px -26px rgba(13,13,13,.30)",
-          }}
-        >
-          {/* Cuenta y salida, discretos: se usan una vez al día. */}
-          <div className="absolute top-4 right-4 flex gap-1.5">
-            {esAgente && (
-              <Link
-                href="/mi-cuenta"
-                className="rounded-full px-3.5 py-1.5 text-[12.5px] hover:bg-white"
-                style={{ background: "rgba(255,255,255,.66)", color: "#52514e" }}
-              >
-                Mi cuenta
-              </Link>
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      {/* La misma cabecera que Dirección: eran dos pantallas del mismo tablero
+          con dos identidades distintas —una gris con degradados de colores y un
+          saludo gigante, la otra blanca— y al cambiar de pestaña parecía que
+          uno se había ido a otro producto. */}
+      <div className="flex flex-col items-center text-center gap-3 mb-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left sm:gap-4">
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
+          <h1 className="text-[21px] sm:text-[25px] font-semibold text-ink-primary tracking-tight leading-[1.15]">
+            CRM - Marketing
+          </h1>
+          <div className="flex items-center gap-2">
+            {sesion && esAgente && (
+              <span className="text-sm text-ink-secondary bg-surface border border-gridline rounded-full px-3 py-1.5">
+                {nombreCorto(sesion.nombre)}
+              </span>
             )}
-            <CerrarSesion
-              className="rounded-full px-3.5 py-1.5 text-[12.5px] hover:bg-white disabled:opacity-60"
-              style={{ background: "rgba(255,255,255,.66)", color: "#52514e" }}
-            />
-          </div>
-
-          <p className="text-[22px] sm:text-[27px] font-bold tracking-[-0.03em] pt-8 sm:pt-0">
-            Hola, {primerNombre(sesion?.nombre) || "de nuevo"}
-          </p>
-          <p className="text-[19px] sm:text-[24px] tracking-[-0.02em] mt-0.5">Así viene tu día 🙂</p>
-
-          <div className="inline-flex gap-2 mt-4 mb-1">
-            <span
-              className="rounded-full px-6 py-2 text-sm font-semibold bg-white"
-              style={{ boxShadow: "0 1px 3px rgba(13,13,13,.10)" }}
-            >
-              Mi día
+            <span className="w-10 h-10 rounded-full border border-gridline bg-surface flex items-center justify-center text-ink-muted text-lg shrink-0">
+              🔗
             </span>
-            <Link
-              href="/"
-              className="rounded-full px-6 py-2 text-sm"
-              style={{ border: "1px solid rgba(13,13,13,.10)", color: "#52514e" }}
-            >
-              Dirección
-            </Link>
-            <Link
-              href="/metricas"
-              className="rounded-full px-6 py-2 text-sm"
-              style={{ border: "1px solid rgba(13,13,13,.10)", color: "#52514e" }}
-            >
-              Métricas
-            </Link>
           </div>
+        </div>
 
-          {/* La dirección entra a Mi día para mirar el de cada agente: acá
-              elige de quién. El agente no lo ve porque solo tiene el suyo. */}
-          {!esAgente && (
-            <div className="mt-3">
-              <select
-                value={agente}
-                onChange={(e) => elegirAgente(e.target.value)}
-                className="rounded-full px-4 py-2 text-[13px] bg-white outline-none"
-                style={{ border: "1px solid rgba(13,13,13,.10)" }}
-              >
-                <option value="todos">Toda la oficina</option>
-                {data?.agentes.map((a) => (
-                  <option key={a.id} value={a.id}>
-                    {a.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <ArcoTemperatura
-            conteos={conteosPorEstado}
-            total={conteos.pendientes}
-            calientes={conteosPorEstado.caliente}
-          />
-          <LeyendaTemperatura conteos={conteosPorEstado} />
-
+        <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-end">
+          <CambiarVista actual="mi-dia" />
           <button
-            onClick={() => elegirFiltro(conteos.calientes > 0 ? "caliente" : "todos")}
-            className="mt-4 rounded-full px-8 py-3.5 text-[14.5px] font-semibold text-white hover:opacity-90 w-full sm:w-auto"
-            style={{ background: NEGRO }}
+            onClick={() => cargar(agente)}
+            disabled={cargando}
+            className="flex items-center gap-2 bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-primary hover:bg-page disabled:opacity-50 shrink-0"
           >
-            {conteos.calientes > 0 ? `Ir a Calientes (${conteos.calientes}) →` : "Ver toda la lista →"}
+            📅 {cargando ? "Actualizando…" : "Actualizar"} ⌄
           </button>
-        </section>
+          {esAgente && (
+            <Link
+              href="/mi-cuenta"
+              className="bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary shrink-0"
+            >
+              Mi cuenta
+            </Link>
+          )}
+          <CerrarSesion className="bg-surface border border-gridline rounded-full px-4 py-2.5 text-sm font-medium text-ink-secondary hover:bg-page hover:text-ink-primary disabled:opacity-50 shrink-0" />
+        </div>
+      </div>
 
-        {/* La confirmación de bajadas vive en Dirección, que es donde está el
-            paso 3. Acá salía otra vez la misma barra roja y la misma pregunta:
-            preguntar dos veces lo mismo en dos pantallas enseña a ignorarla. */}
+      {/* La dirección entra a Mi día para mirar el de cada agente. */}
+      {!esAgente && (
+        <div className="mb-5">
+          <select
+            value={agente}
+            onChange={(e) => elegirAgente(e.target.value)}
+            className="rounded-full border border-gridline bg-surface px-4 py-2 text-[13px] outline-none"
+          >
+            <option value="todos">Toda la oficina</option>
+            {data?.agentes.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Arriba de todo, igual que en Dirección. Para la dirección no va: la
+          meta es personal. */}
+      {esAgente && ftdMes !== null && <MetaDelMes ftdMes={ftdMes} />}
+
+      {/* El reparto por temperatura, en una tarjeta como las demás. */}
+      <section className="rounded-[22px] bg-surface border border-gridline mb-5 px-4 sm:px-6 py-5 text-center">
+        <ArcoTemperatura
+          conteos={conteosPorEstado}
+          total={conteos.pendientes}
+          calientes={conteosPorEstado.caliente}
+        />
+        <LeyendaTemperatura conteos={conteosPorEstado} />
+      </section>
 
         {/* Lo primero del día: quién se movió, sin importar cuándo entró. Un
             lead de hace dos semanas que vuelve a escribir vale más que uno
@@ -311,7 +268,7 @@ export default function MiDiaPage() {
           <Seguimiento parte="dias" />
         </PasoSistema>
 
-        {/* Filtros por bloque, con su cuenta. */}
+      {/* Filtros por bloque, con su cuenta. */}
         <div className="flex items-center gap-2 flex-wrap mb-5">
           <Pildora activa={filtro === "todos"} onClick={() => elegirFiltro("todos")}>
             Todos <b className="tabular-nums opacity-60 ml-1">{conteos.pendientes}</b>
@@ -325,18 +282,10 @@ export default function MiDiaPage() {
                 <b className="tabular-nums opacity-60 ml-1">{b.total}</b>
               </Pildora>
             ))}
-          <button
-            onClick={() => cargar(agente)}
-            disabled={cargando}
-            className="rounded-full px-4 py-2 text-[13px] font-semibold ml-auto disabled:opacity-60"
-            style={{ background: LIMA, color: NEGRO }}
-          >
-            {cargando ? "Actualizando…" : "↻ Actualizar"}
-          </button>
         </div>
 
         {error && (
-          <div className="rounded-2xl bg-white p-4 mb-4 text-sm" style={{ color: "#C0432A" }}>
+          <div className="rounded-2xl bg-surface border border-gridline p-4 mb-4 text-sm" style={{ color: "#C0432A" }}>
             {error}
           </div>
         )}
@@ -362,11 +311,10 @@ export default function MiDiaPage() {
           )}
         </div>
 
-        <p className="text-[12px] mt-10" style={{ color: GRIS }}>
-          {nombreAgente} · la lista se ordena por oportunidad, de arriba hacia abajo.
-        </p>
-      </div>
-    </div>
+      <p className="text-[12px] mt-10" style={{ color: GRIS }}>
+        {nombreAgente} · la lista se ordena por oportunidad, de arriba hacia abajo.
+      </p>
+    </main>
   );
 }
 
@@ -383,12 +331,11 @@ function Pildora({
   return (
     <button
       onClick={onClick}
-      className="rounded-full px-4 py-2 text-[13px] whitespace-nowrap transition-colors"
-      style={
+      className={`rounded-full px-4 py-2 text-[13px] whitespace-nowrap border ${
         activa
-          ? { background: "#fff", color: NEGRO, fontWeight: 600, boxShadow: "0 2px 8px rgba(0,0,0,0.06)" }
-          : { color: GRIS, border: `1px solid ${BORDE}` }
-      }
+          ? "bg-header text-header-ink font-medium border-transparent"
+          : "bg-surface text-ink-secondary border-gridline hover:bg-page"
+      }`}
     >
       {children}
     </button>
