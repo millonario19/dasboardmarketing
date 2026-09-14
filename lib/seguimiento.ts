@@ -4,7 +4,15 @@ import {
   contactDisplayName,
   type GhlContact,
 } from "./ghl";
-import { estadoDeLead, accionesDeLead, yaDeposito, type EstadoLead } from "./leadStates";
+import {
+  estadoDeLead,
+  accionesDeLead,
+  yaDeposito,
+  confirmacionDeBajada,
+  TAG_BUSINESS,
+  type EstadoLead,
+} from "./leadStates";
+import { notasDe, type Nota } from "./notas";
 import { soloDelAgente } from "./metrics";
 import { getPool } from "./db";
 
@@ -32,6 +40,22 @@ export const DIAS_DE_SEGUIMIENTO = 3;
 const CACHE_MS = 60_000;
 const cache = new Map<string, { en: number; datos: Seguimiento }>();
 
+/**
+ * Por dónde va este lead.
+ *
+ * No es la temperatura —eso dice cuánto interés tiene— sino qué hay que hacer
+ * con él. La diferencia que importa es una sola: si llegó o no al WhatsApp
+ * Business del agente, porque a partir de ahí el sistema deja de ver.
+ */
+export type Via = "llego" | "clic-sin-llegar" | "tibio-sin-bajar" | "no-responde";
+
+export const VIA_TITULO: Record<Via, string> = {
+  llego: "Llegó al Business · falta cerrar",
+  "clic-sin-llegar": "Hizo clic y no llegó",
+  "tibio-sin-bajar": "Tibio sin bajar",
+  "no-responde": "No responde",
+};
+
 export type LeadDeSeguimiento = {
   id: string;
   nombre: string;
@@ -40,6 +64,18 @@ export type LeadDeSeguimiento = {
   agente: string;
   estado: EstadoLead;
   acciones: string[];
+  via: Via;
+  /** Lo que el agente escribió de su puño; vacío hasta que escriba. */
+  nota: Nota | null;
+};
+
+/** Un clic en «bajar a WhatsApp» que nadie respondió si terminó en algo. */
+export type PorConfirmar = {
+  id: string;
+  nombre: string;
+  telefono: string | null;
+  agente: string;
+  creado: string;
 };
 
 export type Promesa = {
@@ -65,6 +101,8 @@ export type DiaDeSeguimiento = {
 
 export type Seguimiento = {
   dias: DiaDeSeguimiento[];
+  /** Lo primero del día: el sistema sabe que hicieron clic, no si llegaron. */
+  porConfirmar: PorConfirmar[];
   promesas: Promesa[];
   generadoEn: string;
 };
@@ -76,6 +114,16 @@ function inicioDeDiaBogota(ms: number): number {
 
 function diaBogota(iso: string): string {
   return new Date(new Date(iso).getTime() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+function viaDeLead(contacto: GhlContact, estado: EstadoLead): Via {
+  const hizoClic = (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS);
+  // El «no» del agente no lo devuelve al montón de tibios: este ya levantó la
+  // mano y se cayó en el último paso, y se trabaja distinto.
+  if (hizoClic && confirmacionDeBajada(contacto) === "no") return "clic-sin-llegar";
+  if (estado === "caliente") return "llego";
+  if (estado === "tibio") return "tibio-sin-bajar";
+  return "no-responde";
 }
 
 const ETIQUETAS = ["Hoy", "Ayer", "Antier", "Hace 3 días", "Hace 4 días", "Hace 5 días"];
@@ -152,10 +200,32 @@ export async function computeSeguimiento(
   );
 
   const porDia = new Map<string, LeadDeSeguimiento[]>();
+  const porConfirmar: PorConfirmar[] = [];
+  const utiles: { contacto: GhlContact; agente: string; estado: EstadoLead }[] = [];
+
   for (const contacto of contactos as GhlContact[]) {
     // Los que ya depositaron salen: el seguimiento es de lo que falta cerrar.
     if (yaDeposito(contacto)) continue;
     const { agent } = await extractAttribution(contacto);
+    const estado = estadoDeLead(contacto);
+    utiles.push({ contacto, agente: agent, estado });
+
+    // El clic está registrado y nadie dijo si del otro lado apareció alguien.
+    const hizoClic = (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS);
+    if (hizoClic && confirmacionDeBajada(contacto) === null) {
+      porConfirmar.push({
+        id: contacto.id,
+        nombre: contactDisplayName(contacto),
+        telefono: contacto.phone ?? null,
+        agente: agent,
+        creado: contacto.dateAdded,
+      });
+    }
+  }
+
+  const notas = await notasDe(utiles.map((u) => u.contacto.id));
+
+  for (const { contacto, agente, estado } of utiles) {
     const dia = diaBogota(contacto.dateAdded);
     const lista = porDia.get(dia) ?? [];
     lista.push({
@@ -163,9 +233,11 @@ export async function computeSeguimiento(
       nombre: contactDisplayName(contacto),
       telefono: contacto.phone ?? null,
       creado: contacto.dateAdded,
-      agente: agent,
-      estado: estadoDeLead(contacto),
+      agente,
+      estado,
       acciones: accionesDeLead(contacto),
+      via: viaDeLead(contacto, estado),
+      nota: notas.get(contacto.id) ?? null,
     });
     porDia.set(dia, lista);
   }
@@ -185,6 +257,7 @@ export async function computeSeguimiento(
 
   const datos: Seguimiento = {
     dias: salida,
+    porConfirmar,
     promesas: await promesasPendientes(usuario),
     generadoEn: new Date(ahora).toISOString(),
   };

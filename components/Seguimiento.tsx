@@ -1,11 +1,37 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ESTADO_META } from "@/lib/leadStates";
+
 import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar, ReporteLlamada } from "@/components/Llamada";
-import { ConversacionLead } from "@/components/ConversacionLead";
-import type { DiaDeSeguimiento, LeadDeSeguimiento, Promesa, Seguimiento as Datos } from "@/lib/seguimiento";
+import { FilaSeguimiento } from "@/components/FilaSeguimiento";
+import type {
+  Via,
+  DiaDeSeguimiento,
+  PorConfirmar as PorConfirmarTipo,
+  Promesa,
+  Seguimiento as Datos,
+} from "@/lib/seguimiento";
+
+// Los títulos viven acá y no en lib/seguimiento: ese módulo importa la base de
+// datos, y traérselo a un componente de cliente arrastra el driver de Postgres
+// al paquete del navegador.
+const VIA_TITULO: Record<Via, string> = {
+  llego: "Llegó al Business · falta cerrar",
+  "clic-sin-llegar": "Hizo clic y no llegó",
+  "tibio-sin-bajar": "Tibio sin bajar",
+  "no-responde": "No responde",
+};
+
+// El orden es el del día: primero la plata comprometida, al final el que no
+// contesta.
+const VIAS: Via[] = ["llego", "clic-sin-llegar", "tibio-sin-bajar", "no-responde"];
+const VIA_COLOR: Record<Via, string> = {
+  llego: "#157F52",
+  "clic-sin-llegar": "#C0392B",
+  "tibio-sin-bajar": "#C08400",
+  "no-responde": "#2A78D6",
+};
 
 /**
  * El seguimiento de los días anteriores y la agenda de promesas.
@@ -18,6 +44,8 @@ import type { DiaDeSeguimiento, LeadDeSeguimiento, Promesa, Seguimiento as Datos
 const AZUL = "#17457F";
 const CELESTE = "#EAF1FA";
 const ROJO = "#C0392B";
+const VERDE = "#157F52";
+const GRIS_2 = "#5E5C56";
 const AMBAR = "#B5701F";
 const GRIS = "#9A998F";
 
@@ -38,46 +66,102 @@ const RESULTADO: Record<string, string> = {
   "no-interesa": "no le interesa",
 };
 
-function FilaLead({ lead }: { lead: LeadDeSeguimiento }) {
-  const meta = ESTADO_META[lead.estado];
-  // La lista dice a quién atender; la conversación dice qué decirle. Se carga
-  // solo al abrirla.
-  const [abierta, setAbierta] = useState(false);
+/**
+ * Lo primero del día: los clics que nadie respondió.
+ *
+ * El CRM sabe que el cliente tocó el botón de WhatsApp; solo el agente sabe si
+ * del otro lado apareció. Hasta que conteste, ese lead figura como caliente sin
+ * que nadie lo haya visto: hoy hay 29 clics registrados y 3 respondidos.
+ */
+function PorConfirmar({
+  gente,
+  onResponder,
+}: {
+  gente: PorConfirmarTipo[];
+  onResponder: (contactId: string, llego: boolean) => void;
+}) {
+  if (gente.length === 0) return null;
 
   return (
-    <>
-    <article className="flex items-center gap-2.5 px-4 sm:px-5 py-2 border-t border-gridline">
-      <i className="w-1.5 h-8 rounded-full shrink-0" style={{ background: meta.color }} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <b className="text-[13.5px] font-semibold tracking-[-0.015em]">{lead.nombre}</b>
-          <span
-            className="text-[10px] font-bold rounded-full px-2 py-[1px]"
-            style={{ background: `color-mix(in srgb, ${meta.color} 16%, var(--surface-1))`, color: meta.color }}
-          >
-            {meta.nombre}
-          </span>
-        </div>
-        <p className="text-[11.5px] mt-0.5 truncate" style={{ color: GRIS }}>
-          {lead.acciones.length > 0 ? lead.acciones.join(" · ") : "No hizo nada todavía"}
-        </p>
+    <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
+      <div
+        className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
+        style={{ background: AZUL, color: "#fff" }}
+      >
+        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
+          Primero: ¿llegaron a tu WhatsApp Business?
+        </h2>
+        <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
+          {gente.length} sin responder
+        </span>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0">
-        <button
-          onClick={() => setAbierta((v) => !v)}
-          title="Ver la conversación"
-          className="rounded-full px-2 py-1 text-[11px] font-semibold"
-          style={{ background: CELESTE, color: AZUL }}
-        >
-          {abierta ? "Cerrar" : "Ver"}
-        </button>
-        <ReporteLlamada contactId={lead.id} />
-        <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} contactId={lead.id} tamano={26} />
-        <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={26} />
-      </div>
-    </article>
-    {abierta && <ConversacionLead contactId={lead.id} />}
-    </>
+
+      {gente.map((p) => (
+        <Pregunta key={p.id} persona={p} onResponder={onResponder} />
+      ))}
+
+      <p className="px-4 sm:px-5 py-2.5 text-[11.5px] border-t border-gridline" style={{ color: GRIS }}>
+        Un «no» lo devuelve a tibio y lo manda a «Hizo clic y no llegó», que se trabaja distinto: ese ya
+        levantó la mano y se cayó en el último paso.
+      </p>
+    </section>
+  );
+}
+
+function Pregunta({
+  persona,
+  onResponder,
+}: {
+  persona: PorConfirmarTipo;
+  onResponder: (contactId: string, llego: boolean) => void;
+}) {
+  const [respondido, setRespondido] = useState<boolean | null>(null);
+
+  function responder(llego: boolean) {
+    setRespondido(llego);
+    fetch("/api/contacts/confirmar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId: persona.id, confirmado: llego }),
+    })
+      .then(() => onResponder(persona.id, llego))
+      .catch(() => setRespondido(null));
+  }
+
+  if (respondido !== null) {
+    return (
+      <p
+        className="px-4 sm:px-5 py-2.5 text-[13px] font-semibold border-t border-gridline"
+        style={{ color: respondido ? VERDE : ROJO }}
+      >
+        {respondido ? `✓ ${persona.nombre} sigue caliente` : `→ ${persona.nombre} vuelve a tibio`}
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 flex-wrap px-4 sm:px-5 py-2.5 border-t border-gridline">
+      <span className="flex-1 min-w-[190px]">
+        <b className="text-[13.5px] font-semibold">¿{persona.nombre} llegó a tu WhatsApp Business?</b>
+        <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
+          {persona.agente}
+        </span>
+      </span>
+      <button
+        onClick={() => responder(true)}
+        className="rounded-full px-4 py-1 text-[12.5px] font-bold text-white"
+        style={{ background: VERDE }}
+      >
+        Sí
+      </button>
+      <button
+        onClick={() => responder(false)}
+        className="rounded-full px-4 py-1 text-[12.5px] font-bold border border-gridline hover:border-[#C0392B] hover:text-[#C0392B]"
+        style={{ color: GRIS_2 }}
+      >
+        No
+      </button>
+    </div>
   );
 }
 
@@ -169,6 +253,16 @@ export function Seguimiento() {
 
   return (
     <>
+      {datos && (
+        <PorConfirmar
+          gente={datos.porConfirmar}
+          onResponder={(id) =>
+            setDatos((prev) =>
+              prev ? { ...prev, porConfirmar: prev.porConfirmar.filter((p) => p.id !== id) } : prev
+            )
+          }
+        />
+      )}
       {datos && <Agenda promesas={datos.promesas} />}
 
       <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
@@ -229,24 +323,25 @@ export function Seguimiento() {
           </p>
         )}
 
-        {/* Agrupado por temperatura: caliente primero, que es donde está la
-            plata más cerca. El encabezado dice cuántos hay sin contar filas. */}
-        {actual?.leads.map((l, i, todos) => (
-          <div key={l.id}>
-            {(i === 0 || todos[i - 1].estado !== l.estado) && (
+        {/* Agrupado por vía, no por temperatura: la temperatura dice cuánto
+            interés hay, la vía dice qué hay que hacer. */}
+        {VIAS.map((via) => {
+          const suyos = (actual?.leads ?? []).filter((l) => l.via === via);
+          if (suyos.length === 0) return null;
+          return (
+            <div key={via}>
               <p
                 className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
-                style={{
-                  background: `color-mix(in srgb, ${ESTADO_META[l.estado].color} 10%, var(--surface-1))`,
-                  color: ESTADO_META[l.estado].color,
-                }}
+                style={{ background: `${VIA_COLOR[via]}14`, color: VIA_COLOR[via] }}
               >
-                {ESTADO_META[l.estado].plural} · {actual.porEstado[l.estado]}
+                {VIA_TITULO[via]} · {suyos.length}
               </p>
-            )}
-            <FilaLead lead={l} />
-          </div>
-        ))}
+              {suyos.map((l) => (
+                <FilaSeguimiento key={l.id} lead={l} />
+              ))}
+            </div>
+          );
+        })}
       </section>
     </>
   );
