@@ -278,9 +278,11 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               className="text-[10px] font-bold uppercase tracking-[.16em] leading-[1.7]"
               style={{ color: TINTA_2 }}
             >
-              Disciplina hoy,
+              Un sueño requiere
               <br />
-              resultados mañana
+              un plan diario
+              <br />
+              para despertarlo
             </span>
             <AutoDeCarrera className="w-full max-w-[210px]" />
           </div>
