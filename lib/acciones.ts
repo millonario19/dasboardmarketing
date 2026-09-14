@@ -71,6 +71,7 @@ function asegurarTabla(): Promise<void> {
              where vence_en is not null and cerrada_en is null and hecha_en is null`
         )
       )
+      .then(() => migrarNotasViejas())
       .then(() => undefined)
       .catch((e) => {
         tablaLista = undefined;
@@ -78,6 +79,69 @@ function asegurarTabla(): Promise<void> {
       });
   }
   return tablaLista;
+}
+
+/**
+ * Lo que los agentes ya habían escrito, antes de que esto fuera un hilo.
+ *
+ * `notas_seguimiento` guardaba una fila por cliente: un texto, una próxima
+ * acción y una fecha. Poco, pero escrito a mano por alguien que habló con el
+ * cliente, y por eso no se tira. Cada nota pasa a ser una acción registrada y
+ * cada próxima acción, una tarea.
+ *
+ * Corre una sola vez: la marca queda en `migraciones`.
+ */
+const NOMBRES_VIEJOS: Record<string, TipoAccion> = {
+  llamar: "llame",
+  escribir: "escribi",
+  "enviar audio": "audio",
+  "reenviar el link": "escribi",
+  "video testimonio": "video",
+  "video de la operativa": "video",
+  "invitar a la sesión": "sesion",
+  "cerrar seguimiento": "cerrar",
+};
+
+async function migrarNotasViejas(): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    `create table if not exists migraciones (
+       nombre     text primary key,
+       corrida_en timestamptz not null default now()
+     )`
+  );
+  const { rowCount } = await pool.query(
+    `insert into migraciones (nombre) values ('notas_a_acciones')
+     on conflict (nombre) do nothing`
+  );
+  if (!rowCount) return;
+
+  const { rows } = await pool.query<{
+    contact_id: string;
+    nota: string | null;
+    proxima_accion: string | null;
+    proxima_en: Date | null;
+    actualizado_en: Date;
+    actualizado_por: string;
+  }>(`select * from notas_seguimiento`);
+
+  for (const n of rows) {
+    if (n.nota?.trim()) {
+      await pool.query(
+        `insert into acciones (contact_id, usuario, tipo, detalle, hecha_en)
+         values ($1, $2, 'escribi', $3, $4)`,
+        [n.contact_id, n.actualizado_por, n.nota.trim(), n.actualizado_en]
+      );
+    }
+    const tipo = NOMBRES_VIEJOS[(n.proxima_accion ?? "").trim().toLowerCase()];
+    if (tipo && n.proxima_en) {
+      await pool.query(
+        `insert into acciones (contact_id, usuario, tipo, vence_en)
+         values ($1, $2, $3, $4)`,
+        [n.contact_id, n.actualizado_por, tipo, n.proxima_en]
+      );
+    }
+  }
 }
 
 type Fila = {
