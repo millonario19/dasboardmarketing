@@ -7,6 +7,7 @@ import { useSesion } from "@/components/useSesion";
 import { TablaLeads } from "@/components/TablaLeads";
 import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatura";
 import { SeMovioHoy } from "@/components/SeMovioHoy";
+import { Seguimiento } from "@/components/Seguimiento";
 import { conteoVacio } from "@/lib/leadStates";
 import { primerNombre } from "@/lib/nombre";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
@@ -254,6 +255,11 @@ export default function MiDiaPage() {
             lead de hace dos semanas que vuelve a escribir vale más que uno
             nuevo, y antes no aparecía en ninguna parte. */}
         <SeMovioHoy />
+
+        {/* Y después lo que quedó debiendo de los días anteriores: primero lo
+            que alguien prometió y no cumplió, después los leads de ayer,
+            antier y hace tres días. */}
+        <Seguimiento />
 
         {/* Filtros por bloque, con su cuenta. */}
         <div className="flex items-center gap-2 flex-wrap mb-5">

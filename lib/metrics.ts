@@ -32,7 +32,7 @@ import {
  *
  * El id llega siempre de la cookie firmada, nunca de la URL.
  */
-async function soloDelAgente<T extends GhlContact>(
+export async function soloDelAgente<T extends GhlContact>(
   contactos: T[],
   agentId: string | null | undefined
 ): Promise<T[]> {
