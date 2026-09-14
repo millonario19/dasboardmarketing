@@ -25,14 +25,6 @@ const TINTA_3 = "rgba(255,255,255,.40)";
 const BORDE = "rgba(255,255,255,.10)";
 const RIEL = "rgba(255,255,255,.14)";
 
-// Líneas de velocidad, dibujadas con degradados. Un auto de carrera de verdad
-// tiene dueño —la foto y el logo son marcas registradas—, así que la sensación
-// se consigue con la luz y no con la imagen de nadie.
-const ESTELAS = [
-  "linear-gradient(90deg, transparent, rgba(225,6,0,.55) 60%, rgba(255,120,90,.9))",
-  "linear-gradient(90deg, transparent, rgba(225,6,0,.30) 60%, rgba(255,255,255,.55))",
-  "linear-gradient(90deg, transparent, rgba(225,6,0,.22) 70%, rgba(255,90,60,.6))",
-];
 
 const CLAVE = "op_meta_abierta";
 
@@ -48,6 +40,73 @@ const MES = new Date(Date.now() - 5 * 3600e3).toLocaleDateString("es-CO", {
   month: "long",
   timeZone: "UTC",
 });
+
+/**
+ * Un auto de carrera dibujado para esta pantalla.
+ *
+ * La foto de un Fórmula 1 y su logo tienen dueño. Este es un trazo propio:
+ * alerón trasero, halo, morro largo y alerón delantero — la silueta que
+ * cualquiera reconoce, sin tomar prestada la imagen de nadie.
+ */
+function AutoDeCarrera({ className = "" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 230 86" className={className} aria-hidden>
+      <defs>
+        <linearGradient id="op-carro" x1="0" x2="1">
+          <stop offset="0" stopColor="#2A3039" />
+          <stop offset=".55" stopColor="#3A4250" />
+          <stop offset="1" stopColor="#12161C" />
+        </linearGradient>
+        <linearGradient id="op-estela" x1="0" x2="1">
+          <stop offset="0" stopColor="#E10600" stopOpacity="0" />
+          <stop offset="1" stopColor="#FF5A3C" stopOpacity=".95" />
+        </linearGradient>
+      </defs>
+
+      {/* estelas que salen de atrás */}
+      <rect x="0" y="30" width="58" height="2.5" rx="1.25" fill="url(#op-estela)" />
+      <rect x="6" y="44" width="46" height="2" rx="1" fill="url(#op-estela)" opacity=".7" />
+      <rect x="0" y="57" width="70" height="2" rx="1" fill="url(#op-estela)" opacity=".5" />
+
+      {/* alerón trasero */}
+      <rect x="30" y="20" width="30" height="5" rx="2" fill="#E10600" />
+      <rect x="42" y="25" width="5" height="16" fill="#2A3039" />
+
+      {/* cuerpo: cola, cockpit, morro */}
+      <path
+        d="M36 52 L46 40 L74 36 Q86 24 104 24 L120 24 Q128 24 132 31
+           L176 38 Q196 41 214 49 L214 55 Q190 58 150 57 L60 57 Z"
+        fill="url(#op-carro)"
+      />
+      {/* halo */}
+      <path d="M96 27 Q112 14 130 28" fill="none" stroke="#1A1F26" strokeWidth="4.5" strokeLinecap="round" />
+      {/* franja roja del costado */}
+      <path d="M62 50 L128 40 L176 45 L176 49 L126 45 L62 54 Z" fill="#E10600" opacity=".9" />
+      {/* alerón delantero */}
+      <rect x="198" y="55" width="32" height="5" rx="2" fill="#E10600" />
+
+      {/* ruedas */}
+      <circle cx="66" cy="54" r="17" fill="#0D1116" />
+      <circle cx="66" cy="54" r="8" fill="#232B34" />
+      <circle cx="174" cy="56" r="15" fill="#0D1116" />
+      <circle cx="174" cy="56" r="7" fill="#232B34" />
+    </svg>
+  );
+}
+
+/** La marca de la casa, en lugar del logo prestado. */
+function MarcaNexus() {
+  return (
+    <span className="inline-flex items-center gap-2.5">
+      <svg width="30" height="20" viewBox="0 0 30 20" aria-hidden>
+        <path d="M2 16 L9 4 h5 L7 16 Z" fill="#E10600" />
+        <path d="M11 16 L18 4 h5 l-7 12 Z" fill="#E10600" opacity=".72" />
+        <path d="M20 16 L27 4 h3 l-7 12 Z" fill="#E10600" opacity=".42" />
+      </svg>
+      <span className="text-[19px] font-extrabold tracking-[.22em] leading-none">NEXUS</span>
+    </span>
+  );
+}
 
 export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -126,20 +185,9 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         color: TINTA,
       }}
     >
-      {/* Las estelas viven detrás de todo y no capturan clics. */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        {ESTELAS.map((fondo, i) => (
-          <span
-            key={i}
-            className="absolute right-0 h-[2px] rounded-full"
-            style={{
-              background: fondo,
-              width: [220, 320, 170][i],
-              top: [`${34 + i * 13}%`, `${34 + i * 13}%`, `${34 + i * 13}%`][i],
-              opacity: 0.85,
-            }}
-          />
-        ))}
+      {/* El auto va detrás de todo, sangrando por el borde derecho. */}
+      <div className="pointer-events-none absolute inset-y-0 right-0 hidden sm:flex items-center" aria-hidden>
+        <AutoDeCarrera className="w-[300px] opacity-[.55]" />
       </div>
 
       <div className="relative">
@@ -149,8 +197,9 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             className="flex flex-col justify-center px-5 sm:px-7 py-5 sm:py-7 sm:w-[34%]"
             style={{ borderBottom: `1px solid ${BORDE}` }}
           >
+            <MarcaNexus />
             <span
-              className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[.22em]"
+              className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[.22em] mt-3"
               style={{ color: TINTA_2 }}
             >
               Comisión de {MES}
