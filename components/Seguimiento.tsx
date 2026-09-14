@@ -121,6 +121,10 @@ export function Seguimiento() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dia, setDia] = useState(0);
+  // Si nadie lo tocó todavía, se abre en el primer día que tenga algo: caer en
+  // un «Ayer» vacío hace pensar que el módulo está roto, y el domingo pasado
+  // no entró un solo lead.
+  const [elegido, setElegido] = useState(false);
 
   const cargar = useCallback(() => {
     setCargando(true);
@@ -130,10 +134,16 @@ export function Seguimiento() {
         if (!r.ok) throw new Error((await r.json()).error ?? "Error al armar el seguimiento");
         return r.json();
       })
-      .then(setDatos)
+      .then((d: Datos) => {
+        setDatos(d);
+        if (!elegido) {
+          const conAlgo = d.dias.findIndex((x) => x.leads.length > 0);
+          setDia(conAlgo >= 0 ? conAlgo : 0);
+        }
+      })
       .catch((e) => setError(e.message))
       .finally(() => setCargando(false));
-  }, []);
+  }, [elegido]);
 
   useEffect(() => {
     cargar();
@@ -152,7 +162,7 @@ export function Seguimiento() {
         >
           <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Seguimiento</h2>
           <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
-            los tres días anteriores
+            hoy y los tres días anteriores
           </span>
           <button
             onClick={cargar}
@@ -171,7 +181,10 @@ export function Seguimiento() {
             {datos.dias.map((d, i) => (
               <button
                 key={d.fecha}
-                onClick={() => setDia(i)}
+                onClick={() => {
+                  setDia(i);
+                  setElegido(true);
+                }}
                 className="rounded-full px-3 py-1 text-[12px] font-semibold"
                 style={
                   i === dia
@@ -200,8 +213,23 @@ export function Seguimiento() {
           </p>
         )}
 
-        {actual?.leads.map((l) => (
-          <FilaLead key={l.id} lead={l} />
+        {/* Agrupado por temperatura: caliente primero, que es donde está la
+            plata más cerca. El encabezado dice cuántos hay sin contar filas. */}
+        {actual?.leads.map((l, i, todos) => (
+          <div key={l.id}>
+            {(i === 0 || todos[i - 1].estado !== l.estado) && (
+              <p
+                className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
+                style={{
+                  background: `color-mix(in srgb, ${ESTADO_META[l.estado].color} 10%, var(--surface-1))`,
+                  color: ESTADO_META[l.estado].color,
+                }}
+              >
+                {ESTADO_META[l.estado].plural} · {actual.porEstado[l.estado]}
+              </p>
+            )}
+            <FilaLead lead={l} />
+          </div>
         ))}
       </section>
     </>

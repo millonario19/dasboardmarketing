@@ -25,8 +25,8 @@ import { getPool } from "./db";
 
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 
-// Tres días hacia atrás, sin contar hoy. Más atrás el lead ya se enfrió y la
-// lista se vuelve un archivo en vez de una tarea.
+// Hoy y los tres días anteriores. Más atrás el lead ya se enfrió y la lista se
+// vuelve un archivo en vez de una tarea.
 export const DIAS_DE_SEGUIMIENTO = 3;
 
 const CACHE_MS = 60_000;
@@ -57,8 +57,10 @@ export type Promesa = {
 
 export type DiaDeSeguimiento = {
   fecha: string; // YYYY-MM-DD en Bogotá
-  etiqueta: string; // «Ayer», «Antier», «Hace 3 días»
+  etiqueta: string; // «Hoy», «Ayer», «Antier», «Hace 3 días»
   leads: LeadDeSeguimiento[];
+  // Cuántos hay de cada temperatura, para verlo sin abrir la pestaña.
+  porEstado: Record<EstadoLead, number>;
 };
 
 export type Seguimiento = {
@@ -76,7 +78,7 @@ function diaBogota(iso: string): string {
   return new Date(new Date(iso).getTime() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
 }
 
-const ETIQUETAS = ["Ayer", "Antier", "Hace 3 días", "Hace 4 días", "Hace 5 días"];
+const ETIQUETAS = ["Hoy", "Ayer", "Antier", "Hace 3 días", "Hace 4 días", "Hace 5 días"];
 
 /**
  * Lo que el cliente prometió, todavía sin cumplir.
@@ -134,8 +136,10 @@ export async function computeSeguimiento(
   if (guardado && ahora - guardado.en < CACHE_MS) return guardado.datos;
 
   const arrancaHoy = inicioDeDiaBogota(ahora);
+  // La ventana incluye hoy: el seguimiento del día en curso es el primero que
+  // se mira, no el último.
   const desde = new Date(arrancaHoy - dias * 864e5).toISOString();
-  const hasta = new Date(arrancaHoy).toISOString();
+  const hasta = new Date(ahora).toISOString();
 
   // Una sola búsqueda cubre los tres días; separarlos serían tres consultas
   // para el mismo dato.
@@ -169,12 +173,14 @@ export async function computeSeguimiento(
   // Caliente primero: es donde está la plata más cerca.
   const orden: Record<EstadoLead, number> = { caliente: 0, tibio: 1, frio: 2 };
   const salida: DiaDeSeguimiento[] = [];
-  for (let i = 1; i <= dias; i++) {
+  for (let i = 0; i <= dias; i++) {
     const fecha = diaBogota(new Date(arrancaHoy - i * 864e5 + 3600e3).toISOString());
     const leads = (porDia.get(fecha) ?? []).sort(
       (a, b) => orden[a.estado] - orden[b.estado] || b.creado.localeCompare(a.creado)
     );
-    salida.push({ fecha, etiqueta: ETIQUETAS[i - 1] ?? `Hace ${i} días`, leads });
+    const porEstado = { frio: 0, tibio: 0, caliente: 0 } as Record<EstadoLead, number>;
+    for (const l of leads) porEstado[l.estado] += 1;
+    salida.push({ fecha, etiqueta: ETIQUETAS[i] ?? `Hace ${i} días`, leads, porEstado });
   }
 
   const datos: Seguimiento = {
