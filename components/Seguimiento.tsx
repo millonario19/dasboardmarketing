@@ -8,7 +8,6 @@ import { FilaSeguimiento } from "@/components/FilaSeguimiento";
 import type {
   Via,
   DiaDeSeguimiento,
-  PorConfirmar as PorConfirmarTipo,
   Promesa,
   Seguimiento as Datos,
 } from "@/lib/seguimiento";
@@ -65,105 +64,6 @@ const RESULTADO: Record<string, string> = {
   volver: "volver a llamar",
   "no-interesa": "no le interesa",
 };
-
-/**
- * Lo primero del día: los clics que nadie respondió.
- *
- * El CRM sabe que el cliente tocó el botón de WhatsApp; solo el agente sabe si
- * del otro lado apareció. Hasta que conteste, ese lead figura como caliente sin
- * que nadie lo haya visto: hoy hay 29 clics registrados y 3 respondidos.
- */
-function PorConfirmar({
-  gente,
-  onResponder,
-}: {
-  gente: PorConfirmarTipo[];
-  onResponder: (contactId: string, llego: boolean) => void;
-}) {
-  if (gente.length === 0) return null;
-
-  return (
-    <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
-      <div
-        className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
-        style={{ background: AZUL, color: "#fff" }}
-      >
-        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
-          Primero: ¿llegaron a tu WhatsApp Business?
-        </h2>
-        <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
-          {gente.length} sin responder
-        </span>
-      </div>
-
-      {gente.map((p) => (
-        <Pregunta key={p.id} persona={p} onResponder={onResponder} />
-      ))}
-
-      <p className="px-4 sm:px-5 py-2.5 text-[11.5px] border-t border-gridline" style={{ color: GRIS }}>
-        Un «no» lo devuelve a tibio y lo manda a «Hizo clic y no llegó», que se trabaja distinto: ese ya
-        levantó la mano y se cayó en el último paso.
-      </p>
-    </section>
-  );
-}
-
-function Pregunta({
-  persona,
-  onResponder,
-}: {
-  persona: PorConfirmarTipo;
-  onResponder: (contactId: string, llego: boolean) => void;
-}) {
-  const [respondido, setRespondido] = useState<boolean | null>(null);
-
-  function responder(llego: boolean) {
-    setRespondido(llego);
-    fetch("/api/contacts/confirmar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contactId: persona.id, confirmado: llego }),
-    })
-      .then(() => onResponder(persona.id, llego))
-      .catch(() => setRespondido(null));
-  }
-
-  if (respondido !== null) {
-    return (
-      <p
-        className="px-4 sm:px-5 py-2.5 text-[13px] font-semibold border-t border-gridline"
-        style={{ color: respondido ? VERDE : ROJO }}
-      >
-        {respondido ? `✓ ${persona.nombre} sigue caliente` : `→ ${persona.nombre} vuelve a tibio`}
-      </p>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-3 flex-wrap px-4 sm:px-5 py-2.5 border-t border-gridline">
-      <span className="flex-1 min-w-[190px]">
-        <b className="text-[13.5px] font-semibold">¿{persona.nombre} llegó a tu WhatsApp Business?</b>
-        <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
-          {persona.agente}
-        </span>
-      </span>
-      <button
-        onClick={() => responder(true)}
-        className="rounded-full px-4 py-1 text-[12.5px] font-bold text-white"
-        style={{ background: VERDE }}
-      >
-        Sí
-      </button>
-      <button
-        onClick={() => responder(false)}
-        className="rounded-full px-4 py-1 text-[12.5px] font-bold border border-gridline hover:border-[#C0392B] hover:text-[#C0392B]"
-        style={{ color: GRIS_2 }}
-      >
-        No
-      </button>
-    </div>
-  );
-}
 
 function Agenda({ promesas }: { promesas: Promesa[] }) {
   if (promesas.length === 0) return null;
@@ -253,16 +153,6 @@ export function Seguimiento() {
 
   return (
     <>
-      {datos && (
-        <PorConfirmar
-          gente={datos.porConfirmar}
-          onResponder={(id) =>
-            setDatos((prev) =>
-              prev ? { ...prev, porConfirmar: prev.porConfirmar.filter((p) => p.id !== id) } : prev
-            )
-          }
-        />
-      )}
       {datos && <Agenda promesas={datos.promesas} />}
 
       <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">

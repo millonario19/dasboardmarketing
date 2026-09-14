@@ -6,6 +6,7 @@ import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
 import { TablaLeads } from "@/components/TablaLeads";
 import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatura";
+import { ConfirmarBajadas } from "@/components/ConfirmarBajadas";
 import { SeMovioHoy } from "@/components/SeMovioHoy";
 import { Seguimiento } from "@/components/Seguimiento";
 import { conteoVacio } from "@/lib/leadStates";
@@ -250,6 +251,11 @@ export default function MiDiaPage() {
             {conteos.calientes > 0 ? `Ir a Calientes (${conteos.calientes}) →` : "Ver toda la lista →"}
           </button>
         </section>
+
+        {/* Debajo del arco de temperatura: es la acción más corta del día y la
+            que más cambia lo que el resto de la pantalla muestra. Si hay
+            pendientes también sale como aviso al entrar, una vez por día. */}
+        <ConfirmarBajadas />
 
         {/* Lo primero del día: quién se movió, sin importar cuándo entró. Un
             lead de hace dos semanas que vuelve a escribir vale más que uno
