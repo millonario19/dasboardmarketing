@@ -8,6 +8,7 @@ import { CambiarVista } from "@/components/CambiarVista";
 import { TablaAgentes } from "@/components/TablaAgentes";
 import { InteraccionLeads } from "@/components/InteraccionLeads";
 import { ConfirmarBajadas } from "@/components/ConfirmarBajadas";
+import { PasoSistema } from "@/components/PasoSistema";
 import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
 import { nombreCorto } from "@/lib/nombre";
@@ -108,6 +109,11 @@ export default function DashboardPage() {
           {/* Las conversaciones van primero: es lo único de la pantalla que
               se puede atender hoy. Las métricas del mes quedan al final,
               porque se miran una vez y no cambian nada del día. */}
+          <PasoSistema
+            numero={1}
+            titulo="Interacción del lead"
+            detalle="Quién escribió hoy y si alguien le respondió"
+          />
           <InteraccionLeads
             esAdmin={esAdmin}
             agentes={data.rows
@@ -115,12 +121,27 @@ export default function DashboardPage() {
               .map((r) => ({ id: r.agentId as string, nombre: r.agent }))}
           />
 
+          <PasoSistema
+            numero={2}
+            titulo="Temperatura del lead"
+            detalle="En qué estado quedó cada uno: frío, tibio o caliente"
+          />
           <PanelEstados datos={data.panel} propio={!esAdmin} />
 
           {/* Debajo de la temperatura, donde el agente ya está mirando en qué
               estado quedó cada lead: la respuesta cambia justamente eso. Para
               la dirección no va — la pregunta es del agente que atendió. */}
-          {!esAdmin && <ConfirmarBajadas />}
+          {!esAdmin && (
+            <>
+              <PasoSistema
+                numero={3}
+                titulo="Confirmar cliente potencial"
+                detalle="¿Llegaron de verdad a tu WhatsApp Business? Hasta que respondas, el paso 2 puede estar mal"
+                color="#C0392B"
+              />
+              <ConfirmarBajadas />
+            </>
+          )}
 
           <TablaAgentes data={data} />
 
