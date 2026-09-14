@@ -121,18 +121,21 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         <div className="text-[9.5px] font-extrabold uppercase tracking-[.2em]" style={{ color: DORADO }}>
           Comisión de {MES}
         </div>
+        {/* Arriba la meta, abajo lo que lleva. Al revés, la cifra grande en
+            cero a principio de mes era lo primero y lo único que se veía: un
+            tablero que arranca el mes diciéndote «cero» no motiva a nadie. */}
         <div className="text-[46px] sm:text-[58px] font-light tracking-[-0.055em] leading-none mt-2.5 tabular-nums">
-          {plata(pago)}
+          {plata(meta ? meta.usd : pago)}
         </div>
         <div className="text-[14px] mt-2.5 flex items-baseline justify-center gap-2 flex-wrap" style={{ color: TINTA_2 }}>
           {meta ? (
             <>
-              de tu meta de{" "}
+              llevás{" "}
               <b
                 className="text-[24px] sm:text-[28px] font-bold tracking-[-0.03em] tabular-nums"
-                style={{ color: DORADO }}
+                style={{ color: pago > 0 ? DORADO : TINTA_3 }}
               >
-                {plata(meta.usd)}
+                {plata(pago)}
               </b>
             </>
           ) : (
