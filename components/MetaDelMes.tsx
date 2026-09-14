@@ -16,14 +16,23 @@ import type { Meta } from "@/lib/metas";
  * falta por día.
  */
 
-const DORADO = "#A07C22";
-const DORADO_CLARO = "#C79D3C";
-const VERDE = "#177A4F";
-const TINTA = "#1A1712";
-const TINTA_2 = "#6B6152";
-const TINTA_3 = "#8A7F6C";
-const BORDE = "#E7DCC6";
-const RIEL = "#E6DCC7";
+const ROJO = "#E10600";
+const ROJO_SUAVE = "#FF3B30";
+const VERDE = "#2FBF71";
+const TINTA = "#FFFFFF";
+const TINTA_2 = "rgba(255,255,255,.62)";
+const TINTA_3 = "rgba(255,255,255,.40)";
+const BORDE = "rgba(255,255,255,.10)";
+const RIEL = "rgba(255,255,255,.14)";
+
+// Líneas de velocidad, dibujadas con degradados. Un auto de carrera de verdad
+// tiene dueño —la foto y el logo son marcas registradas—, así que la sensación
+// se consigue con la luz y no con la imagen de nadie.
+const ESTELAS = [
+  "linear-gradient(90deg, transparent, rgba(225,6,0,.55) 60%, rgba(255,120,90,.9))",
+  "linear-gradient(90deg, transparent, rgba(225,6,0,.30) 60%, rgba(255,255,255,.55))",
+  "linear-gradient(90deg, transparent, rgba(225,6,0,.22) 70%, rgba(255,90,60,.6))",
+];
 
 const CLAVE = "op_meta_abierta";
 
@@ -108,51 +117,111 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
 
   return (
     <section
-      className="rounded-[20px] overflow-hidden mb-6"
+      className="relative rounded-[20px] overflow-hidden mb-6"
       style={{
-        border: `1px solid ${BORDE}`,
+        border: `1px solid rgba(225,6,0,.35)`,
         background:
-          "radial-gradient(560px 280px at 50% -40%, rgba(199,157,60,.18), transparent 62%)," +
-          " linear-gradient(170deg, #FBF6EC 0%, #F5EEE0 100%)",
+          "radial-gradient(620px 320px at 88% 50%, rgba(225,6,0,.22), transparent 62%)," +
+          " linear-gradient(105deg, #0B0E12 0%, #141920 58%, #1B1013 100%)",
         color: TINTA,
       }}
     >
-      <div className="px-5 pt-6 pb-5 text-center">
-        <div className="text-[9.5px] font-extrabold uppercase tracking-[.2em]" style={{ color: DORADO }}>
-          Comisión de {MES}
-        </div>
-        {/* Arriba la meta, abajo lo que lleva. Al revés, la cifra grande en
-            cero a principio de mes era lo primero y lo único que se veía: un
-            tablero que arranca el mes diciéndote «cero» no motiva a nadie. */}
-        <div className="text-[46px] sm:text-[58px] font-light tracking-[-0.055em] leading-none mt-2.5 tabular-nums">
-          {plata(meta ? meta.usd : pago)}
-        </div>
-        <div className="text-[14px] mt-2.5 flex items-baseline justify-center gap-2 flex-wrap" style={{ color: TINTA_2 }}>
-          {meta ? (
-            <>
-              llevás{" "}
-              <b
-                className="text-[24px] sm:text-[28px] font-bold tracking-[-0.03em] tabular-nums"
-                style={{ color: pago > 0 ? DORADO : TINTA_3 }}
+      {/* Las estelas viven detrás de todo y no capturan clics. */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        {ESTELAS.map((fondo, i) => (
+          <span
+            key={i}
+            className="absolute right-0 h-[2px] rounded-full"
+            style={{
+              background: fondo,
+              width: [220, 320, 170][i],
+              top: [`${34 + i * 13}%`, `${34 + i * 13}%`, `${34 + i * 13}%`][i],
+              opacity: 0.85,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative">
+        <div className="flex items-stretch gap-0 flex-col sm:flex-row">
+          {/* Izquierda: de qué mes hablamos. */}
+          <div
+            className="flex flex-col justify-center px-5 sm:px-7 py-5 sm:py-7 sm:w-[34%]"
+            style={{ borderBottom: `1px solid ${BORDE}` }}
+          >
+            <span
+              className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[.22em]"
+              style={{ color: TINTA_2 }}
+            >
+              Comisión de {MES}
+            </span>
+          </div>
+
+          {/* Centro: la meta, y debajo lo que lleva. */}
+          <div
+            className="flex flex-col items-center justify-center px-5 py-4 sm:py-7 flex-1 text-center"
+            style={{ borderBottom: `1px solid ${BORDE}`, borderLeft: `1px solid ${BORDE}` }}
+          >
+            <span className="text-[44px] sm:text-[58px] font-extrabold tracking-[-0.045em] leading-none tabular-nums">
+              {plata(meta ? meta.usd : pago)}
+            </span>
+            {meta ? (
+              <span className="text-[13px] font-bold uppercase tracking-[.16em] mt-2" style={{ color: TINTA_3 }}>
+                Llevás{" "}
+                <b className="text-[19px] tracking-[-0.02em]" style={{ color: pago > 0 ? VERDE : ROJO_SUAVE }}>
+                  {plata(pago)}
+                </b>
+              </span>
+            ) : (
+              <button
+                onClick={() => setEditando(true)}
+                className="text-[12.5px] font-bold uppercase tracking-[.14em] mt-2 underline"
+                style={{ color: ROJO_SUAVE }}
               >
-                {plata(pago)}
-              </b>
-            </>
-          ) : (
-            <>
-              por {ftdMes} FTD este mes —{" "}
-              <button onClick={() => setEditando(true)} className="underline font-semibold" style={{ color: DORADO }}>
-                poné tu meta
+                Poné tu meta
               </button>
-            </>
-          )}
+            )}
+          </div>
+
+          {/* Derecha: la frase. Es lo único de la pantalla que no es un dato. */}
+          <div
+            className="hidden sm:flex items-center px-6 py-7 sm:w-[26%]"
+            style={{ borderBottom: `1px solid ${BORDE}`, borderLeft: `1px solid ${BORDE}` }}
+          >
+            <span className="text-[11px] font-bold uppercase tracking-[.16em] leading-[1.7]" style={{ color: TINTA_2 }}>
+              Disciplina hoy,
+              <br />
+              resultados mañana
+            </span>
+          </div>
         </div>
+
+        {/* La barra, de borde a borde. */}
+        {meta && (
+          <div className="flex items-center gap-3 px-5 sm:px-7 py-4" style={{ borderBottom: `1px solid ${BORDE}` }}>
+            <span className="flex-1 h-[9px] rounded-full overflow-hidden" style={{ background: RIEL }}>
+              <span
+                className="block h-full rounded-full"
+                style={{
+                  width: `${Math.max(pct(pago, meta.usd), 1.5)}%`,
+                  background:
+                    pago >= meta.usd
+                      ? `linear-gradient(90deg, ${VERDE}, #6FE6A8)`
+                      : `linear-gradient(90deg, ${ROJO}, ${ROJO_SUAVE})`,
+                }}
+              />
+            </span>
+            <b className="text-[13px] font-bold tabular-nums shrink-0" style={{ color: TINTA_2 }}>
+              {Math.round(pct(pago, meta.usd))}%
+            </b>
+          </div>
+        )}
       </div>
 
       {editando ? (
         <div
           className="flex items-end justify-center gap-3 flex-wrap px-5 py-4"
-          style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.5)" }}
+          style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.04)" }}
         >
           <label className="text-[11.5px]" style={{ color: TINTA_2 }}>
             Meta de FTD
@@ -161,8 +230,8 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               min={0}
               value={ftd}
               onChange={(e) => setFtd(e.target.value)}
-              className="block w-[92px] mt-1 rounded-lg px-2.5 py-1.5 text-[16px] font-bold text-right tabular-nums bg-white outline-none"
-              style={{ border: `1px solid ${BORDE}`, color: TINTA }}
+              className="block w-[92px] mt-1 rounded-lg px-2.5 py-1.5 text-[16px] font-bold text-right tabular-nums outline-none"
+              style={{ border: `1px solid ${BORDE}`, color: TINTA, background: "rgba(255,255,255,.06)" }}
             />
           </label>
           <label className="text-[11.5px]" style={{ color: TINTA_2 }}>
@@ -173,15 +242,15 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               step={50}
               value={usd}
               onChange={(e) => setUsd(e.target.value)}
-              className="block w-[110px] mt-1 rounded-lg px-2.5 py-1.5 text-[16px] font-bold text-right tabular-nums bg-white outline-none"
-              style={{ border: `1px solid ${BORDE}`, color: TINTA }}
+              className="block w-[110px] mt-1 rounded-lg px-2.5 py-1.5 text-[16px] font-bold text-right tabular-nums outline-none"
+              style={{ border: `1px solid ${BORDE}`, color: TINTA, background: "rgba(255,255,255,.06)" }}
             />
           </label>
           <button
             onClick={guardar}
             disabled={guardando}
             className="rounded-full px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
-            style={{ background: DORADO }}
+            style={{ background: ROJO }}
           >
             {guardando ? "Guardando…" : "Guardar"}
           </button>
@@ -200,12 +269,12 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               onClick={alternar}
               aria-expanded={abierta}
               className="w-full flex items-center justify-center gap-2.5 flex-wrap px-4 py-3 text-[11.5px]"
-              style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.45)", color: TINTA_3 }}
+              style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.03)", color: TINTA_3 }}
             >
               <span>
                 meta <b style={{ color: TINTA }}>{meta.ftd} FTD</b>
               </span>
-              <span style={{ color: "#D6C9AE" }}>·</span>
+              <span style={{ color: "rgba(255,255,255,.22)" }}>·</span>
               <span>
                 meta <b style={{ color: TINTA }}>{plata(meta.usd)}</b> facturado
               </span>
@@ -215,13 +284,13 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             {abierta && (
               <div
                 className="px-5 pt-4 pb-5"
-                style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.4)" }}
+                style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.03)" }}
               >
                 <Barra
                   titulo="FTD"
                   valor={`${ftdMes} de ${meta.ftd}`}
                   pct={pct(ftdMes, meta.ftd)}
-                  color={`linear-gradient(90deg,#3E9E6C,${VERDE})`}
+                  color={`linear-gradient(90deg,${VERDE},#6FE6A8)`}
                   pie={
                     faltaFtd > 0
                       ? `Faltan ${faltaFtd} · ${(faltaFtd / quedan).toFixed(1)} por día en los ${quedan} días que quedan`
@@ -233,7 +302,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
                     titulo="Comisión"
                     valor={`${plata(pago)} de ${plata(meta.usd)}`}
                     pct={pct(pago, meta.usd)}
-                    color={`linear-gradient(90deg,${DORADO_CLARO},${DORADO})`}
+                    color={`linear-gradient(90deg,${ROJO_SUAVE},${ROJO})`}
                     pie={
                       siguiente
                         ? `Con ${siguiente[0] - ftdMes} FTD más pasás al escalón de ${siguiente[0]} y cobrás ${plata(siguiente[1])}`
@@ -246,7 +315,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
 
                 <div className="flex items-center justify-between gap-3 flex-wrap mt-4 text-[11px]" style={{ color: TINTA_3 }}>
                   <span>Solo cuenta la comisión por FTD — las ventas todavía no las registra el sistema.</span>
-                  <button onClick={() => setEditando(true)} className="underline font-semibold" style={{ color: DORADO }}>
+                  <button onClick={() => setEditando(true)} className="underline font-semibold" style={{ color: ROJO }}>
                     Cambiar mi meta
                   </button>
                 </div>
