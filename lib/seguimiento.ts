@@ -15,6 +15,7 @@ import {
 } from "./leadStates";
 import { notasDe, type Nota } from "./notas";
 import { confirmadosDe } from "./confirmados";
+import { tareasDe, cerrados, type Accion } from "./acciones";
 import { soloDelAgente } from "./metrics";
 import { getPool } from "./db";
 
@@ -69,6 +70,12 @@ export type LeadDeSeguimiento = {
   via: Via;
   /** Lo que el agente escribió de su puño; vacío hasta que escriba. */
   nota: Nota | null;
+  /**
+   * La próxima tarea que el agente se puso. Vacío significa algo concreto: a
+   * este cliente nadie le programó nada, y un cliente sin próxima tarea se
+   * muere solo. Por eso la lista lo marca en rojo en vez de dejarlo pasar.
+   */
+  tarea: Accion | null;
 };
 
 /**
@@ -165,10 +172,17 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
     soloAgente
   );
 
-  const vivos = (contactos as GhlContact[]).filter((c) => !yaDeposito(c));
-  const [notas, confirmados] = await Promise.all([
-    notasDe(vivos.map((c) => c.id)),
-    confirmadosDe(vivos.map((c) => c.id)),
+  const conVida = (contactos as GhlContact[]).filter((c) => !yaDeposito(c));
+  const idsTodos = conVida.map((c) => c.id);
+  const yaCerrados = await cerrados(idsTodos);
+  // El agente da por terminado el seguimiento desde la misma ficha donde lo
+  // hace todo. Sin esa salida la lista solo crece.
+  const vivos = conVida.filter((c) => !yaCerrados.has(c.id));
+  const ids = vivos.map((c) => c.id);
+  const [notas, confirmados, tareas] = await Promise.all([
+    notasDe(ids),
+    confirmadosDe(ids),
+    tareasDe(ids),
   ]);
 
   const ahora = Date.now();
@@ -176,8 +190,6 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
 
   for (const contacto of vivos) {
     const nota = notas.get(contacto.id) ?? null;
-    // El agente da por terminado el seguimiento desde la misma fila donde lo
-    // hace todo. Sin esta salida la lista solo crece.
     if (nota?.proximaAccion === CERRADO) continue;
 
     const { agent } = await extractAttribution(contacto);
@@ -192,6 +204,7 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
       acciones: accionesDeLead(contacto),
       via: "llego",
       nota,
+      tarea: tareas.get(contacto.id) ?? null,
       confirmadoEn,
       dias: Math.max(
         0,
@@ -308,9 +321,16 @@ export async function computeSeguimiento(
     }
   }
 
-  const notas = await notasDe(utiles.map((u) => u.contacto.id));
+  const idsUtiles = utiles.map((u) => u.contacto.id);
+  const [notas, tareasPorDia, cerradosPorDia] = await Promise.all([
+    notasDe(idsUtiles),
+    tareasDe(idsUtiles),
+    cerrados(idsUtiles),
+  ]);
 
   for (const { contacto, agente, estado } of utiles) {
+    // Cerrado a mano en la ficha: no vuelve a salir en ninguna pestaña.
+    if (cerradosPorDia.has(contacto.id)) continue;
     const dia = diaBogota(contacto.dateAdded);
     const lista = porDia.get(dia) ?? [];
     lista.push({
@@ -323,6 +343,7 @@ export async function computeSeguimiento(
       acciones: accionesDeLead(contacto),
       via: viaDeLead(contacto, estado),
       nota: notas.get(contacto.id) ?? null,
+      tarea: tareasPorDia.get(contacto.id) ?? null,
     });
     porDia.set(dia, lista);
   }

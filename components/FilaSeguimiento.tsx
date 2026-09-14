@@ -4,39 +4,40 @@ import { useState } from "react";
 import { ESTADO_META } from "@/lib/leadStates";
 import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar } from "@/components/Llamada";
-import { ConversacionLead } from "@/components/ConversacionLead";
+import { FichaCliente } from "@/components/FichaCliente";
+import { metaTipo } from "@/lib/tiposAccion";
 import type { LeadDeSeguimiento } from "@/lib/seguimiento";
 
 /**
- * Una fila por cliente, y se escribe encima.
+ * Una fila por cliente: quién es, qué le toca, y a un toque todo lo que pasó.
  *
- * Los agentes ya documentan: lo hacen todos los días en un Excel. El problema
- * nunca fue que no escriban, sino que escriben donde el sistema no puede leer.
- * Por eso esta fila copia lo que una planilla hace bien —texto libre sin menú,
- * todo a la vista, sin botón de guardar— y le agrega lo único que un Excel no
- * puede: la conversación al lado y la fecha que después vuelve sola.
+ * Antes la fila traía el formulario entero —un texto, una acción, una fecha—
+ * y los tres se pisaban entre sí. Ahora la fila solo muestra la próxima tarea,
+ * que es lo único que hay que saber para decidir a quién atender; escribir se
+ * hace adentro, en la ficha, donde el historial está a la vista.
+ *
+ * Y cuando no hay tarea la fila lo dice en rojo. No es un hueco cosmético: un
+ * cliente sin próxima tarea es un cliente que se muere solo.
  */
 
 const AZUL = "#17457F";
 const CELESTE = "#EAF1FA";
 const VERDE = "#157F52";
+const ROJO = "#C0392B";
+const ROJO_CLARO = "#FDF2F0";
 const GRIS = "#9A998F";
 
-export const ACCIONES = [
-  "Llamar",
-  "Escribir",
-  "Enviar audio",
-  "Reenviar el link",
-  "Video testimonio",
-  "Video de la operativa",
-  "Invitar a la sesión",
-  "Cerrar seguimiento",
-];
-
-function paraInput(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(new Date(iso).getTime() - 5 * 3600e3);
-  return d.toISOString().slice(0, 16);
+function cuando(iso: string): string {
+  const d = new Date(iso);
+  const hoy = new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10);
+  const suyo = new Date(d.getTime() - 5 * 3600e3).toISOString().slice(0, 10);
+  const hora = d.toLocaleTimeString("es-CO", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Bogota",
+  });
+  if (suyo === hoy) return `hoy ${hora}`;
+  return `${d.toLocaleDateString("es-CO", { day: "numeric", month: "short", timeZone: "America/Bogota" })} ${hora}`;
 }
 
 export function FilaSeguimiento({
@@ -46,105 +47,66 @@ export function FilaSeguimiento({
 }: {
   lead: LeadDeSeguimiento;
   pie?: string;
-  /** Al elegir «Cerrar seguimiento» la fila se va de la lista de arriba. */
+  /** Al cerrar el seguimiento la fila se va de la lista de arriba. */
   onCerrado?: (id: string) => void;
 }) {
   const meta = ESTADO_META[lead.estado];
-  const [nota, setNota] = useState(lead.nota?.nota ?? "");
-  const [accion, setAccion] = useState(lead.nota?.proximaAccion ?? "");
-  const [cuando, setCuando] = useState(paraInput(lead.nota?.proximaEn ?? null));
-  const [guardado, setGuardado] = useState(false);
-  const [fallo, setFallo] = useState(false);
   const [abierta, setAbierta] = useState(false);
+  const [tarea, setTarea] = useState(lead.tarea);
 
-  function guardar(campo: Record<string, string | null>) {
-    fetch(`/api/notas/${encodeURIComponent(lead.id)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(campo),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        setFallo(false);
-        setGuardado(true);
-        setTimeout(() => setGuardado(false), 1600);
-      })
-      .catch(() => setFallo(true));
-  }
-
-  const contexto =
-    lead.acciones.length > 0 ? lead.acciones.join(" · ") : "Todavía no hizo nada";
+  const contexto = lead.acciones.length > 0 ? lead.acciones.join(" · ") : "Todavía no hizo nada";
+  const vencida = tarea?.venceEn ? new Date(tarea.venceEn) < new Date() : false;
 
   return (
     <>
-      <article className="grid grid-cols-1 sm:grid-cols-[minmax(140px,1.1fr)_minmax(170px,1.6fr)_minmax(150px,1fr)_auto] gap-2 sm:gap-2.5 px-4 sm:px-5 py-2.5 border-t border-gridline items-start">
-        <span className="flex gap-2">
-          <i className="w-[3px] rounded-full shrink-0 self-stretch" style={{ background: meta.color }} />
-          <span className="min-w-0">
-            <span className="block text-[13.5px] font-semibold leading-tight">{lead.nombre}</span>
-            <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
-              {contexto}
+      <article className="flex gap-3 px-4 sm:px-5 py-2.5 border-t border-gridline items-start">
+        <i className="w-[3px] rounded-full shrink-0 self-stretch" style={{ background: meta.color }} />
+
+        <span className="min-w-0 flex-1">
+          <span className="block text-[13.5px] font-semibold leading-tight">{lead.nombre}</span>
+          <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
+            {contexto}
+          </span>
+          {/* En la lista de «en mi WhatsApp Business» acá va desde cuándo lo
+              tiene: es el reloj que manda la cadencia del seguimiento. */}
+          {pie && (
+            <span className="block text-[11px] font-semibold mt-0.5" style={{ color: VERDE }}>
+              {pie}
             </span>
-            {/* En la lista de «en mi WhatsApp Business» acá va desde cuándo lo
-                tiene: es el reloj que manda la cadencia del seguimiento. */}
-            {pie && (
-              <span className="block text-[11px] font-semibold mt-0.5" style={{ color: VERDE }}>
-                {pie}
-              </span>
-            )}
-          </span>
+          )}
+
+          {tarea ? (
+            <span
+              className="block text-[12.5px] mt-1.5 px-2.5 py-1.5 rounded-lg"
+              style={{
+                borderLeft: `3px solid ${vencida ? ROJO : AZUL}`,
+                background: vencida ? ROJO_CLARO : CELESTE,
+              }}
+            >
+              {vencida && "⏰ "}
+              <b className="font-semibold">{metaTipo(tarea.tipo).tarea}</b>
+              {" — "}
+              <b className="tabular-nums font-semibold">
+                {vencida ? "era " : ""}
+                {cuando(tarea.venceEn!)}
+              </b>
+              {tarea.detalle && <> · «{tarea.detalle}»</>}
+            </span>
+          ) : (
+            <button
+              onClick={() => setAbierta(true)}
+              className="block text-[12.5px] mt-1.5 px-2.5 py-1.5 rounded-lg text-left w-full"
+              style={{ borderLeft: `3px solid ${ROJO}`, background: ROJO_CLARO, color: ROJO }}
+            >
+              Sin próximo paso. <b className="font-semibold underline">Ponele una tarea.</b>
+            </button>
+          )}
         </span>
 
-        {/* El campo libre. Sin menú y sin límite a propósito: si el agente no
-            puede escribir «el man cobra el 15», vuelve a la planilla. */}
-        <span>
-          <textarea
-            rows={2}
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            onBlur={() => guardar({ nota })}
-            placeholder="¿Qué pasó con este cliente?"
-            className="w-full resize-none rounded-lg border border-transparent bg-page px-2 py-1.5 text-[12.5px] leading-snug outline-none hover:border-gridline focus:border-[#2A6FB8] focus:bg-surface"
-          />
-          <span
-            className="block text-[10.5px] h-3.5"
-            style={{ color: fallo ? "#C0392B" : VERDE, opacity: guardado || fallo ? 1 : 0 }}
-          >
-            {fallo ? "no se pudo guardar" : "guardado"}
-          </span>
-        </span>
-
-        <span className="flex gap-1.5 flex-wrap">
-          <select
-            value={accion}
-            onChange={(e) => {
-              setAccion(e.target.value);
-              guardar({ proximaAccion: e.target.value });
-              // Se saca en el acto y no recargando: el seguimiento se guarda
-              // en caché un minuto en el servidor, así que pedirlo de nuevo
-              // devolvería la misma fila que el agente acaba de cerrar.
-              if (e.target.value === "Cerrar seguimiento") onCerrado?.(lead.id);
-            }}
-            className="rounded-lg border border-gridline bg-surface px-1.5 py-1 text-[12px] outline-none focus:border-[#2A6FB8]"
-          >
-            <option value="">Qué sigue…</option>
-            {ACCIONES.map((a) => (
-              <option key={a}>{a}</option>
-            ))}
-          </select>
-          <input
-            type="datetime-local"
-            value={cuando}
-            onChange={(e) => setCuando(e.target.value)}
-            onBlur={() => cuando && guardar({ proximaEn: new Date(cuando).toISOString() })}
-            className="rounded-lg border border-gridline bg-surface px-1.5 py-1 text-[12px] outline-none focus:border-[#2A6FB8]"
-          />
-        </span>
-
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => setAbierta((v) => !v)}
-            className="rounded-full px-2 py-1 text-[11px] font-semibold"
+            className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
             style={{ background: CELESTE, color: AZUL }}
           >
             {abierta ? "Cerrar" : "Ver"}
@@ -153,7 +115,31 @@ export function FilaSeguimiento({
           <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={26} />
         </span>
       </article>
-      {abierta && <ConversacionLead contactId={lead.id} />}
+
+      {abierta && (
+        <FichaCliente
+          contactId={lead.id}
+          nombre={lead.nombre}
+          telefono={lead.telefono}
+          onCambio={(cerrado) => {
+            if (cerrado) {
+              onCerrado?.(lead.id);
+              return;
+            }
+            // La tarea de la fila se refresca sola: el seguimiento se guarda en
+            // caché un minuto en el servidor y recargarlo devolvería la vieja.
+            fetch(`/api/acciones/${encodeURIComponent(lead.id)}`)
+              .then((r) => (r.ok ? r.json() : { hilo: [] }))
+              .then((d: { hilo: LeadDeSeguimiento["tarea"][] }) => {
+                const abierta = (d.hilo as NonNullable<LeadDeSeguimiento["tarea"]>[])
+                  .filter((a) => a.venceEn && !a.hechaEn && !a.cerradaEn)
+                  .sort((a, b) => a.venceEn!.localeCompare(b.venceEn!))[0];
+                setTarea(abierta ?? null);
+              })
+              .catch(() => undefined);
+          }}
+        />
+      )}
     </>
   );
 }

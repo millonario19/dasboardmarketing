@@ -9,6 +9,8 @@ import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatur
 import { ConfirmarBajadas } from "@/components/ConfirmarBajadas";
 import { SeMovioHoy } from "@/components/SeMovioHoy";
 import { Seguimiento } from "@/components/Seguimiento";
+import { TareasDeHoy } from "@/components/TareasDeHoy";
+import { PasoSistema } from "@/components/PasoSistema";
 import { conteoVacio } from "@/lib/leadStates";
 import { primerNombre } from "@/lib/nombre";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
@@ -63,6 +65,8 @@ export default function MiDiaPage() {
   const [data, setData] = useState<MiDia | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Lo informa el módulo de tareas cuando termina de cargar.
+  const [porHacer, setPorHacer] = useState<number | null>(null);
 
 
   useEffect(() => {
@@ -269,10 +273,45 @@ export default function MiDiaPage() {
             nuevo, y antes no aparecía en ninguna parte. */}
         <SeMovioHoy />
 
-        {/* Y después lo que quedó debiendo de los días anteriores: primero lo
-            que alguien prometió y no cumplió, después los leads de ayer,
-            antier y hace tres días. */}
-        <Seguimiento />
+        {/* Lo que alguien prometió y no cumplió, arriba de los pasos: es una
+            alarma, no un paso. */}
+        <Seguimiento parte="agenda" />
+
+        {/* Los tres pasos del seguimiento, el mismo orden que en Dirección.
+            Primero lo que vos programaste, después los que ya tenés en el
+            WhatsApp, y al final los que todavía no bajaron. */}
+        <PasoSistema
+          numero={1}
+          titulo="Hoy tenés que llamar"
+          detalle="Lo que vos mismo programaste, más lo que se te pasó"
+          abiertoPorDefecto
+          resumen={
+            porHacer === null
+              ? null
+              : porHacer > 0
+                ? { texto: `${porHacer} por hacer`, fondo: "#FBE9E7", color: "#C0392B" }
+                : { texto: "al día", fondo: "#E4F1EA", color: "#157F52" }
+          }
+        >
+          <TareasDeHoy onResumen={setPorHacer} />
+        </PasoSistema>
+
+        <PasoSistema
+          numero={2}
+          titulo="En mi WhatsApp Business"
+          detalle="Los que confirmaste · acá el sistema ya no ve nada, solo vos"
+          abiertoPorDefecto
+        >
+          <Seguimiento parte="business" />
+        </PasoSistema>
+
+        <PasoSistema
+          numero={3}
+          titulo="Todavía no bajaron"
+          detalle="Tibios y fríos de los últimos días"
+        >
+          <Seguimiento parte="dias" />
+        </PasoSistema>
 
         {/* Filtros por bloque, con su cuenta. */}
         <div className="flex items-center gap-2 flex-wrap mb-5">

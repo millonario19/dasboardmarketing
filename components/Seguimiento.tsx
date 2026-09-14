@@ -171,7 +171,33 @@ function desdeCuando(dias: number): string {
   return `día ${dias} · hace ${dias} días`;
 }
 
-export function Seguimiento() {
+/**
+ * Las tres partes se piden una sola vez.
+ *
+ * La pantalla monta tres veces este componente —la agenda, los confirmados y
+ * las pestañas por día— porque cada uno vive bajo un paso distinto. Sin esto
+ * serían tres barridos de GHL para la misma respuesta.
+ */
+let enVuelo: { en: number; promesa: Promise<Datos> } | null = null;
+
+function pedirSeguimiento(forzar = false): Promise<Datos> {
+  if (!forzar && enVuelo && Date.now() - enVuelo.en < 30_000) return enVuelo.promesa;
+  const promesa = fetch("/api/seguimiento")
+    .then(async (r) => {
+      if (!r.ok) throw new Error((await r.json()).error ?? "Error al armar el seguimiento");
+      return r.json() as Promise<Datos>;
+    })
+    .catch((e) => {
+      enVuelo = null;
+      throw e;
+    });
+  enVuelo = { en: Date.now(), promesa };
+  return promesa;
+}
+
+export type ParteSeguimiento = "agenda" | "business" | "dias";
+
+export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,14 +207,10 @@ export function Seguimiento() {
   // no entró un solo lead.
   const [elegido, setElegido] = useState(false);
 
-  const cargar = useCallback(() => {
+  const cargar = useCallback((forzar = false) => {
     setCargando(true);
     setError(null);
-    fetch("/api/seguimiento")
-      .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).error ?? "Error al armar el seguimiento");
-        return r.json();
-      })
+    pedirSeguimiento(forzar)
       .then((d: Datos) => {
         setDatos(d);
         if (!elegido) {
@@ -206,96 +228,104 @@ export function Seguimiento() {
 
   const actual: DiaDeSeguimiento | undefined = datos?.dias[dia];
 
+  if (parte === "agenda") {
+    return datos ? <Agenda promesas={datos.promesas} /> : null;
+  }
+
+  if (parte === "business") {
+    if (!datos) {
+      return (
+        <section className="rounded-[22px] bg-surface border border-gridline mb-5 px-4 sm:px-5 py-4">
+          <p className="text-[13px]" style={{ color: GRIS }}>
+            {error ?? "Buscando a los que ya están en tu WhatsApp…"}
+          </p>
+        </section>
+      );
+    }
+    return (
+      <EnMiBusiness
+        leads={datos.enBusiness}
+        onCerrado={(id) =>
+          setDatos((d) => (d ? { ...d, enBusiness: d.enBusiness.filter((l) => l.id !== id) } : d))
+        }
+      />
+    );
+  }
+
   return (
-    <>
-      {datos && (
-        <EnMiBusiness
-          leads={datos.enBusiness}
-          onCerrado={(id) =>
-            setDatos((d) => (d ? { ...d, enBusiness: d.enBusiness.filter((l) => l.id !== id) } : d))
-          }
-        />
-      )}
-      {datos && <Agenda promesas={datos.promesas} />}
-
-      <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
-        <div
-          className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
-          style={{ background: AZUL, color: "#fff" }}
+    <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
+      <div
+        className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
+        style={{ background: AZUL, color: "#fff" }}
+      >
+        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Todavía no bajaron</h2>
+        <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
+          hoy y los tres días anteriores
+        </span>
+        <button
+          onClick={() => cargar(true)}
+          disabled={cargando}
+          className="ml-auto rounded-full px-2.5 py-[3px] text-[11px] disabled:opacity-50 hover:opacity-80"
+          style={{ background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.28)" }}
         >
-          <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Seguimiento</h2>
-          <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
-            hoy y los tres días anteriores
-          </span>
-          <button
-            onClick={cargar}
-            disabled={cargando}
-            className="ml-auto rounded-full px-2.5 py-[3px] text-[11px] disabled:opacity-50 hover:opacity-80"
-            style={{ background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.28)" }}
-          >
-            {cargando ? "Leyendo…" : "↻ Actualizar"}
-          </button>
-        </div>
+          {cargando ? "Leyendo…" : "↻ Actualizar"}
+        </button>
+      </div>
 
-        {/* Pestañas por día: obligan a cerrar uno antes de pasar al siguiente,
-            que es como se trabaja una lista de seguimiento. */}
-        {datos && (
-          <div className="flex gap-1.5 px-4 sm:px-5 py-2 border-b border-gridline flex-wrap">
-            {datos.dias.map((d, i) => (
-              <button
-                key={d.fecha}
-                onClick={() => {
-                  setDia(i);
-                  setElegido(true);
-                }}
-                className="rounded-full px-3 py-1 text-[12px] font-semibold"
-                style={
-                  i === dia
-                    ? { background: AZUL, color: "#fff" }
-                    : { background: CELESTE, color: AZUL }
-                }
-              >
-                {d.etiqueta}
-                <b className="ml-1.5 tabular-nums font-bold opacity-70">{d.leads.length}</b>
-              </button>
+      {/* Pestañas por día: obligan a cerrar uno antes de pasar al siguiente,
+          que es como se trabaja una lista de seguimiento. */}
+      {datos && (
+        <div className="flex gap-1.5 px-4 sm:px-5 py-2 border-b border-gridline flex-wrap">
+          {datos.dias.map((d, i) => (
+            <button
+              key={d.fecha}
+              onClick={() => {
+                setDia(i);
+                setElegido(true);
+              }}
+              className="rounded-full px-3 py-1 text-[12px] font-semibold"
+              style={i === dia ? { background: AZUL, color: "#fff" } : { background: CELESTE, color: AZUL }}
+            >
+              {d.etiqueta}
+              <b className="ml-1.5 tabular-nums font-bold opacity-70">{d.leads.length}</b>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {error && <p className="px-4 sm:px-5 py-4 text-[13px] text-series2">{error}</p>}
+
+      {cargando && !datos && (
+        <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
+          Armando el seguimiento…
+        </p>
+      )}
+
+      {actual && actual.leads.length === 0 && !cargando && (
+        <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
+          Ese día no entró ningún lead que siga pendiente.
+        </p>
+      )}
+
+      {/* Agrupado por vía, no por temperatura: la temperatura dice cuánto
+          interés hay, la vía dice qué hay que hacer. */}
+      {VIAS.map((via) => {
+        const suyos = (actual?.leads ?? []).filter((l) => l.via === via);
+        if (suyos.length === 0) return null;
+        return (
+          <div key={via}>
+            <p
+              className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
+              style={{ background: `${VIA_COLOR[via]}14`, color: VIA_COLOR[via] }}
+            >
+              {VIA_TITULO[via]} · {suyos.length}
+            </p>
+            {suyos.map((l) => (
+              <FilaSeguimiento key={l.id} lead={l} />
             ))}
           </div>
-        )}
-
-        {error && <p className="px-4 sm:px-5 py-4 text-[13px] text-series2">{error}</p>}
-
-        {cargando && !datos && (
-          <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
-            Armando el seguimiento…
-          </p>
-        )}
-
-        {actual && actual.leads.length === 0 && !cargando && (
-          <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
-            Ese día no entró ningún lead que siga pendiente.
-          </p>
-        )}
-
-        {/* Agrupado por vía, no por temperatura: la temperatura dice cuánto
-            interés hay, la vía dice qué hay que hacer. */}
-        {VIAS.map((via) => {
-          const suyos = (actual?.leads ?? []).filter((l) => l.via === via);
-          if (suyos.length === 0) return null;
-          return (
-            <div key={via}>
-              <p
-                className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
-                style={{ background: `${VIA_COLOR[via]}14`, color: VIA_COLOR[via] }}
-              >
-                {VIA_TITULO[via]} · {suyos.length}
-              </p>
-              {suyos.map((l) => (
-                <FilaSeguimiento key={l.id} lead={l} />
-              ))}
-            </div>
-          );
-        })}
-      </section>
-    </>
+        );
+      })}
+    </section>
   );
 }
