@@ -38,6 +38,8 @@ function llegada(iso: string): string {
   return `llegó el ${fecha} · hace ${dias} días`;
 }
 
+const CLAVE = "op_movio_hoy";
+
 export function SeMovioHoy() {
   const [movimientos, setMovimientos] = useState<Movimiento[] | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -45,6 +47,29 @@ export function SeMovioHoy() {
   // Una conversación abierta a la vez: dos hilos largos obligan a bajar hasta
   // el final para comparar.
   const [abierto, setAbierto] = useState<string | null>(null);
+  // Plegable, y el navegador se acuerda: es una lista larga que algunos días
+  // interesa y otros no, y arriba de los tres pasos empuja todo hacia abajo.
+  const [desplegado, setDesplegado] = useState(true);
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(CLAVE);
+      if (v !== null) setDesplegado(v === "1");
+    } catch {
+      /* modo privado */
+    }
+  }, []);
+
+  function alternar() {
+    setDesplegado((v) => {
+      try {
+        localStorage.setItem(CLAVE, v ? "0" : "1");
+      } catch {
+        /* modo privado */
+      }
+      return !v;
+    });
+  }
 
   const cargar = useCallback(() => {
     setCargando(true);
@@ -69,7 +94,17 @@ export function SeMovioHoy() {
   return (
     <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
       <div
-        className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
+        onClick={alternar}
+        role="button"
+        tabIndex={0}
+        aria-expanded={desplegado}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            alternar();
+          }
+        }}
+        className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5 cursor-pointer select-none"
         style={{ background: AZUL, color: "#fff" }}
       >
         <h2 className="text-[16px] font-semibold tracking-[-0.02em]">Se movió hoy</h2>
@@ -84,113 +119,124 @@ export function SeMovioHoy() {
           </span>
         )}
         <button
-          onClick={cargar}
+          onClick={(e) => {
+            // Actualizar no pliega la lista: está dentro del encabezado, que
+            // es el que abre y cierra.
+            e.stopPropagation();
+            cargar();
+          }}
           disabled={cargando}
           className="ml-auto rounded-full px-2.5 py-[3px] text-[11px] disabled:opacity-50 hover:opacity-80"
           style={{ background: "rgba(255,255,255,.14)", border: "1px solid rgba(255,255,255,.28)" }}
         >
           {cargando ? "Leyendo…" : "↻ Actualizar"}
         </button>
+        <span className="text-[11px] opacity-70">{desplegado ? "▲" : "▼"}</span>
       </div>
 
-      {error && <p className="px-4 sm:px-5 py-4 text-[13px] text-series2">{error}</p>}
+      {desplegado && (
+        <>
 
-      {cargando && !movimientos && (
-        <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
-          Buscando quién se movió…
-        </p>
-      )}
+        {error && <p className="px-4 sm:px-5 py-4 text-[13px] text-series2">{error}</p>}
 
-      {movimientos && movimientos.length === 0 && !cargando && (
-        <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
-          No se movió nadie ni hoy ni ayer.
-        </p>
-      )}
+        {cargando && !movimientos && (
+          <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
+            Buscando quién se movió…
+          </p>
+        )}
 
-      <div>
-        {(movimientos ?? []).map((m, i, todos) => {
-          const meta = ESTADO_META[m.estado];
-          // El corte entre hoy y ayer: a las 7 de la mañana «hoy» está casi
-          // vacío, y lo que el agente necesita ver es lo que se movió mientras
-          // no estaba.
-          const corte = i === 0 || todos[i - 1].dia !== m.dia;
-          return (
-            <div key={`${m.contactId}-${m.hora}`}>
-              {corte && (
-                <p
-                  className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
-                  style={{ background: CELESTE, color: AZUL }}
-                >
-                  {m.dia === "hoy" ? "Hoy" : "Ayer"}
-                </p>
-              )}
-            <article
-              className="flex gap-3 px-4 sm:px-5 py-3 border-t border-gridline"
-              style={{ background: m.esperando ? "#FDF2F0" : undefined }}
-            >
-              <span className="text-[13px] font-bold tabular-nums pt-0.5 shrink-0" style={{ color: AZUL }}>
-                {hora(m.hora)}
-              </span>
+        {movimientos && movimientos.length === 0 && !cargando && (
+          <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
+            No se movió nadie ni hoy ni ayer.
+          </p>
+        )}
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <b className="text-[14px] font-semibold tracking-[-0.015em]">{m.nombre}</b>
-                  <span
-                    className="text-[10px] font-bold rounded-full px-2 py-[1px]"
-                    style={{ background: `color-mix(in srgb, ${meta.color} 16%, var(--surface-1))`, color: meta.color }}
+        <div>
+          {(movimientos ?? []).map((m, i, todos) => {
+            const meta = ESTADO_META[m.estado];
+            // El corte entre hoy y ayer: a las 7 de la mañana «hoy» está casi
+            // vacío, y lo que el agente necesita ver es lo que se movió mientras
+            // no estaba.
+            const corte = i === 0 || todos[i - 1].dia !== m.dia;
+            return (
+              <div key={`${m.contactId}-${m.hora}`}>
+                {corte && (
+                  <p
+                    className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
+                    style={{ background: CELESTE, color: AZUL }}
                   >
-                    {meta.nombre}
-                  </span>
-                  <span className="text-[11.5px]" style={{ color: GRIS }}>
-                    {llegada(m.llegado)}
-                  </span>
+                    {m.dia === "hoy" ? "Hoy" : "Ayer"}
+                  </p>
+                )}
+              <article
+                className="flex gap-3 px-4 sm:px-5 py-3 border-t border-gridline"
+                style={{ background: m.esperando ? "#FDF2F0" : undefined }}
+              >
+                <span className="text-[13px] font-bold tabular-nums pt-0.5 shrink-0" style={{ color: AZUL }}>
+                  {hora(m.hora)}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <b className="text-[14px] font-semibold tracking-[-0.015em]">{m.nombre}</b>
+                    <span
+                      className="text-[10px] font-bold rounded-full px-2 py-[1px]"
+                      style={{ background: `color-mix(in srgb, ${meta.color} 16%, var(--surface-1))`, color: meta.color }}
+                    >
+                      {meta.nombre}
+                    </span>
+                    <span className="text-[11.5px]" style={{ color: GRIS }}>
+                      {llegada(m.llegado)}
+                    </span>
+                  </div>
+
+                  {/* Lo que dijo o lo que hizo, en una línea, y quién lo dijo. */}
+                  <p className="text-[12.5px] mt-1 truncate" style={{ color: "#5E5C56" }}>
+                    {m.tipo === "mensaje" ? (
+                      <>
+                        <b className="font-semibold" style={{ color: m.loDijo === "cliente" ? AZUL : GRIS }}>
+                          {m.loDijo === "cliente" ? "Él: " : "Nosotros: "}
+                        </b>
+                        «{m.detalle}»
+                      </>
+                    ) : (
+                      `✓ ${m.detalle}`
+                    )}
+                  </p>
+
+                  {/* Y lo único que convierte esto en trabajo. */}
+                  <p
+                    className="text-[12px] font-semibold mt-1 inline-block rounded-lg px-2 py-[2px]"
+                    style={{
+                      background: m.esperando ? "#FBE3DF" : CELESTE,
+                      color: m.esperando ? ROJO : AZUL,
+                    }}
+                  >
+                    {m.siguiente}
+                  </p>
                 </div>
 
-                {/* Lo que dijo o lo que hizo, en una línea, y quién lo dijo. */}
-                <p className="text-[12.5px] mt-1 truncate" style={{ color: "#5E5C56" }}>
-                  {m.tipo === "mensaje" ? (
-                    <>
-                      <b className="font-semibold" style={{ color: m.loDijo === "cliente" ? AZUL : GRIS }}>
-                        {m.loDijo === "cliente" ? "Él: " : "Nosotros: "}
-                      </b>
-                      «{m.detalle}»
-                    </>
-                  ) : (
-                    `✓ ${m.detalle}`
-                  )}
-                </p>
-
-                {/* Y lo único que convierte esto en trabajo. */}
-                <p
-                  className="text-[12px] font-semibold mt-1 inline-block rounded-lg px-2 py-[2px]"
-                  style={{
-                    background: m.esperando ? "#FBE3DF" : CELESTE,
-                    color: m.esperando ? ROJO : AZUL,
-                  }}
-                >
-                  {m.siguiente}
-                </p>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => setAbierto(abierto === m.contactId ? null : m.contactId)}
+                    title="Ver la conversación"
+                    className="rounded-full px-2 py-1 text-[11px] font-semibold"
+                    style={{ background: CELESTE, color: AZUL }}
+                  >
+                    {abierto === m.contactId ? "Cerrar" : "Ver"}
+                  </button>
+                  <ReporteLlamada contactId={m.contactId} />
+                  <BotonLlamar telefono={m.telefono} nombre={m.nombre} contactId={m.contactId} tamano={28} />
+                  <BotonWhatsApp telefono={m.telefono} nombre={m.nombre} tamano={28} />
+                </div>
+              </article>
+              {abierto === m.contactId && <ConversacionLead contactId={m.contactId} />}
               </div>
-
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={() => setAbierto(abierto === m.contactId ? null : m.contactId)}
-                  title="Ver la conversación"
-                  className="rounded-full px-2 py-1 text-[11px] font-semibold"
-                  style={{ background: CELESTE, color: AZUL }}
-                >
-                  {abierto === m.contactId ? "Cerrar" : "Ver"}
-                </button>
-                <ReporteLlamada contactId={m.contactId} />
-                <BotonLlamar telefono={m.telefono} nombre={m.nombre} contactId={m.contactId} tamano={28} />
-                <BotonWhatsApp telefono={m.telefono} nombre={m.nombre} tamano={28} />
-              </div>
-            </article>
-            {abierto === m.contactId && <ConversacionLead contactId={m.contactId} />}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+        </>
+      )}
     </section>
   );
 }
