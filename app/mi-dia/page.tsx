@@ -6,6 +6,7 @@ import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
 import { TablaLeads } from "@/components/TablaLeads";
 import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatura";
+import { SeMovioHoy } from "@/components/SeMovioHoy";
 import { conteoVacio } from "@/lib/leadStates";
 import { primerNombre } from "@/lib/nombre";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
@@ -248,6 +249,11 @@ export default function MiDiaPage() {
             {conteos.calientes > 0 ? `Ir a Calientes (${conteos.calientes}) →` : "Ver toda la lista →"}
           </button>
         </section>
+
+        {/* Lo primero del día: quién se movió, sin importar cuándo entró. Un
+            lead de hace dos semanas que vuelve a escribir vale más que uno
+            nuevo, y antes no aparecía en ninguna parte. */}
+        <SeMovioHoy />
 
         {/* Filtros por bloque, con su cuenta. */}
         <div className="flex items-center gap-2 flex-wrap mb-5">

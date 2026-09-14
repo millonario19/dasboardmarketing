@@ -252,6 +252,45 @@ export async function buscarConversacion(contactId: string): Promise<string | nu
   }
 }
 
+export type GhlConversacion = {
+  id: string;
+  contactId: string;
+  contactName?: string | null;
+  phone?: string | null;
+  tags?: string[];
+  assignedTo?: string | null;
+  dateAdded: number;
+  lastMessageDate: number;
+  lastMessageBody?: string | null;
+  lastMessageDirection?: "inbound" | "outbound";
+  lastMessageType?: string;
+  unreadCount?: number;
+};
+
+/**
+ * Las conversaciones más recientes de la subcuenta, de la última hablada hacia
+ * atrás.
+ *
+ * Es la forma barata de saber qué se movió: una sola llamada devuelve cien
+ * conversaciones con la hora del último mensaje, quién lo mandó, cuántos hay
+ * sin leer, las etiquetas del contacto y a qué agente está asignado. La
+ * alternativa —recorrer noventa días de contactos— son miles de fichas y
+ * decenas de llamadas para llegar al mismo dato.
+ */
+export async function conversacionesRecientes(limite = 100): Promise<GhlConversacion[]> {
+  const locationId = requireEnv("GHL_LOCATION_ID");
+  const res = await fetchWithRetry(
+    `${GHL_BASE_URL}/conversations/search?locationId=${encodeURIComponent(locationId)}` +
+      `&limit=${limite}&sort=desc&sortBy=last_message_date`,
+    { headers: ghlHeaders(), cache: "no-store" }
+  );
+  if (!res.ok) {
+    throw new Error(`GHL no devolvió las conversaciones (${res.status})`);
+  }
+  const data = await res.json();
+  return data.conversations ?? [];
+}
+
 /**
  * Los mensajes de una conversación.
  *
