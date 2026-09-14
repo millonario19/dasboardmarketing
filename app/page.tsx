@@ -6,6 +6,7 @@ import { FunnelWaterfall } from "@/components/FunnelWaterfall";
 import { PanelEstados } from "@/components/PanelEstados";
 import { CambiarVista } from "@/components/CambiarVista";
 import { TablaAgentes } from "@/components/TablaAgentes";
+import { ProduccionHoy } from "@/components/ProduccionHoy";
 import { InteraccionLeads } from "@/components/InteraccionLeads";
 import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
@@ -114,9 +115,14 @@ export default function DashboardPage() {
               .map((r) => ({ id: r.agentId as string, nombre: r.agent }))}
           />
 
+          <ProduccionHoy serie={data.serie} totals={data.totals} propio={!esAdmin} />
+
           <PanelEstados datos={data.panel} propio={!esAdmin} />
 
-          <TablaAgentes data={data} />
+          {/* La tabla es una comparación entre agentes: con una sola fila —la
+              suya— un agente no tiene con quién compararse, y la tarjeta de
+              arriba dice lo mismo mejor. */}
+          {esAdmin && <TablaAgentes data={data} />}
 
           <div className="mt-8">
             <FunnelWaterfall

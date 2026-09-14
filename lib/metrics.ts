@@ -175,8 +175,33 @@ export type PanelEstados = {
 
 export type Rango = { from: string; to: string };
 
+/**
+ * Un día del mes, con lo que se contó ese día.
+ *
+ * Usa exactamente las mismas reglas de fecha que las cifras de hoy y del mes,
+ * para que la barra de hoy y el número grande de al lado no puedan discrepar:
+ * leads y registros por la fecha en que entró el contacto, FTD por la última
+ * vez que se actualizó, que es lo más cerca que GHL deja llegar al momento
+ * del depósito.
+ */
+export type DiaDeProduccion = {
+  dia: string; // YYYY-MM-DD en Bogotá
+  leads: number;
+  registros: number;
+  ftd: number;
+};
+
 export type AgentProduction = {
   rows: AgentProductionRow[];
+  /**
+   * Los últimos días, para las barritas.
+   *
+   * Se arma sobre los contactos que ya se trajeron para contar el mes, sin
+   * pedirle nada nuevo a GHL. Por eso los primeros días del mes la serie es
+   * más corta que siete: no hay datos de septiembre antes del 1 de
+   * septiembre, y estirarla con ceros diría que ese día no pasó nada.
+   */
+  serie: DiaDeProduccion[];
   totals: {
     leadsHoy: number;
     leadsMes: number;
@@ -199,6 +224,36 @@ function mediana(valores: number[]): number | null {
   const orden = [...valores].sort((a, b) => a - b);
   const medio = Math.floor(orden.length / 2);
   return orden.length % 2 ? orden[medio] : (orden[medio - 1] + orden[medio]) / 2;
+}
+
+// Cuántos días muestra la barrita. Siete es una semana: deja ver el ritmo sin
+// convertirse en un gráfico que haya que estudiar.
+const DIAS_SERIE = 7;
+
+function armarSerie(
+  ahoraMs: number,
+  desdeIso: string,
+  leads: Map<string, number>,
+  registros: Map<string, number>,
+  ftd: Map<string, number>
+): DiaDeProduccion[] {
+  const hoy = diaBogota(new Date(ahoraMs).toISOString());
+  const primeroDelMes = diaBogota(desdeIso);
+
+  const dias: string[] = [];
+  for (let i = DIAS_SERIE - 1; i >= 0; i--) {
+    const d = diaBogota(new Date(ahoraMs - i * 864e5).toISOString());
+    // Antes del primero del mes no hay datos traídos, y un cero ahí diría que
+    // ese día no entró nadie en vez de «no lo consultamos».
+    if (d >= primeroDelMes && d <= hoy) dias.push(d);
+  }
+
+  return dias.map((dia) => ({
+    dia,
+    leads: leads.get(dia) ?? 0,
+    registros: registros.get(dia) ?? 0,
+    ftd: ftd.get(dia) ?? 0,
+  }));
 }
 
 function diaBogota(iso: string): string {
@@ -415,11 +470,19 @@ export async function computeAgentProduction(soloAgente?: string | null): Promis
 
   const counts = new Map<string, MutableRow>();
 
+  // Los mismos recorridos van contando por día: la serie no cuesta ni una
+  // llamada más a GHL.
+  const porDiaLeads = new Map<string, number>();
+  const porDiaRegistros = new Map<string, number>();
+  const porDiaFtd = new Map<string, number>();
+  const sumar = (m: Map<string, number>, dia: string) => m.set(dia, (m.get(dia) ?? 0) + 1);
+
   for (const contact of leadContacts) {
     const t = new Date(contact.dateAdded).getTime();
     const { agent, agentId, office } = await extractAttribution(contact);
     const row = ensureRow(counts, agent, agentId, office);
     row.leadsMes += 1;
+    sumar(porDiaLeads, diaBogota(contact.dateAdded));
     if (t >= todayFromMs && t < todayToMs) row.leadsHoy += 1;
   }
 
@@ -429,6 +492,7 @@ export async function computeAgentProduction(soloAgente?: string | null): Promis
     const { agent, agentId, office } = await extractAttribution(contact);
     const row = ensureRow(counts, agent, agentId, office);
     row.registrosMes += 1;
+    sumar(porDiaRegistros, diaBogota(contact.dateAdded));
     if (t >= todayFromMs && t < todayToMs) row.registrosHoy += 1;
   }
 
@@ -438,8 +502,11 @@ export async function computeAgentProduction(soloAgente?: string | null): Promis
     const { agent, agentId, office } = await extractAttribution(contact);
     const row = ensureRow(counts, agent, agentId, office);
     row.ftdMes += 1;
+    sumar(porDiaFtd, diaBogota(new Date(t).toISOString()));
     if (t >= todayFromMs && t < todayToMs) row.ftdHoy += 1;
   }
+
+  const serie = armarSerie(now, month.from, porDiaLeads, porDiaRegistros, porDiaFtd);
 
   const rows = [...counts.values()].sort((a, b) => b.leadsHoy - a.leadsHoy || b.ftdMes - a.ftdMes);
 
@@ -455,6 +522,7 @@ export async function computeAgentProduction(soloAgente?: string | null): Promis
 
   return {
     rows,
+    serie,
     panel,
     totals: {
       leadsHoy: rows.reduce((s, r) => s + r.leadsHoy, 0),
