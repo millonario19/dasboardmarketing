@@ -88,10 +88,10 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
   );
 
   return (
-    <div className="bg-surface border border-gridline rounded-lg overflow-hidden">
+    <div className="bg-surface border border-gridline rounded-[18px] overflow-hidden mt-7">
       {/* Control de fechas en la misma línea del título: no agrega una caja ni
           una sección, solo una fila. */}
-      <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3 border-b border-gridline">
+      <div className="flex items-center justify-between gap-3 flex-wrap px-4 py-3.5 border-b border-gridline">
         <h2 className="text-[15px] font-semibold text-ink-primary">Producción por agente</h2>
         <div className="flex items-center gap-2 flex-wrap">
           <input
@@ -156,7 +156,7 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
               {enRango ? (
                 <th
                   colSpan={3}
-                  className="text-white text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-2 pb-0.5 whitespace-nowrap"
+                  className="text-white text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-3 pb-1 whitespace-nowrap"
                   style={{ background: CAB }}
                 >
                   Del {enEspanol(consulta.desde)} al {enEspanol(consulta.hasta)}
@@ -165,14 +165,14 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
                 <>
                   <th
                     colSpan={3}
-                    className="text-white text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-2 pb-0.5"
+                    className="text-white text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-3 pb-1"
                     style={{ background: CAB }}
                   >
                     Hoy
                   </th>
                   <th
                     colSpan={3}
-                    className="text-white text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-2 pb-0.5"
+                    className="text-white text-center text-[10.5px] font-semibold uppercase tracking-wider px-4 pt-3 pb-1"
                     style={{ background: CAB, borderLeft: "1px solid rgba(255,255,255,0.25)" }}
                   >
                     Este mes
@@ -182,7 +182,7 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
             </tr>
             <tr className="border-b border-gridline">
               <th
-                className="text-left text-[11px] font-medium uppercase tracking-wide text-white px-4 pt-1 pb-2.5"
+                className="text-left text-[11px] font-medium uppercase tracking-wide text-white px-4 pt-1 pb-3"
                 style={{ background: CAB }}
               >
                 Agente
@@ -191,7 +191,7 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
                 (c, i) => (
                   <th
                     key={i}
-                    className="text-white text-right text-[11px] font-medium uppercase tracking-wide px-4 pt-1 pb-2.5 whitespace-nowrap"
+                    className="text-white text-right text-[11px] font-medium uppercase tracking-wide px-4 pt-1 pb-3 whitespace-nowrap"
                     style={{
                       background: CAB,
                       borderLeft: !enRango && i === 3 ? "1px solid rgba(255,255,255,0.25)" : undefined,
@@ -214,13 +214,13 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
                         onClick={() => setAbierto(esteAbierto ? null : r.agent)}
                         className="border-b border-gridline last:border-0 cursor-pointer hover:bg-page"
                       >
-                        <td className="px-4 py-3 truncate" title={r.agent}>
+                        <td className="px-4 py-4 truncate" title={r.agent}>
                           <span className="text-ink-muted mr-1">{esteAbierto ? "▾" : "▸"}</span>
                           {r.agent}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium">{r.leads}</td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium">{r.registros}</td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium">{r.ftd}</td>
+                        <td className="px-4 py-4 text-right tabular-nums font-medium">{r.leads}</td>
+                        <td className="px-4 py-4 text-right tabular-nums font-medium">{r.registros}</td>
+                        <td className="px-4 py-4 text-right tabular-nums font-medium">{r.ftd}</td>
                       </tr>
                       {esteAbierto && (
                         <tr className="border-b border-gridline last:border-0">
@@ -253,18 +253,18 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
                         onClick={() => setAbierto(esteAbierto ? null : r.agent)}
                         className="border-b border-gridline last:border-0 cursor-pointer hover:bg-page"
                       >
-                        <td className="px-4 py-3 truncate" title={r.agent}>
+                        <td className="px-4 py-4 truncate" title={r.agent}>
                           <span className="text-ink-muted mr-1">{esteAbierto ? "▾" : "▸"}</span>
                           {r.agent}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.leadsHoy}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.registrosHoy}</td>
-                        <td className="px-4 py-3 text-right tabular-nums">{r.ftdHoy}</td>
+                        <td className="px-4 py-4 text-right tabular-nums">{r.leadsHoy}</td>
+                        <td className="px-4 py-4 text-right tabular-nums">{r.registrosHoy}</td>
+                        <td className="px-4 py-4 text-right tabular-nums">{r.ftdHoy}</td>
                         <td className="px-4 py-3 text-right tabular-nums font-medium border-l border-gridline">
                           {r.leadsMes}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium">{r.registrosMes}</td>
-                        <td className="px-4 py-3 text-right tabular-nums font-medium">{r.ftdMes}</td>
+                        <td className="px-4 py-4 text-right tabular-nums font-medium">{r.registrosMes}</td>
+                        <td className="px-4 py-4 text-right tabular-nums font-medium">{r.ftdMes}</td>
                       </tr>
                       {esteAbierto && (
                         <tr className="border-b border-gridline last:border-0">
@@ -304,18 +304,18 @@ export function TablaAgentes({ data }: { data: AgentProduction }) {
               <td className="px-4 py-3">Total</td>
               {enRango && totalesRango ? (
                 <>
-                  <td className="px-4 py-3 text-right tabular-nums">{totalesRango.leads}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{totalesRango.registros}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{totalesRango.ftd}</td>
+                  <td className="px-4 py-4 text-right tabular-nums">{totalesRango.leads}</td>
+                  <td className="px-4 py-4 text-right tabular-nums">{totalesRango.registros}</td>
+                  <td className="px-4 py-4 text-right tabular-nums">{totalesRango.ftd}</td>
                 </>
               ) : (
                 <>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.leadsHoy}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.registrosHoy}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.ftdHoy}</td>
+                  <td className="px-4 py-4 text-right tabular-nums">{data.totals.leadsHoy}</td>
+                  <td className="px-4 py-4 text-right tabular-nums">{data.totals.registrosHoy}</td>
+                  <td className="px-4 py-4 text-right tabular-nums">{data.totals.ftdHoy}</td>
                   <td className="px-4 py-3 text-right tabular-nums border-l border-gridline">{data.totals.leadsMes}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.registrosMes}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{data.totals.ftdMes}</td>
+                  <td className="px-4 py-4 text-right tabular-nums">{data.totals.registrosMes}</td>
+                  <td className="px-4 py-4 text-right tabular-nums">{data.totals.ftdMes}</td>
                 </>
               )}
             </tr>
