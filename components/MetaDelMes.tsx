@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { comisionPorFtd } from "@/lib/comision";
 import type { Meta } from "@/lib/metas";
 
@@ -44,103 +44,6 @@ const MES = new Date(Date.now() - 5 * 3600e3).toLocaleDateString("es-CO", {
   month: "long",
   timeZone: "UTC",
 });
-
-/**
- * Un auto de carrera dibujado para esta pantalla.
- *
- * La foto de un Fórmula 1 y su logo tienen dueño. Este es un trazo propio:
- * alerón trasero, halo, morro largo y alerón delantero — la silueta que
- * cualquiera reconoce, sin tomar prestada la imagen de nadie.
- */
-function AutoDeCarrera({ className = "" }: { className?: string }) {
-  // El auto se dibuja dos veces —una para móvil y otra para pantalla ancha— y
-  // los dos SVG conviven en la página. Con ids fijos el segundo apuntaba a las
-  // definiciones del primero, que está oculto: el cuerpo salía sin relleno y la
-  // franja roja sin recortar. Cada copia lleva su propio sufijo.
-  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
-  const idCarro = `op-carro-${uid}`;
-  const idBrillo = `op-brillo-${uid}`;
-  const idEstela = `op-estela-${uid}`;
-  const idSombra = `op-sombra-${uid}`;
-  const idRecorte = `op-recorte-${uid}`;
-
-  // El contorno va una sola vez: la franja roja, el brillo y la entrada de aire
-  // se recortan contra él, así ninguna pieza se sale del cuerpo.
-  const CUERPO =
-    "M36 86 L34 68 C 40 60, 54 55, 78 53 L98 51 C 102 38, 114 32, 130 32 " +
-    "C 142 32, 147 39, 147 48 L190 53 C 218 58, 246 65, 272 72 L304 79 L306 86 " +
-    "C 280 88, 250 90, 228 90 L36 89 Z";
-
-  return (
-    <svg viewBox="0 0 320 120" className={className} aria-hidden>
-      <defs>
-        <linearGradient id={idCarro} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#6E7B8D" />
-          <stop offset=".46" stopColor="#414B5B" />
-          <stop offset="1" stopColor="#212934" />
-        </linearGradient>
-        <linearGradient id={idBrillo} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#ffffff" stopOpacity=".30" />
-          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
-        </linearGradient>
-        <linearGradient id={idEstela} x1="0" x2="1">
-          <stop offset="0" stopColor="#E10600" stopOpacity="0" />
-          <stop offset="1" stopColor="#FF5A3C" stopOpacity=".9" />
-        </linearGradient>
-        <radialGradient id={idSombra}>
-          <stop offset="0" stopColor="#14140f" stopOpacity=".22" />
-          <stop offset="1" stopColor="#14140f" stopOpacity="0" />
-        </radialGradient>
-        <clipPath id={idRecorte}>
-          <path d={CUERPO} />
-        </clipPath>
-      </defs>
-
-      <ellipse cx="170" cy="104" rx="132" ry="6" fill={`url(#${idSombra})`} />
-
-      {/* estelas que salen de atrás */}
-      <rect x="0" y="30" width="44" height="3" rx="1.5" fill={`url(#${idEstela})`} />
-      <rect x="4" y="50" width="34" height="2.5" rx="1.25" fill={`url(#${idEstela})`} opacity=".75" />
-      <rect x="0" y="70" width="54" height="2.5" rx="1.25" fill={`url(#${idEstela})`} opacity=".45" />
-
-      {/* alerón trasero: deriva atrás del todo, dos planos y el soporte al cuerpo */}
-      <rect x="11" y="20" width="8" height="34" rx="2" fill="#2B333F" />
-      <rect x="18" y="25" width="54" height="6.5" rx="3.25" fill="#E10600" />
-      <rect x="24" y="37" width="42" height="4.5" rx="2.25" fill="#2B333F" />
-      <rect x="42" y="40" width="7" height="22" fill="#39424F" />
-
-      {/* difusor */}
-      <path d="M34 76 L58 75 L58 89 L32 90 Z" fill="#1B2028" />
-
-      <path d={CUERPO} fill={`url(#${idCarro})`} />
-
-      <g clipPath={`url(#${idRecorte})`}>
-        <path d="M42 64 C 72 55, 102 50, 130 33 C 112 52, 92 57, 46 72 Z" fill={`url(#${idBrillo})`} />
-        <path d="M28 76 L200 76 C 240 78, 276 81, 312 84 L312 89 C 276 86, 240 83, 200 81 L28 81 Z" fill="#E10600" />
-        <rect x="100" y="58" width="32" height="15" rx="7" fill="#151A21" />
-      </g>
-
-      {/* cabina y halo */}
-      <path d="M145 48 C 155 45, 180 48, 192 54 L192 59 L145 55 Z" fill="#151A21" />
-      <path d="M149 52 C 158 33, 190 34, 201 57" fill="none" stroke="#2B333F" strokeWidth="5" strokeLinecap="round" />
-
-      {/* alerón delantero */}
-      <rect x="304" y="72" width="8" height="24" rx="2" fill="#2B333F" />
-      <rect x="280" y="78" width="28" height="4" rx="2" fill="#2B333F" />
-      <rect x="274" y="86" width="36" height="6.5" rx="3.25" fill="#E10600" />
-
-      {/* ruedas */}
-      <circle cx="72" cy="76" r="25" fill="#14181E" />
-      <circle cx="72" cy="76" r="15.5" fill="#2B333F" />
-      <circle cx="72" cy="76" r="8.5" fill="#67748A" />
-      <circle cx="72" cy="76" r="3.5" fill="#14181E" />
-      <circle cx="250" cy="78" r="23" fill="#14181E" />
-      <circle cx="250" cy="78" r="14" fill="#2B333F" />
-      <circle cx="250" cy="78" r="7.5" fill="#67748A" />
-      <circle cx="250" cy="78" r="3" fill="#14181E" />
-    </svg>
-  );
-}
 
 /** La marca de la casa, en lugar del logo prestado. */
 function MarcaNexus() {
@@ -236,7 +139,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         <div className="flex items-stretch gap-0 flex-col sm:flex-row">
           {/* Izquierda: de qué mes hablamos. */}
           <div
-            className="flex flex-col justify-center px-5 sm:px-7 py-5 sm:py-7 sm:w-[34%]"
+            className="flex flex-col items-center text-center sm:items-start sm:text-left justify-center px-5 sm:px-7 py-5 sm:py-7 sm:w-[34%]"
             style={{ borderBottom: `1px solid ${BORDE}` }}
           >
             <MarcaNexus />
@@ -254,7 +157,6 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             >
               {MES}
             </span>
-            <AutoDeCarrera className="w-[190px] mt-2 sm:hidden" />
           </div>
 
           {/* Centro: la meta, y debajo lo que lleva. */}
@@ -283,14 +185,13 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             )}
           </div>
 
-          {/* Derecha: la frase y el auto. Antes el auto iba de fondo y las letras
-              le quedaban encima; puestos uno debajo del otro no se pisan. */}
+          {/* Derecha: la frase. Es lo único de la tarjeta que no es un dato. */}
           <div
-            className="hidden sm:flex flex-col justify-center gap-2 px-5 py-5 sm:w-[30%]"
+            className="hidden sm:flex items-center px-6 py-7 sm:w-[28%]"
             style={{ borderBottom: `1px solid ${BORDE}`, borderLeft: `1px solid ${BORDE}` }}
           >
             <span
-              className="text-[10px] font-bold uppercase tracking-[.16em] leading-[1.7]"
+              className="text-[11px] font-bold uppercase tracking-[.16em] leading-[1.7]"
               style={{ color: TINTA_2 }}
             >
               Un sueño requiere
@@ -299,7 +200,6 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               <br />
               para despertarlo
             </span>
-            <AutoDeCarrera className="w-full max-w-[210px]" />
           </div>
         </div>
 
