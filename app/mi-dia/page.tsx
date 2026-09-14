@@ -6,7 +6,6 @@ import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
 import { TablaLeads } from "@/components/TablaLeads";
 import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatura";
-import { ConfirmarBajadas } from "@/components/ConfirmarBajadas";
 import { SeMovioHoy } from "@/components/SeMovioHoy";
 import { Seguimiento } from "@/components/Seguimiento";
 import { TareasDeHoy } from "@/components/TareasDeHoy";
@@ -263,10 +262,9 @@ export default function MiDiaPage() {
           </button>
         </section>
 
-        {/* Debajo del arco de temperatura: es la acción más corta del día y la
-            que más cambia lo que el resto de la pantalla muestra. Si hay
-            pendientes también sale como aviso al entrar, una vez por día. */}
-        <ConfirmarBajadas />
+        {/* La confirmación de bajadas vive en Dirección, que es donde está el
+            paso 3. Acá salía otra vez la misma barra roja y la misma pregunta:
+            preguntar dos veces lo mismo en dos pantallas enseña a ignorarla. */}
 
         {/* Lo primero del día: quién se movió, sin importar cuándo entró. Un
             lead de hace dos semanas que vuelve a escribir vale más que uno
