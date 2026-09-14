@@ -22,10 +22,28 @@ const ROJO = "#C0392B";
 const GRIS = "#9A998F";
 const GRIS_2 = "#5E5C56";
 
-const CLAVE_AVISO = "op_confirmar_visto";
+const CLAVE_AVISO = "op_confirmar_avisos";
 
-function hoyBogota(): string {
-  return new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10);
+// Dos veces por sesión: la primera al entrar y la segunda un rato después, si
+// todavía quedan pendientes. Más que eso se aprende a cerrar sin leer; menos,
+// y el que entró apurado no vuelve nunca.
+const AVISOS_POR_SESION = 2;
+const ESPERA_SEGUNDO_AVISO_MS = 20 * 60 * 1000;
+
+function avisosDados(): number {
+  try {
+    return Number(sessionStorage.getItem(CLAVE_AVISO) ?? "0");
+  } catch {
+    return AVISOS_POR_SESION; // modo privado: el bloque igual se ve en pantalla
+  }
+}
+
+function anotarAviso() {
+  try {
+    sessionStorage.setItem(CLAVE_AVISO, String(avisosDados() + 1));
+  } catch {
+    /* modo privado */
+  }
 }
 
 function Pregunta({
@@ -114,19 +132,26 @@ export function ConfirmarBajadas() {
       .then((r) => (r.ok ? r.json() : { porConfirmar: [] }))
       .then((d: { porConfirmar: PorConfirmar[] }) => {
         setGente(d.porConfirmar);
+        // Sin pendientes no sale nada. Nunca.
         if (d.porConfirmar.length === 0) return;
-        // Sin pendientes no hay aviso, y con pendientes solo el primero del día.
-        try {
-          if (localStorage.getItem(CLAVE_AVISO) !== hoyBogota()) {
-            setAviso(true);
-            localStorage.setItem(CLAVE_AVISO, hoyBogota());
-          }
-        } catch {
-          /* modo privado: se muestra el bloque igual, sin aviso */
+        if (avisosDados() < AVISOS_POR_SESION) {
+          setAviso(true);
+          anotarAviso();
         }
       })
       .catch(() => setGente([]));
   }, []);
+
+  // El segundo aviso de la sesión: solo si quedaron pendientes sin responder.
+  useEffect(() => {
+    if (!gente || gente.length === 0) return;
+    if (avisosDados() >= AVISOS_POR_SESION) return;
+    const t = setTimeout(() => {
+      setAviso(true);
+      anotarAviso();
+    }, ESPERA_SEGUNDO_AVISO_MS);
+    return () => clearTimeout(t);
+  }, [gente]);
 
   if (!gente || gente.length === 0) return null;
 
@@ -139,12 +164,12 @@ export function ConfirmarBajadas() {
         <button
           onClick={() => setAbierto((v) => !v)}
           aria-expanded={abierto}
-          className="w-full flex items-center gap-2.5 flex-wrap px-4 sm:px-5 py-2.5 text-left hover:opacity-95"
-          style={{ background: AZUL, color: "#fff" }}
+          className="w-full flex items-center gap-2.5 flex-wrap px-4 sm:px-5 py-3 text-left hover:opacity-95"
+          style={{ background: ROJO, color: "#fff" }}
         >
           <span
-            className="text-[11px] font-bold rounded-full px-2 py-0.5 tabular-nums"
-            style={{ background: "#C0392B" }}
+            className="text-[13px] font-extrabold rounded-full w-[26px] h-[26px] flex items-center justify-center tabular-nums shrink-0"
+            style={{ background: "#fff", color: ROJO }}
           >
             {gente.length}
           </span>
@@ -178,7 +203,7 @@ export function ConfirmarBajadas() {
             className="bg-surface w-full sm:max-w-[460px] rounded-t-[22px] sm:rounded-[22px] overflow-hidden max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-5 py-4" style={{ background: AZUL, color: "#fff" }}>
+            <div className="px-5 py-4" style={{ background: ROJO, color: "#fff" }}>
               <div className="text-[16px] font-semibold">Antes de empezar</div>
               <div className="text-[12.5px] mt-0.5" style={{ color: "rgba(255,255,255,.68)" }}>
                 {gente.length} {gente.length === 1 ? "cliente tocó" : "clientes tocaron"} tu botón de

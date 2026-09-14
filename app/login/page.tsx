@@ -27,6 +27,13 @@ export default function LoginPage() {
       }
       // Cada rol arranca en su pantalla: la dirección en el tablero, el agente
       // en su lista de trabajo.
+      // Sesión nueva, avisos nuevos: el que vuelve a entrar merece que el
+      // recordatorio de las bajadas le salga otra vez.
+      try {
+        sessionStorage.removeItem("op_confirmar_avisos");
+      } catch {
+        /* modo privado */
+      }
       router.push(data.destino ?? "/");
       router.refresh();
     } catch {
