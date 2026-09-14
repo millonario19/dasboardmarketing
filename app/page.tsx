@@ -19,6 +19,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  // Lo informa el módulo de conversaciones cuando termina de cargar.
+  const [sinResponder, setSinResponder] = useState<number | null>(null);
   const sesion = useSesion();
   const esAdmin = sesion?.rol === "admin";
 
@@ -106,40 +108,54 @@ export default function DashboardPage() {
 
       {!error && data && (
         <>
-          {/* Las conversaciones van primero: es lo único de la pantalla que
-              se puede atender hoy. Las métricas del mes quedan al final,
-              porque se miran una vez y no cambian nada del día. */}
+          {/* Los tres pasos, plegables y pegados: con los módulos abiertos uno
+              nunca ve los tres títulos juntos y parecen tres cosas sueltas. */}
           <PasoSistema
             numero={1}
-            titulo="Interacción del lead"
-            detalle="Quién escribió hoy y si alguien le respondió"
-          />
-          <InteraccionLeads
-            esAdmin={esAdmin}
-            agentes={data.rows
-              .filter((r) => r.agentId)
-              .map((r) => ({ id: r.agentId as string, nombre: r.agent }))}
-          />
+            titulo="Quién escribió hoy"
+            detalle="Y si alguien le respondió"
+            abiertoPorDefecto
+            resumen={
+              sinResponder === null
+                ? null
+                : sinResponder > 0
+                  ? { texto: `${sinResponder} sin responder`, fondo: "#FBE9E7", color: "#C0392B" }
+                  : { texto: "todos respondidos", fondo: "#E4F1EA", color: "#157F52" }
+            }
+          >
+            <InteraccionLeads
+              esAdmin={esAdmin}
+              agentes={data.rows
+                .filter((r) => r.agentId)
+                .map((r) => ({ id: r.agentId as string, nombre: r.agent }))}
+              onResumen={setSinResponder}
+            />
+          </PasoSistema>
 
           <PasoSistema
             numero={2}
-            titulo="Temperatura del lead"
-            detalle="En qué estado quedó cada uno: frío, tibio o caliente"
-          />
-          <PanelEstados datos={data.panel} propio={!esAdmin} />
+            titulo="Está interesado"
+            detalle="Frío, tibio o caliente, según lo que hizo"
+            resumen={{
+              texto: `${data.panel.hoy.caliente} caliente${data.panel.hoy.caliente === 1 ? "" : "s"}`,
+              fondo: "#FBE9E7",
+              color: "#C0392B",
+            }}
+          >
+            <PanelEstados datos={data.panel} propio={!esAdmin} />
+          </PasoSistema>
 
-          {/* Debajo de la temperatura, donde el agente ya está mirando en qué
-              estado quedó cada lead: la respuesta cambia justamente eso. Para
-              la dirección no va — la pregunta es del agente que atendió. */}
+          {/* El paso 3 es del agente: la dirección no puede saber si el cliente
+              llegó al WhatsApp de otro. */}
           {!esAdmin && (
-            <>
-              <PasoSistema
-                numero={3}
-                titulo="Confirmar cliente potencial"
-                detalle="¿Llegaron de verdad a tu WhatsApp Business? Hasta que respondas, el paso 2 puede estar mal"
-              />
+            <PasoSistema
+              numero={3}
+              titulo="Ya está en mi Business"
+              detalle="Hasta que respondas, el paso 2 puede estar mal"
+              abiertoPorDefecto
+            >
               <ConfirmarBajadas />
-            </>
+            </PasoSistema>
           )}
 
           <TablaAgentes data={data} />

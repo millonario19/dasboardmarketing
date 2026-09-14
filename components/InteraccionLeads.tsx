@@ -428,7 +428,16 @@ function Conversacion({
   );
 }
 
-export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agentes: { id: string; nombre: string }[] }) {
+export function InteraccionLeads({
+  esAdmin,
+  agentes,
+  onResumen,
+}: {
+  esAdmin: boolean;
+  agentes: { id: string; nombre: string }[];
+  /** Cuántos quedaron sin responder, para el encabezado del paso. */
+  onResumen?: (sinResponder: number) => void;
+}) {
   const [datos, setDatos] = useState<Interaccion | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -478,6 +487,7 @@ export function InteraccionLeads({ esAdmin, agentes }: { esAdmin: boolean; agent
         setDatos(d);
         setAbierto(null);
         setDia(cuando);
+        onResumen?.(d.resumen.sinResponder);
       })
       .catch((e) => setError(e.message))
       .finally(() => setCargando(false));
