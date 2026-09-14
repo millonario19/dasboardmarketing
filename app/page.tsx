@@ -9,6 +9,7 @@ import { TablaAgentes } from "@/components/TablaAgentes";
 import { InteraccionLeads } from "@/components/InteraccionLeads";
 import { ConfirmarBajadas } from "@/components/ConfirmarBajadas";
 import { PasoSistema } from "@/components/PasoSistema";
+import { MetaDelMes } from "@/components/MetaDelMes";
 import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
 import { nombreCorto } from "@/lib/nombre";
@@ -108,6 +109,11 @@ export default function DashboardPage() {
 
       {!error && data && (
         <>
+          {/* Arriba de todo, antes que los pasos: es lo único de la pantalla
+              que habla de la plata del agente, y es el motivo por el que abre
+              el tablero. Para la dirección no va — la meta es personal. */}
+          {!esAdmin && <MetaDelMes ftdMes={data.totals.ftdMes} />}
+
           {/* Los tres pasos, plegables y pegados: con los módulos abiertos uno
               nunca ve los tres títulos juntos y parecen tres cosas sueltas. */}
           <PasoSistema
