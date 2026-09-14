@@ -61,7 +61,7 @@ export function PasoSistema({
         onClick={alternar}
         aria-expanded={abierto}
         className={`w-full flex items-center gap-3.5 px-4 sm:px-5 py-3 text-left bg-surface border border-gridline hover:bg-page ${
-          abierto ? "rounded-t-[18px] mb-0" : "rounded-[18px] mb-1.5"
+          abierto ? "rounded-t-[18px] mb-0" : "rounded-[18px] mb-4 sm:mb-5"
         }`}
       >
         <span
@@ -94,7 +94,7 @@ export function PasoSistema({
       {/* El módulo va debajo del encabezado, pegado: sin el margen de arriba
           los dos se leen como una sola pieza. */}
       {abierto && (
-        <div className="mb-1.5 [&>section]:rounded-t-none [&>section]:border-t-0 [&>section]:mb-0">
+        <div className="mb-4 sm:mb-5 [&>section]:rounded-t-none [&>section]:border-t-0 [&>section]:mb-0">
           {children}
         </div>
       )}
