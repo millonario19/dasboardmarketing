@@ -226,10 +226,18 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           >
             <MarcaNexus />
             <span
-              className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[.22em] mt-3"
-              style={{ color: TINTA_2 }}
+              className="text-[13px] sm:text-[15px] font-bold uppercase tracking-[.22em] mt-3 leading-none"
+              style={{ color: TINTA }}
             >
-              Comisión de {MES}
+              Mi meta
+            </span>
+            {/* El mes queda en chico: la meta se reinicia cada mes y hay que
+                poder ver de cuál se está hablando sin que compita con el título. */}
+            <span
+              className="text-[10px] font-bold uppercase tracking-[.2em] mt-1.5"
+              style={{ color: TINTA_3 }}
+            >
+              {MES}
             </span>
             <AutoDeCarrera className="w-[190px] mt-2 sm:hidden" />
           </div>
