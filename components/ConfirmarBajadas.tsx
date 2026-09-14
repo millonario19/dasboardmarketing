@@ -100,6 +100,10 @@ function Pregunta({
 export function ConfirmarBajadas() {
   const [gente, setGente] = useState<PorConfirmar[] | null>(null);
   const [aviso, setAviso] = useState(false);
+  // Plegado por defecto: cinco preguntas abiertas ocupan media pantalla y
+  // empujan hacia abajo el trabajo del día. Una línea que llama y se abre de
+  // un toque ocupa lo que ocupa una notificación.
+  const [abierto, setAbierto] = useState(false);
 
   const quitar = useCallback((id: string) => {
     setGente((prev) => (prev ? prev.filter((p) => p.id !== id) : prev));
@@ -132,22 +136,36 @@ export function ConfirmarBajadas() {
   return (
     <>
       <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
-        <div
-          className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
+        <button
+          onClick={() => setAbierto((v) => !v)}
+          aria-expanded={abierto}
+          className="w-full flex items-center gap-2.5 flex-wrap px-4 sm:px-5 py-2.5 text-left hover:opacity-95"
           style={{ background: AZUL, color: "#fff" }}
         >
-          <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
-            ¿Llegaron a tu WhatsApp Business?
-          </h2>
-          <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
-            {gente.length} sin responder · 30 seg
+          <span
+            className="text-[11px] font-bold rounded-full px-2 py-0.5 tabular-nums"
+            style={{ background: "#C0392B" }}
+          >
+            {gente.length}
           </span>
-        </div>
-        {bloque(false)}
-        <p className="px-4 sm:px-5 py-2.5 text-[11.5px] border-t border-gridline" style={{ color: GRIS }}>
-          Un «no» lo devuelve a tibio y lo manda a «Hizo clic y no llegó», que se trabaja distinto: ese
-          ya levantó la mano y se cayó en el último paso.
-        </p>
+          <span className="text-[14px] font-semibold tracking-[-0.02em]">
+            {gente.length === 1 ? "cliente tocó" : "clientes tocaron"} tu WhatsApp y no sabés si llegaron
+          </span>
+          <span className="ml-auto flex items-center gap-2 text-[12.5px]" style={{ color: "rgba(255,255,255,.72)" }}>
+            {abierto ? "Ocultar" : "Revisar ahora · 30 seg"}
+            <span className="text-[10px]">{abierto ? "▲" : "▼"}</span>
+          </span>
+        </button>
+
+        {abierto && (
+          <>
+            {bloque(false)}
+            <p className="px-4 sm:px-5 py-2.5 text-[11.5px] border-t border-gridline" style={{ color: GRIS }}>
+              Un «no» lo devuelve a tibio y lo manda a «Hizo clic y no llegó», que se trabaja distinto:
+              ese ya levantó la mano y se cayó en el último paso.
+            </p>
+          </>
+        )}
       </section>
 
       {aviso && (
