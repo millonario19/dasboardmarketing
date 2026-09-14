@@ -2,13 +2,16 @@
 
 import Link from "next/link";
 
-// Las dos pantallas del dashboard: la del agente y la de dirección. Se separan
-// por quién las usa, no por tema — cada uno ve la mitad de lo que veía cuando
-// todo convivía en una sola página.
-export function CambiarVista({ actual }: { actual: "mi-dia" | "direccion" }) {
+// Las tres pantallas del tablero, separadas por para qué sirven y no por tema:
+// el día del agente, los tres pasos de la operación, y los números del mes.
+// Las métricas viven aparte porque se miran una vez y no cambian nada de hoy —
+// tenerlas abajo de los pasos hacía que la pantalla de trabajo terminara en un
+// informe.
+export function CambiarVista({ actual }: { actual: "mi-dia" | "direccion" | "metricas" }) {
   const opciones = [
     { id: "mi-dia" as const, href: "/mi-dia", texto: "Mi día" },
     { id: "direccion" as const, href: "/", texto: "Dirección" },
+    { id: "metricas" as const, href: "/metricas", texto: "Métricas" },
   ];
 
   return (

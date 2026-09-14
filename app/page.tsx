@@ -2,10 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { FunnelWaterfall } from "@/components/FunnelWaterfall";
 import { PanelEstados } from "@/components/PanelEstados";
 import { CambiarVista } from "@/components/CambiarVista";
-import { TablaAgentes } from "@/components/TablaAgentes";
 import { InteraccionLeads } from "@/components/InteraccionLeads";
 import { ConfirmarBajadas } from "@/components/ConfirmarBajadas";
 import { PasoSistema } from "@/components/PasoSistema";
@@ -164,20 +162,6 @@ export default function DashboardPage() {
             </PasoSistema>
           )}
 
-          <TablaAgentes data={data} />
-
-          <div className="mt-8">
-            <FunnelWaterfall
-              stages={[
-                { label: "Total leads mes", value: data.totals.leadsMes },
-                { label: "Total registros mes", value: data.totals.registrosMes },
-                { label: "Total ftds del mes", value: data.totals.ftdMes },
-                { label: "Nuevo leads", value: data.totals.leadsHoy },
-                { label: "Registros Hoy", value: data.totals.registrosHoy },
-                { label: "FTDS de hoy", value: data.totals.ftdHoy },
-              ]}
-            />
-          </div>
         </>
       )}
     </main>

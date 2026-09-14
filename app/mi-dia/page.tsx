@@ -214,6 +214,13 @@ export default function MiDiaPage() {
             >
               Dirección
             </Link>
+            <Link
+              href="/metricas"
+              className="rounded-full px-6 py-2 text-sm"
+              style={{ border: "1px solid rgba(13,13,13,.10)", color: "#52514e" }}
+            >
+              Métricas
+            </Link>
           </div>
 
           {/* La dirección entra a Mi día para mirar el de cada agente: acá
