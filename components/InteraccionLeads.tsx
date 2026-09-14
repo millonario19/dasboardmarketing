@@ -646,8 +646,101 @@ export function InteraccionLeads({
           </p>
         )}
 
+        {/* En el teléfono, tarjetas. La tabla pide 720 px de ancho mínimo y la
+            pantalla del agente tiene 325 útiles: leerla obligaba a arrastrarla
+            de lado seis columnas para ver si alguien quedó sin responder, que
+            es justo el dato por el que abre el tablero. */}
         {enTabla.length > 0 && lista && (
-          <div className="overflow-x-auto">
+          <div className="sm:hidden">
+            {enTabla.map((l) => {
+              const t = tono(l.esperaMin);
+              const sel = l.id === abierto;
+              const avance = ultimoAvance(l.hitos);
+              return (
+                <div
+                  key={l.id}
+                  onClick={() => setAbierto(sel ? null : l.id)}
+                  className="px-4 py-3 border-b border-gridline last:border-b-0 cursor-pointer"
+                  style={{
+                    background: sel ? AZUL_CLARO : l.pendiente ? ROJO_SUAVE : undefined,
+                    boxShadow: sel ? `inset 3px 0 0 ${AZUL}` : undefined,
+                  }}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Inicial nombre={l.nombre} tamano={30} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5 text-[14px] font-semibold tracking-[-0.015em]">
+                        <span className="truncate">{l.nombre}</span>
+                        <EditarNombre
+                          contactId={l.id}
+                          nombre={l.nombre}
+                          onCambiado={(n) => renombrado(l.id, n)}
+                        />
+                      </span>
+                      <span className="block text-[11px] truncate" style={{ color: GRIS }}>
+                        {nombreCorto(l.agente)}
+                        {l.telefono && <> · {formatearTelefono(l.telefono)}</>}
+                      </span>
+                    </span>
+                    <span className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                      <AbrirCrm url={l.crmUrl} />
+                    </span>
+                  </div>
+
+                  {l.mensaje && (
+                    <p className="text-[12.5px] mt-2 truncate" style={{ color: GRIS_2 }}>
+                      {l.mensaje}
+                    </p>
+                  )}
+
+                  {/* Las tres horas en un renglón: escribió, respondió y cuánto
+                      esperó. Es la fila de la tabla sin la tabla. */}
+                  <div className="flex items-center gap-x-3 gap-y-1 flex-wrap mt-2 text-[11.5px]">
+                    <span style={{ color: GRIS }}>
+                      escribió{" "}
+                      <b className="text-[13px] tabular-nums" style={{ color: GRIS_2 }}>
+                        {hora(l.escribio)}
+                      </b>
+                    </span>
+                    {l.respondio ? (
+                      <span style={{ color: GRIS }}>
+                        respondió{" "}
+                        <b className="text-[13px] tabular-nums" style={{ color: GRIS_2 }}>
+                          {hora(l.respondio)}
+                        </b>
+                      </span>
+                    ) : (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white"
+                        style={{ background: ROJO }}
+                      >
+                        SIN RESPONDER
+                      </span>
+                    )}
+                    <span className="ml-auto text-[13.5px] font-bold tabular-nums" style={{ color: t.color }}>
+                      {duracion(l.esperaMin)}
+                      {l.pendiente && (
+                        <span className="text-[10px] font-normal" style={{ color: GRIS }}>
+                          {" "}
+                          y contando
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {avance && (
+                    <p className="text-[11px] font-bold mt-1.5" style={{ color: VERDE }}>
+                      ✓ {avance.texto.replace("Bajó a WhatsApp Business", "bajó a WhatsApp")} {hora(avance.hora)}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {enTabla.length > 0 && lista && (
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full border-collapse" style={{ minWidth: 720 }}>
               <thead>
                 <tr style={{ background: CELESTE }}>

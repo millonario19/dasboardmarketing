@@ -75,10 +75,23 @@ export function PasoSistema({
           <span className="block text-[9.5px] font-bold uppercase tracking-[.18em]" style={{ color: AZUL }}>
             Paso {numero}
           </span>
-          <span className="block text-[15.5px] sm:text-[16.5px] font-semibold tracking-[-0.025em] leading-tight">
+          <span className="block text-[15px] sm:text-[16.5px] font-semibold tracking-[-0.025em] leading-tight text-balance">
             {titulo}
           </span>
-          {detalle && <span className="block text-[11.5px] text-ink-muted mt-0.5">{detalle}</span>}
+          {detalle && (
+            <span className="hidden sm:block text-[11.5px] text-ink-muted mt-0.5">{detalle}</span>
+          )}
+          {/* En el teléfono el resumen no cabe al lado del título: puesto en la
+              fila le dejaba 113 px y el título se partía en tres renglones.
+              Debajo ocupa un renglón propio y se lee de un vistazo. */}
+          {resumen && (
+            <span
+              className="sm:hidden inline-block text-[10.5px] font-bold rounded-full px-2 py-[3px] whitespace-nowrap mt-1.5"
+              style={{ background: resumen.fondo, color: resumen.color }}
+            >
+              {resumen.texto}
+            </span>
+          )}
         </span>
         {resumen && (
           <span
