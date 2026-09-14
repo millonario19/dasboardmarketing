@@ -7,6 +7,7 @@ import { PanelEstados } from "@/components/PanelEstados";
 import { CambiarVista } from "@/components/CambiarVista";
 import { TablaAgentes } from "@/components/TablaAgentes";
 import { InteraccionLeads } from "@/components/InteraccionLeads";
+import { ConfirmarBajadas } from "@/components/ConfirmarBajadas";
 import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
 import { nombreCorto } from "@/lib/nombre";
@@ -115,6 +116,11 @@ export default function DashboardPage() {
           />
 
           <PanelEstados datos={data.panel} propio={!esAdmin} />
+
+          {/* Debajo de la temperatura, donde el agente ya está mirando en qué
+              estado quedó cada lead: la respuesta cambia justamente eso. Para
+              la dirección no va — la pregunta es del agente que atendió. */}
+          {!esAdmin && <ConfirmarBajadas />}
 
           <TablaAgentes data={data} />
 
