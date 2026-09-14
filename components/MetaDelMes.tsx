@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { comisionPorFtd } from "@/lib/comision";
 import type { Meta } from "@/lib/metas";
 
@@ -24,6 +24,10 @@ const TINTA_2 = "#6B6152";
 const TINTA_3 = "#8e8e88";
 const BORDE = "#EFEAE4";
 const RIEL = "#EDE8E2";
+
+/** La bandera a cuadros: dos filas de 8px, en negro y blanco de verdad. */
+const CUADROS =
+  "conic-gradient(#14140f 0 25%, #ffffff 0 50%, #14140f 0 75%, #ffffff 0) 0 0 / 16px 16px";
 
 
 const CLAVE = "op_meta_abierta";
@@ -49,6 +53,17 @@ const MES = new Date(Date.now() - 5 * 3600e3).toLocaleDateString("es-CO", {
  * cualquiera reconoce, sin tomar prestada la imagen de nadie.
  */
 function AutoDeCarrera({ className = "" }: { className?: string }) {
+  // El auto se dibuja dos veces —una para móvil y otra para pantalla ancha— y
+  // los dos SVG conviven en la página. Con ids fijos el segundo apuntaba a las
+  // definiciones del primero, que está oculto: el cuerpo salía sin relleno y la
+  // franja roja sin recortar. Cada copia lleva su propio sufijo.
+  const uid = useId().replace(/[^a-zA-Z0-9]/g, "");
+  const idCarro = `op-carro-${uid}`;
+  const idBrillo = `op-brillo-${uid}`;
+  const idEstela = `op-estela-${uid}`;
+  const idSombra = `op-sombra-${uid}`;
+  const idRecorte = `op-recorte-${uid}`;
+
   // El contorno va una sola vez: la franja roja, el brillo y la entrada de aire
   // se recortan contra él, así ninguna pieza se sale del cuerpo.
   const CUERPO =
@@ -59,34 +74,34 @@ function AutoDeCarrera({ className = "" }: { className?: string }) {
   return (
     <svg viewBox="0 0 320 120" className={className} aria-hidden>
       <defs>
-        <linearGradient id="op-carro" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={idCarro} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#6E7B8D" />
           <stop offset=".46" stopColor="#414B5B" />
           <stop offset="1" stopColor="#212934" />
         </linearGradient>
-        <linearGradient id="op-brillo" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={idBrillo} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#ffffff" stopOpacity=".30" />
           <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
-        <linearGradient id="op-estela" x1="0" x2="1">
+        <linearGradient id={idEstela} x1="0" x2="1">
           <stop offset="0" stopColor="#E10600" stopOpacity="0" />
           <stop offset="1" stopColor="#FF5A3C" stopOpacity=".9" />
         </linearGradient>
-        <radialGradient id="op-sombra">
+        <radialGradient id={idSombra}>
           <stop offset="0" stopColor="#14140f" stopOpacity=".22" />
           <stop offset="1" stopColor="#14140f" stopOpacity="0" />
         </radialGradient>
-        <clipPath id="op-recorte">
+        <clipPath id={idRecorte}>
           <path d={CUERPO} />
         </clipPath>
       </defs>
 
-      <ellipse cx="170" cy="104" rx="132" ry="6" fill="url(#op-sombra)" />
+      <ellipse cx="170" cy="104" rx="132" ry="6" fill={`url(#${idSombra})`} />
 
       {/* estelas que salen de atrás */}
-      <rect x="0" y="30" width="44" height="3" rx="1.5" fill="url(#op-estela)" />
-      <rect x="4" y="50" width="34" height="2.5" rx="1.25" fill="url(#op-estela)" opacity=".75" />
-      <rect x="0" y="70" width="54" height="2.5" rx="1.25" fill="url(#op-estela)" opacity=".45" />
+      <rect x="0" y="30" width="44" height="3" rx="1.5" fill={`url(#${idEstela})`} />
+      <rect x="4" y="50" width="34" height="2.5" rx="1.25" fill={`url(#${idEstela})`} opacity=".75" />
+      <rect x="0" y="70" width="54" height="2.5" rx="1.25" fill={`url(#${idEstela})`} opacity=".45" />
 
       {/* alerón trasero: deriva atrás del todo, dos planos y el soporte al cuerpo */}
       <rect x="11" y="20" width="8" height="34" rx="2" fill="#2B333F" />
@@ -97,10 +112,10 @@ function AutoDeCarrera({ className = "" }: { className?: string }) {
       {/* difusor */}
       <path d="M34 76 L58 75 L58 89 L32 90 Z" fill="#1B2028" />
 
-      <path d={CUERPO} fill="url(#op-carro)" />
+      <path d={CUERPO} fill={`url(#${idCarro})`} />
 
-      <g clipPath="url(#op-recorte)">
-        <path d="M42 64 C 72 55, 102 50, 130 33 C 112 52, 92 57, 46 72 Z" fill="url(#op-brillo)" />
+      <g clipPath={`url(#${idRecorte})`}>
+        <path d="M42 64 C 72 55, 102 50, 130 33 C 112 52, 92 57, 46 72 Z" fill={`url(#${idBrillo})`} />
         <path d="M28 76 L200 76 C 240 78, 276 81, 312 84 L312 89 C 276 86, 240 83, 200 81 L28 81 Z" fill="#E10600" />
         <rect x="100" y="58" width="32" height="15" rx="7" fill="#151A21" />
       </g>
@@ -357,11 +372,15 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       ) : (
         meta && (
           <>
+            {/* La bandera de meta: es lo que se ve al cruzar la línea, y esta
+                línea de abajo es justamente la que dice cuál es la meta. */}
+            <div className="h-[16px]" style={{ borderTop: `1px solid ${BORDE}`, background: CUADROS }} aria-hidden />
+
             <button
               onClick={alternar}
               aria-expanded={abierta}
               className="w-full flex items-center justify-center gap-2.5 flex-wrap px-4 py-3 text-[11.5px]"
-              style={{ borderTop: `1px solid ${BORDE}`, background: "#FCFCFA", color: TINTA_3 }}
+              style={{ background: "#FCFCFA", color: TINTA_3 }}
             >
               <span>
                 meta <b style={{ color: TINTA }}>{meta.ftd} FTD</b>
