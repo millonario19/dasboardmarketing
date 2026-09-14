@@ -6,13 +6,11 @@ import { CerrarSesion } from "@/components/CerrarSesion";
 import { CambiarVista } from "@/components/CambiarVista";
 import { useSesion } from "@/components/useSesion";
 import { TablaLeads } from "@/components/TablaLeads";
-import { ArcoTemperatura, LeyendaTemperatura } from "@/components/ArcoTemperatura";
 import { SeMovioHoy } from "@/components/SeMovioHoy";
 import { Seguimiento } from "@/components/Seguimiento";
 import { TareasDeHoy } from "@/components/TareasDeHoy";
 import { PasoSistema } from "@/components/PasoSistema";
 import { MetaDelMes } from "@/components/MetaDelMes";
-import { conteoVacio } from "@/lib/leadStates";
 import { nombreCorto } from "@/lib/nombre";
 import type { Bloque, LeadItem, MiDia } from "@/lib/miDia";
 import type { AgentProduction } from "@/lib/metrics";
@@ -123,11 +121,6 @@ export default function MiDiaPage() {
     };
   }, [bloques]);
 
-  // El reparto por temperatura lo cuenta el servidor sobre la lista completa.
-  // Contarlo acá daría otro número: la pantalla solo recibe las primeras
-  // filas de cada bloque.
-  const conteosPorEstado = data?.porEstado ?? conteoVacio();
-
   function elegirFiltro(id: string) {
     setFiltroElegido(true);
     setFiltro(id);
@@ -212,16 +205,6 @@ export default function MiDiaPage() {
       {/* Arriba de todo, igual que en Dirección. Para la dirección no va: la
           meta es personal. */}
       {esAgente && ftdMes !== null && <MetaDelMes ftdMes={ftdMes} />}
-
-      {/* El reparto por temperatura, en una tarjeta como las demás. */}
-      <section className="rounded-[22px] bg-surface border border-gridline mb-5 px-4 sm:px-6 py-5 text-center">
-        <ArcoTemperatura
-          conteos={conteosPorEstado}
-          total={conteos.pendientes}
-          calientes={conteosPorEstado.caliente}
-        />
-        <LeyendaTemperatura conteos={conteosPorEstado} />
-      </section>
 
         {/* Lo primero del día: quién se movió, sin importar cuándo entró. Un
             lead de hace dos semanas que vuelve a escribir vale más que uno
