@@ -39,7 +39,16 @@ function paraInput(iso: string | null): string {
   return d.toISOString().slice(0, 16);
 }
 
-export function FilaSeguimiento({ lead }: { lead: LeadDeSeguimiento }) {
+export function FilaSeguimiento({
+  lead,
+  pie,
+  onCerrado,
+}: {
+  lead: LeadDeSeguimiento;
+  pie?: string;
+  /** Al elegir «Cerrar seguimiento» la fila se va de la lista de arriba. */
+  onCerrado?: (id: string) => void;
+}) {
   const meta = ESTADO_META[lead.estado];
   const [nota, setNota] = useState(lead.nota?.nota ?? "");
   const [accion, setAccion] = useState(lead.nota?.proximaAccion ?? "");
@@ -76,16 +85,11 @@ export function FilaSeguimiento({ lead }: { lead: LeadDeSeguimiento }) {
             <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
               {contexto}
             </span>
-            {/* En este grupo hay dos cosas distintas: los que el agente
-                confirmó en el paso 3 y los que el flujo de GHL marcó y nadie
-                verificó. Sobre el primero se hace seguimiento; al segundo
-                todavía hay que ir a buscarlo. */}
-            {lead.via === "llego" && lead.confirmado !== "si" && (
-              <span
-                className="inline-block text-[10px] font-bold rounded-full px-1.5 py-[1px] mt-1"
-                style={{ background: "#FDF3E6", color: "#A56A11" }}
-              >
-                falta confirmar
+            {/* En la lista de «en mi WhatsApp Business» acá va desde cuándo lo
+                tiene: es el reloj que manda la cadencia del seguimiento. */}
+            {pie && (
+              <span className="block text-[11px] font-semibold mt-0.5" style={{ color: VERDE }}>
+                {pie}
               </span>
             )}
           </span>
@@ -116,6 +120,10 @@ export function FilaSeguimiento({ lead }: { lead: LeadDeSeguimiento }) {
             onChange={(e) => {
               setAccion(e.target.value);
               guardar({ proximaAccion: e.target.value });
+              // Se saca en el acto y no recargando: el seguimiento se guarda
+              // en caché un minuto en el servidor, así que pedirlo de nuevo
+              // devolvería la misma fila que el agente acaba de cerrar.
+              if (e.target.value === "Cerrar seguimiento") onCerrado?.(lead.id);
             }}
             className="rounded-lg border border-gridline bg-surface px-1.5 py-1 text-[12px] outline-none focus:border-[#2A6FB8]"
           >

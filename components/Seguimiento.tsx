@@ -8,6 +8,7 @@ import { FilaSeguimiento } from "@/components/FilaSeguimiento";
 import type {
   Via,
   DiaDeSeguimiento,
+  LeadEnBusiness,
   Promesa,
   Seguimiento as Datos,
 } from "@/lib/seguimiento";
@@ -116,6 +117,60 @@ function Agenda({ promesas }: { promesas: Promesa[] }) {
   );
 }
 
+/**
+ * Los que ya están en el WhatsApp Business del agente.
+ *
+ * Es la lista que el agente pidió y la que más pesa: acá el cliente ya salió
+ * del alcance de GHL —no hay etiqueta que avise nada más— y lo único que
+ * queda es que alguien lo trabaje. Por eso va primera, antes de las pestañas
+ * por día, y por eso no se cae a los tres días como el resto.
+ */
+function EnMiBusiness({
+  leads,
+  onCerrado,
+}: {
+  leads: LeadEnBusiness[];
+  onCerrado: (id: string) => void;
+}) {
+  return (
+    <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
+      <div
+        className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
+        style={{ background: VERDE, color: "#fff" }}
+      >
+        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">En mi WhatsApp Business</h2>
+        <span className="text-[12px]" style={{ color: "rgba(255,255,255,.72)" }}>
+          confirmados por vos · acá arranca el seguimiento
+        </span>
+        <span
+          className="ml-auto text-[12px] font-bold rounded-full px-2.5 py-0.5 tabular-nums"
+          style={{ background: "rgba(255,255,255,.18)" }}
+        >
+          {leads.length}
+        </span>
+      </div>
+
+      {leads.length === 0 ? (
+        <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
+          Todavía no confirmaste a nadie. Cuando en el paso 3 digas que un cliente ya está en tu
+          WhatsApp Business, aparece acá y no se va hasta que deposite o vos lo cierres.
+        </p>
+      ) : (
+        leads.map((l) => (
+          <FilaSeguimiento key={l.id} lead={l} pie={desdeCuando(l.dias)} onCerrado={onCerrado} />
+        ))
+      )}
+    </section>
+  );
+}
+
+/** El reloj del seguimiento: cuenta desde que se confirmó, no desde que entró. */
+function desdeCuando(dias: number): string {
+  if (dias <= 0) return "llegó hoy a tu WhatsApp";
+  if (dias === 1) return "día 1 · desde ayer";
+  return `día ${dias} · hace ${dias} días`;
+}
+
 export function Seguimiento() {
   const [datos, setDatos] = useState<Datos | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -153,6 +208,14 @@ export function Seguimiento() {
 
   return (
     <>
+      {datos && (
+        <EnMiBusiness
+          leads={datos.enBusiness}
+          onCerrado={(id) =>
+            setDatos((d) => (d ? { ...d, enBusiness: d.enBusiness.filter((l) => l.id !== id) } : d))
+          }
+        />
+      )}
       {datos && <Agenda promesas={datos.promesas} />}
 
       <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">

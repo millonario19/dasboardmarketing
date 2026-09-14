@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { agregarTag, quitarTag } from "@/lib/ghl";
 import { TAG_BAJADA_SI, TAG_BAJADA_NO } from "@/lib/leadStates";
+import { anotarConfirmacion } from "@/lib/confirmados";
+import { sesionActual } from "@/lib/sesion";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,14 @@ export async function POST(req: NextRequest) {
     await quitarTag(contactId, sacar).catch(() => {
       /* no estaba puesta, no hay nada que sacar */
     });
+    // La etiqueta dice si está confirmado; la fila dice cuándo. La lista de
+    // «en mi WhatsApp Business» se ordena por esa hora, así que sin ella un
+    // confirmado de hoy quedaría mezclado con uno de la semana pasada.
+    const sesion = await sesionActual();
+    await anotarConfirmacion(contactId, sesion?.usuario ?? null, confirmado).catch(() => {
+      /* la confirmación ya quedó en GHL: la hora es un extra, no un requisito */
+    });
+
     return NextResponse.json({ ok: true, confirmacion: confirmado ? "si" : "no" });
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : "Error al guardar la confirmación";

@@ -10,9 +10,11 @@ import {
   yaDeposito,
   confirmacionDeBajada,
   TAG_BUSINESS,
+  TAG_BAJADA_SI,
   type EstadoLead,
 } from "./leadStates";
 import { notasDe, type Nota } from "./notas";
+import { confirmadosDe } from "./confirmados";
 import { soloDelAgente } from "./metrics";
 import { getPool } from "./db";
 
@@ -50,7 +52,7 @@ const cache = new Map<string, { en: number; datos: Seguimiento }>();
 export type Via = "llego" | "clic-sin-llegar" | "tibio-sin-bajar" | "no-responde";
 
 export const VIA_TITULO: Record<Via, string> = {
-  llego: "Llegó al Business · falta cerrar",
+  llego: "Calientes · falta confirmar",
   "clic-sin-llegar": "Hizo clic y no llegó",
   "tibio-sin-bajar": "Tibio sin bajar",
   "no-responde": "No responde",
@@ -65,20 +67,24 @@ export type LeadDeSeguimiento = {
   estado: EstadoLead;
   acciones: string[];
   via: Via;
-  /**
-   * Lo que el agente contestó en el paso 3.
-   *
-   *   "si"  -> él dijo que el cliente llegó a su WhatsApp Business
-   *   "no"  -> dijo que no llegó
-   *   null  -> todavía no le preguntaron, o no contestó
-   *
-   * Sin esto, «Llegó al Business» junta a los que él confirmó con los que el
-   * flujo de GHL marcó y nadie verificó, que no son lo mismo: sobre uno se
-   * hace seguimiento y al otro todavía hay que ir a buscarlo.
-   */
-  confirmado: "si" | "no" | null;
   /** Lo que el agente escribió de su puño; vacío hasta que escriba. */
   nota: Nota | null;
+};
+
+/**
+ * Alguien que ya está en el WhatsApp Business del agente.
+ *
+ * Es la lista que de verdad importa: el cliente salió del alcance de GHL y
+ * ahora depende de que el agente lo trabaje. No entra por el día en que el
+ * lead llegó por la pauta —eso es otra cosa— sino por el día en que el agente
+ * confirmó que lo tiene, y no se cae a los tres días: se sale de la lista
+ * cuando deposita o cuando el agente marca «Cerrar seguimiento».
+ */
+export type LeadEnBusiness = LeadDeSeguimiento & {
+  /** Cuándo el agente dijo que sí. */
+  confirmadoEn: string;
+  /** Días completos desde entonces, para saber por dónde va la cadencia. */
+  dias: number;
 };
 
 /** Un clic en «bajar a WhatsApp» que nadie respondió si terminó en algo. */
@@ -113,6 +119,8 @@ export type DiaDeSeguimiento = {
 
 export type Seguimiento = {
   dias: DiaDeSeguimiento[];
+  /** Los que ya están en el WhatsApp Business del agente. */
+  enBusiness: LeadEnBusiness[];
   /** Lo primero del día: el sistema sabe que hicieron clic, no si llegaron. */
   porConfirmar: PorConfirmar[];
   promesas: Promesa[];
@@ -133,10 +141,72 @@ function viaDeLead(contacto: GhlContact, estado: EstadoLead): Via {
   // El «no» del agente no lo devuelve al montón de tibios: este ya levantó la
   // mano y se cayó en el último paso, y se trabaja distinto.
   if (hizoClic && confirmacionDeBajada(contacto) === "no") return "clic-sin-llegar";
+  // Los confirmados salieron de las pestañas por día: tienen su propia lista,
+  // ordenada por cuándo se confirmaron. Lo que queda acá es el caliente al que
+  // todavía nadie le verificó que llegó.
   if (estado === "caliente") return "llego";
   if (estado === "tibio") return "tibio-sin-bajar";
   return "no-responde";
 }
+
+/**
+ * Los que ya están en el WhatsApp Business del agente.
+ *
+ * Búsqueda propia, sin la ventana de tres días: a estos no se los deja de
+ * seguir porque hayan entrado hace una semana. Se cierran solos cuando
+ * depositan, y a mano cuando el agente elige «Cerrar seguimiento».
+ */
+async function enMiBusiness(soloAgente: string | null | undefined): Promise<LeadEnBusiness[]> {
+  const contactos = await soloDelAgente(
+    await searchContacts([
+      { field: "tags", operator: "contains", value: process.env.GHL_LEAD_TAG ?? "ingreso de pauta" },
+      { field: "tags", operator: "contains", value: TAG_BAJADA_SI },
+    ]),
+    soloAgente
+  );
+
+  const vivos = (contactos as GhlContact[]).filter((c) => !yaDeposito(c));
+  const [notas, confirmados] = await Promise.all([
+    notasDe(vivos.map((c) => c.id)),
+    confirmadosDe(vivos.map((c) => c.id)),
+  ]);
+
+  const ahora = Date.now();
+  const salida: LeadEnBusiness[] = [];
+
+  for (const contacto of vivos) {
+    const nota = notas.get(contacto.id) ?? null;
+    // El agente da por terminado el seguimiento desde la misma fila donde lo
+    // hace todo. Sin esta salida la lista solo crece.
+    if (nota?.proximaAccion === CERRADO) continue;
+
+    const { agent } = await extractAttribution(contacto);
+    const confirmadoEn = confirmados.get(contacto.id) ?? contacto.dateAdded;
+    salida.push({
+      id: contacto.id,
+      nombre: contactDisplayName(contacto),
+      telefono: contacto.phone ?? null,
+      creado: contacto.dateAdded,
+      agente: agent,
+      estado: estadoDeLead(contacto),
+      acciones: accionesDeLead(contacto),
+      via: "llego",
+      nota,
+      confirmadoEn,
+      dias: Math.max(
+        0,
+        Math.floor((inicioDeDiaBogota(ahora) - inicioDeDiaBogota(new Date(confirmadoEn).getTime())) / 864e5)
+      ),
+    });
+  }
+
+  // El último confirmado arriba: es el que todavía está caliente.
+  salida.sort((a, b) => b.confirmadoEn.localeCompare(a.confirmadoEn));
+  return salida;
+}
+
+/** Lo que el agente elige cuando ya no hay nada más que hacer con el cliente. */
+export const CERRADO = "Cerrar seguimiento";
 
 const ETIQUETAS = ["Hoy", "Ayer", "Antier", "Hace 3 días", "Hace 4 días", "Hace 5 días"];
 
@@ -218,6 +288,9 @@ export async function computeSeguimiento(
   for (const contacto of contactos as GhlContact[]) {
     // Los que ya depositaron salen: el seguimiento es de lo que falta cerrar.
     if (yaDeposito(contacto)) continue;
+    // Y los confirmados también: están en su propia lista, que no se cae a los
+    // tres días. Dejarlos acá los mostraba dos veces y con dos relojes.
+    if (confirmacionDeBajada(contacto) === "si") continue;
     const { agent } = await extractAttribution(contacto);
     const estado = estadoDeLead(contacto);
     utiles.push({ contacto, agente: agent, estado });
@@ -249,7 +322,6 @@ export async function computeSeguimiento(
       estado,
       acciones: accionesDeLead(contacto),
       via: viaDeLead(contacto, estado),
-      confirmado: confirmacionDeBajada(contacto),
       nota: notas.get(contacto.id) ?? null,
     });
     porDia.set(dia, lista);
@@ -268,10 +340,16 @@ export async function computeSeguimiento(
     salida.push({ fecha, etiqueta: ETIQUETAS[i] ?? `Hace ${i} días`, leads, porEstado });
   }
 
+  const [enBusiness, promesas] = await Promise.all([
+    enMiBusiness(soloAgente),
+    promesasPendientes(usuario),
+  ]);
+
   const datos: Seguimiento = {
     dias: salida,
+    enBusiness,
     porConfirmar,
-    promesas: await promesasPendientes(usuario),
+    promesas,
     generadoEn: new Date(ahora).toISOString(),
   };
   cache.set(llave, { en: ahora, datos });
