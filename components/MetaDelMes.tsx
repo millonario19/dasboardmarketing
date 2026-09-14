@@ -17,13 +17,13 @@ import type { Meta } from "@/lib/metas";
  */
 
 const ROJO = "#E10600";
-const ROJO_SUAVE = "#FF3B30";
-const VERDE = "#2FBF71";
-const TINTA = "#FFFFFF";
-const TINTA_2 = "rgba(255,255,255,.62)";
-const TINTA_3 = "rgba(255,255,255,.40)";
-const BORDE = "rgba(255,255,255,.10)";
-const RIEL = "rgba(255,255,255,.14)";
+const ROJO_SUAVE = "#FF5A3C";
+const VERDE = "#157F52";
+const TINTA = "#14140f";
+const TINTA_2 = "#6B6152";
+const TINTA_3 = "#8e8e88";
+const BORDE = "#EFEAE4";
+const RIEL = "#EDE8E2";
 
 
 const CLAVE = "op_meta_abierta";
@@ -53,9 +53,9 @@ function AutoDeCarrera({ className = "" }: { className?: string }) {
     <svg viewBox="0 0 230 86" className={className} aria-hidden>
       <defs>
         <linearGradient id="op-carro" x1="0" x2="1">
-          <stop offset="0" stopColor="#2A3039" />
-          <stop offset=".55" stopColor="#3A4250" />
-          <stop offset="1" stopColor="#12161C" />
+          <stop offset="0" stopColor="#3A4250" />
+          <stop offset=".55" stopColor="#4A5464" />
+          <stop offset="1" stopColor="#232B34" />
         </linearGradient>
         <linearGradient id="op-estela" x1="0" x2="1">
           <stop offset="0" stopColor="#E10600" stopOpacity="0" />
@@ -70,7 +70,7 @@ function AutoDeCarrera({ className = "" }: { className?: string }) {
 
       {/* alerón trasero */}
       <rect x="30" y="20" width="30" height="5" rx="2" fill="#E10600" />
-      <rect x="42" y="25" width="5" height="16" fill="#2A3039" />
+      <rect x="42" y="25" width="5" height="16" fill="#3A4250" />
 
       {/* cuerpo: cola, cockpit, morro */}
       <path
@@ -79,17 +79,17 @@ function AutoDeCarrera({ className = "" }: { className?: string }) {
         fill="url(#op-carro)"
       />
       {/* halo */}
-      <path d="M96 27 Q112 14 130 28" fill="none" stroke="#1A1F26" strokeWidth="4.5" strokeLinecap="round" />
+      <path d="M96 27 Q112 14 130 28" fill="none" stroke="#232B34" strokeWidth="4.5" strokeLinecap="round" />
       {/* franja roja del costado */}
       <path d="M62 50 L128 40 L176 45 L176 49 L126 45 L62 54 Z" fill="#E10600" opacity=".9" />
       {/* alerón delantero */}
       <rect x="198" y="55" width="32" height="5" rx="2" fill="#E10600" />
 
       {/* ruedas */}
-      <circle cx="66" cy="54" r="17" fill="#0D1116" />
-      <circle cx="66" cy="54" r="8" fill="#232B34" />
-      <circle cx="174" cy="56" r="15" fill="#0D1116" />
-      <circle cx="174" cy="56" r="7" fill="#232B34" />
+      <circle cx="66" cy="54" r="17" fill="#1A1F26" />
+      <circle cx="66" cy="54" r="8" fill="#3A4250" />
+      <circle cx="174" cy="56" r="15" fill="#1A1F26" />
+      <circle cx="174" cy="56" r="7" fill="#3A4250" />
     </svg>
   );
 }
@@ -178,16 +178,15 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
     <section
       className="relative rounded-[20px] overflow-hidden mb-6"
       style={{
-        border: `1px solid rgba(225,6,0,.35)`,
+        border: "1px solid #E6DFD8",
         background:
-          "radial-gradient(620px 320px at 88% 50%, rgba(225,6,0,.22), transparent 62%)," +
-          " linear-gradient(105deg, #0B0E12 0%, #141920 58%, #1B1013 100%)",
+          "radial-gradient(620px 320px at 92% 50%, rgba(225,6,0,.10), transparent 62%), #FFFFFF",
         color: TINTA,
       }}
     >
       {/* El auto va detrás de todo, sangrando por el borde derecho. */}
       <div className="pointer-events-none absolute inset-y-0 right-0 hidden sm:flex items-center" aria-hidden>
-        <AutoDeCarrera className="w-[300px] opacity-[.55]" />
+        <AutoDeCarrera className="w-[300px] opacity-95" />
       </div>
 
       <div className="relative">
@@ -270,7 +269,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       {editando ? (
         <div
           className="flex items-end justify-center gap-3 flex-wrap px-5 py-4"
-          style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.04)" }}
+          style={{ borderTop: `1px solid ${BORDE}`, background: "#FBFBF8" }}
         >
           <label className="text-[11.5px]" style={{ color: TINTA_2 }}>
             Meta de FTD
@@ -280,7 +279,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               value={ftd}
               onChange={(e) => setFtd(e.target.value)}
               className="block w-[92px] mt-1 rounded-lg px-2.5 py-1.5 text-[16px] font-bold text-right tabular-nums outline-none"
-              style={{ border: `1px solid ${BORDE}`, color: TINTA, background: "rgba(255,255,255,.06)" }}
+              style={{ border: `1px solid ${BORDE}`, color: TINTA, background: "#FBFBF8" }}
             />
           </label>
           <label className="text-[11.5px]" style={{ color: TINTA_2 }}>
@@ -292,7 +291,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               value={usd}
               onChange={(e) => setUsd(e.target.value)}
               className="block w-[110px] mt-1 rounded-lg px-2.5 py-1.5 text-[16px] font-bold text-right tabular-nums outline-none"
-              style={{ border: `1px solid ${BORDE}`, color: TINTA, background: "rgba(255,255,255,.06)" }}
+              style={{ border: `1px solid ${BORDE}`, color: TINTA, background: "#FBFBF8" }}
             />
           </label>
           <button
@@ -318,12 +317,12 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               onClick={alternar}
               aria-expanded={abierta}
               className="w-full flex items-center justify-center gap-2.5 flex-wrap px-4 py-3 text-[11.5px]"
-              style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.03)", color: TINTA_3 }}
+              style={{ borderTop: `1px solid ${BORDE}`, background: "#FCFCFA", color: TINTA_3 }}
             >
               <span>
                 meta <b style={{ color: TINTA }}>{meta.ftd} FTD</b>
               </span>
-              <span style={{ color: "rgba(255,255,255,.22)" }}>·</span>
+              <span style={{ color: "#D8D3CC" }}>·</span>
               <span>
                 meta <b style={{ color: TINTA }}>{plata(meta.usd)}</b> facturado
               </span>
@@ -333,13 +332,13 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             {abierta && (
               <div
                 className="px-5 pt-4 pb-5"
-                style={{ borderTop: `1px solid ${BORDE}`, background: "rgba(255,255,255,.03)" }}
+                style={{ borderTop: `1px solid ${BORDE}`, background: "#FCFCFA" }}
               >
                 <Barra
                   titulo="FTD"
                   valor={`${ftdMes} de ${meta.ftd}`}
                   pct={pct(ftdMes, meta.ftd)}
-                  color={`linear-gradient(90deg,${VERDE},#6FE6A8)`}
+                  color={`linear-gradient(90deg,#3E9E6C,${VERDE})`}
                   pie={
                     faltaFtd > 0
                       ? `Faltan ${faltaFtd} · ${(faltaFtd / quedan).toFixed(1)} por día en los ${quedan} días que quedan`
