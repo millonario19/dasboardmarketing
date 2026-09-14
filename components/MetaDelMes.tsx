@@ -49,47 +49,69 @@ const MES = new Date(Date.now() - 5 * 3600e3).toLocaleDateString("es-CO", {
  * cualquiera reconoce, sin tomar prestada la imagen de nadie.
  */
 function AutoDeCarrera({ className = "" }: { className?: string }) {
+  const CUERPO = "#39424F";
+  const CUERPO_2 = "#4B5666";
+  const OSCURO = "#232B34";
+  const LLANTA = "#1A1F26";
+  const RIN = "#4B5666";
+
   return (
-    <svg viewBox="0 0 230 86" className={className} aria-hidden>
+    <svg viewBox="0 0 280 110" className={className} aria-hidden>
       <defs>
-        <linearGradient id="op-carro" x1="0" x2="1">
-          <stop offset="0" stopColor="#3A4250" />
-          <stop offset=".55" stopColor="#4A5464" />
-          <stop offset="1" stopColor="#232B34" />
+        <linearGradient id="op-carro" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={CUERPO_2} />
+          <stop offset="1" stopColor={CUERPO} />
         </linearGradient>
         <linearGradient id="op-estela" x1="0" x2="1">
           <stop offset="0" stopColor="#E10600" stopOpacity="0" />
-          <stop offset="1" stopColor="#FF5A3C" stopOpacity=".95" />
+          <stop offset="1" stopColor="#FF5A3C" stopOpacity=".9" />
         </linearGradient>
       </defs>
 
       {/* estelas que salen de atrás */}
-      <rect x="0" y="30" width="58" height="2.5" rx="1.25" fill="url(#op-estela)" />
-      <rect x="6" y="44" width="46" height="2" rx="1" fill="url(#op-estela)" opacity=".7" />
-      <rect x="0" y="57" width="70" height="2" rx="1" fill="url(#op-estela)" opacity=".5" />
+      <rect x="0" y="34" width="52" height="3" rx="1.5" fill="url(#op-estela)" />
+      <rect x="4" y="52" width="40" height="2.5" rx="1.25" fill="url(#op-estela)" opacity=".75" />
+      <rect x="0" y="70" width="60" height="2.5" rx="1.25" fill="url(#op-estela)" opacity=".5" />
 
-      {/* alerón trasero */}
-      <rect x="30" y="20" width="30" height="5" rx="2" fill="#E10600" />
-      <rect x="42" y="25" width="5" height="16" fill="#3A4250" />
+      {/* alerón trasero: plano principal, plano superior, deriva y soporte */}
+      <rect x="16" y="26" width="44" height="6" rx="3" fill="#E10600" />
+      <rect x="20" y="36" width="38" height="4" rx="2" fill={OSCURO} />
+      <rect x="14" y="24" width="6" height="34" rx="2" fill={OSCURO} />
+      <rect x="36" y="40" width="6" height="16" fill={CUERPO} />
 
-      {/* cuerpo: cola, cockpit, morro */}
+      {/* suelo y difusor */}
+      <path d="M30 72 L236 70 L236 78 L30 80 Z" fill={OSCURO} />
+
+      {/* carrocería: cola, tapa de motor, airbox, cabina y morro */}
       <path
-        d="M36 52 L46 40 L74 36 Q86 24 104 24 L120 24 Q128 24 132 31
-           L176 38 Q196 41 214 49 L214 55 Q190 58 150 57 L60 57 Z"
+        d="M32 70 L42 54 Q60 49 92 48 L104 46 Q108 26 124 26 L134 27 Q138 32 138 42
+           L176 46 Q206 50 232 58 L262 64 L262 71 L150 74 L32 78 Z"
         fill="url(#op-carro)"
       />
-      {/* halo */}
-      <path d="M96 27 Q112 14 130 28" fill="none" stroke="#232B34" strokeWidth="4.5" strokeLinecap="round" />
+
+      {/* pontón y entrada de aire */}
+      <path d="M140 46 Q168 48 192 56 L192 70 L140 71 Z" fill={CUERPO_2} opacity=".85" />
+      <path d="M142 50 L160 53 L160 61 L142 60 Z" fill={LLANTA} opacity=".8" />
+
       {/* franja roja del costado */}
-      <path d="M62 50 L128 40 L176 45 L176 49 L126 45 L62 54 Z" fill="#E10600" opacity=".9" />
-      {/* alerón delantero */}
-      <rect x="198" y="55" width="32" height="5" rx="2" fill="#E10600" />
+      <path d="M50 66 L138 56 L196 62 L196 67 L138 61 L50 71 Z" fill="#E10600" opacity=".92" />
+
+      {/* halo */}
+      <path d="M112 40 Q130 24 152 42" fill="none" stroke={OSCURO} strokeWidth="5.5" strokeLinecap="round" />
+      <path d="M131 32 L131 26" stroke={OSCURO} strokeWidth="4" />
+
+      {/* morro y alerón delantero */}
+      <path d="M232 58 L270 66 L270 74 L232 72 Z" fill={CUERPO} />
+      <rect x="246" y="76" width="34" height="6" rx="3" fill="#E10600" />
+      <rect x="274" y="66" width="6" height="18" rx="2" fill={OSCURO} />
 
       {/* ruedas */}
-      <circle cx="66" cy="54" r="17" fill="#1A1F26" />
-      <circle cx="66" cy="54" r="8" fill="#3A4250" />
-      <circle cx="174" cy="56" r="15" fill="#1A1F26" />
-      <circle cx="174" cy="56" r="7" fill="#3A4250" />
+      <circle cx="68" cy="72" r="22" fill={LLANTA} />
+      <circle cx="68" cy="72" r="10" fill={RIN} />
+      <circle cx="68" cy="72" r="4" fill={OSCURO} />
+      <circle cx="214" cy="74" r="20" fill={LLANTA} />
+      <circle cx="214" cy="74" r="9" fill={RIN} />
+      <circle cx="214" cy="74" r="3.5" fill={OSCURO} />
     </svg>
   );
 }
@@ -186,7 +208,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
     >
       {/* El auto va detrás de todo, sangrando por el borde derecho. */}
       <div className="pointer-events-none absolute inset-y-0 right-0 hidden sm:flex items-center" aria-hidden>
-        <AutoDeCarrera className="w-[300px] opacity-95" />
+        <AutoDeCarrera className="w-[330px] opacity-95" />
       </div>
 
       <div className="relative">
