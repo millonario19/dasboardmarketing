@@ -49,69 +49,80 @@ const MES = new Date(Date.now() - 5 * 3600e3).toLocaleDateString("es-CO", {
  * cualquiera reconoce, sin tomar prestada la imagen de nadie.
  */
 function AutoDeCarrera({ className = "" }: { className?: string }) {
-  const CUERPO = "#39424F";
-  const CUERPO_2 = "#4B5666";
-  const OSCURO = "#232B34";
-  const LLANTA = "#1A1F26";
-  const RIN = "#4B5666";
+  // El contorno va una sola vez: la franja roja, el brillo y la entrada de aire
+  // se recortan contra él, así ninguna pieza se sale del cuerpo.
+  const CUERPO =
+    "M36 86 L34 68 C 40 60, 54 55, 78 53 L98 51 C 102 38, 114 32, 130 32 " +
+    "C 142 32, 147 39, 147 48 L190 53 C 218 58, 246 65, 272 72 L304 79 L306 86 " +
+    "C 280 88, 250 90, 228 90 L36 89 Z";
 
   return (
-    <svg viewBox="0 0 280 110" className={className} aria-hidden>
+    <svg viewBox="0 0 320 120" className={className} aria-hidden>
       <defs>
         <linearGradient id="op-carro" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={CUERPO_2} />
-          <stop offset="1" stopColor={CUERPO} />
+          <stop offset="0" stopColor="#6E7B8D" />
+          <stop offset=".46" stopColor="#414B5B" />
+          <stop offset="1" stopColor="#212934" />
+        </linearGradient>
+        <linearGradient id="op-brillo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity=".30" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="op-estela" x1="0" x2="1">
           <stop offset="0" stopColor="#E10600" stopOpacity="0" />
           <stop offset="1" stopColor="#FF5A3C" stopOpacity=".9" />
         </linearGradient>
+        <radialGradient id="op-sombra">
+          <stop offset="0" stopColor="#14140f" stopOpacity=".22" />
+          <stop offset="1" stopColor="#14140f" stopOpacity="0" />
+        </radialGradient>
+        <clipPath id="op-recorte">
+          <path d={CUERPO} />
+        </clipPath>
       </defs>
 
+      <ellipse cx="170" cy="104" rx="132" ry="6" fill="url(#op-sombra)" />
+
       {/* estelas que salen de atrás */}
-      <rect x="0" y="34" width="52" height="3" rx="1.5" fill="url(#op-estela)" />
-      <rect x="4" y="52" width="40" height="2.5" rx="1.25" fill="url(#op-estela)" opacity=".75" />
-      <rect x="0" y="70" width="60" height="2.5" rx="1.25" fill="url(#op-estela)" opacity=".5" />
+      <rect x="0" y="30" width="44" height="3" rx="1.5" fill="url(#op-estela)" />
+      <rect x="4" y="50" width="34" height="2.5" rx="1.25" fill="url(#op-estela)" opacity=".75" />
+      <rect x="0" y="70" width="54" height="2.5" rx="1.25" fill="url(#op-estela)" opacity=".45" />
 
-      {/* alerón trasero: plano principal, plano superior, deriva y soporte */}
-      <rect x="16" y="26" width="44" height="6" rx="3" fill="#E10600" />
-      <rect x="20" y="36" width="38" height="4" rx="2" fill={OSCURO} />
-      <rect x="14" y="24" width="6" height="34" rx="2" fill={OSCURO} />
-      <rect x="36" y="40" width="6" height="16" fill={CUERPO} />
+      {/* alerón trasero: deriva atrás del todo, dos planos y el soporte al cuerpo */}
+      <rect x="11" y="20" width="8" height="34" rx="2" fill="#2B333F" />
+      <rect x="18" y="25" width="54" height="6.5" rx="3.25" fill="#E10600" />
+      <rect x="24" y="37" width="42" height="4.5" rx="2.25" fill="#2B333F" />
+      <rect x="42" y="40" width="7" height="22" fill="#39424F" />
 
-      {/* suelo y difusor */}
-      <path d="M30 72 L236 70 L236 78 L30 80 Z" fill={OSCURO} />
+      {/* difusor */}
+      <path d="M34 76 L58 75 L58 89 L32 90 Z" fill="#1B2028" />
 
-      {/* carrocería: cola, tapa de motor, airbox, cabina y morro */}
-      <path
-        d="M32 70 L42 54 Q60 49 92 48 L104 46 Q108 26 124 26 L134 27 Q138 32 138 42
-           L176 46 Q206 50 232 58 L262 64 L262 71 L150 74 L32 78 Z"
-        fill="url(#op-carro)"
-      />
+      <path d={CUERPO} fill="url(#op-carro)" />
 
-      {/* pontón y entrada de aire */}
-      <path d="M140 46 Q168 48 192 56 L192 70 L140 71 Z" fill={CUERPO_2} opacity=".85" />
-      <path d="M142 50 L160 53 L160 61 L142 60 Z" fill={LLANTA} opacity=".8" />
+      <g clipPath="url(#op-recorte)">
+        <path d="M42 64 C 72 55, 102 50, 130 33 C 112 52, 92 57, 46 72 Z" fill="url(#op-brillo)" />
+        <path d="M28 76 L200 76 C 240 78, 276 81, 312 84 L312 89 C 276 86, 240 83, 200 81 L28 81 Z" fill="#E10600" />
+        <rect x="100" y="58" width="32" height="15" rx="7" fill="#151A21" />
+      </g>
 
-      {/* franja roja del costado */}
-      <path d="M50 66 L138 56 L196 62 L196 67 L138 61 L50 71 Z" fill="#E10600" opacity=".92" />
+      {/* cabina y halo */}
+      <path d="M145 48 C 155 45, 180 48, 192 54 L192 59 L145 55 Z" fill="#151A21" />
+      <path d="M149 52 C 158 33, 190 34, 201 57" fill="none" stroke="#2B333F" strokeWidth="5" strokeLinecap="round" />
 
-      {/* halo */}
-      <path d="M112 40 Q130 24 152 42" fill="none" stroke={OSCURO} strokeWidth="5.5" strokeLinecap="round" />
-      <path d="M131 32 L131 26" stroke={OSCURO} strokeWidth="4" />
-
-      {/* morro y alerón delantero */}
-      <path d="M232 58 L270 66 L270 74 L232 72 Z" fill={CUERPO} />
-      <rect x="246" y="76" width="34" height="6" rx="3" fill="#E10600" />
-      <rect x="274" y="66" width="6" height="18" rx="2" fill={OSCURO} />
+      {/* alerón delantero */}
+      <rect x="304" y="72" width="8" height="24" rx="2" fill="#2B333F" />
+      <rect x="280" y="78" width="28" height="4" rx="2" fill="#2B333F" />
+      <rect x="274" y="86" width="36" height="6.5" rx="3.25" fill="#E10600" />
 
       {/* ruedas */}
-      <circle cx="68" cy="72" r="22" fill={LLANTA} />
-      <circle cx="68" cy="72" r="10" fill={RIN} />
-      <circle cx="68" cy="72" r="4" fill={OSCURO} />
-      <circle cx="214" cy="74" r="20" fill={LLANTA} />
-      <circle cx="214" cy="74" r="9" fill={RIN} />
-      <circle cx="214" cy="74" r="3.5" fill={OSCURO} />
+      <circle cx="72" cy="76" r="25" fill="#14181E" />
+      <circle cx="72" cy="76" r="15.5" fill="#2B333F" />
+      <circle cx="72" cy="76" r="8.5" fill="#67748A" />
+      <circle cx="72" cy="76" r="3.5" fill="#14181E" />
+      <circle cx="250" cy="78" r="23" fill="#14181E" />
+      <circle cx="250" cy="78" r="14" fill="#2B333F" />
+      <circle cx="250" cy="78" r="7.5" fill="#67748A" />
+      <circle cx="250" cy="78" r="3" fill="#14181E" />
     </svg>
   );
 }
@@ -206,11 +217,6 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         color: TINTA,
       }}
     >
-      {/* El auto va detrás de todo, sangrando por el borde derecho. */}
-      <div className="pointer-events-none absolute inset-y-0 right-0 hidden sm:flex items-center" aria-hidden>
-        <AutoDeCarrera className="w-[330px] opacity-95" />
-      </div>
-
       <div className="relative">
         <div className="flex items-stretch gap-0 flex-col sm:flex-row">
           {/* Izquierda: de qué mes hablamos. */}
@@ -225,6 +231,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             >
               Comisión de {MES}
             </span>
+            <AutoDeCarrera className="w-[190px] mt-2 sm:hidden" />
           </div>
 
           {/* Centro: la meta, y debajo lo que lleva. */}
@@ -253,16 +260,21 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             )}
           </div>
 
-          {/* Derecha: la frase. Es lo único de la pantalla que no es un dato. */}
+          {/* Derecha: la frase y el auto. Antes el auto iba de fondo y las letras
+              le quedaban encima; puestos uno debajo del otro no se pisan. */}
           <div
-            className="hidden sm:flex items-center px-6 py-7 sm:w-[26%]"
+            className="hidden sm:flex flex-col justify-center gap-2 px-5 py-5 sm:w-[30%]"
             style={{ borderBottom: `1px solid ${BORDE}`, borderLeft: `1px solid ${BORDE}` }}
           >
-            <span className="text-[11px] font-bold uppercase tracking-[.16em] leading-[1.7]" style={{ color: TINTA_2 }}>
+            <span
+              className="text-[10px] font-bold uppercase tracking-[.16em] leading-[1.7]"
+              style={{ color: TINTA_2 }}
+            >
               Disciplina hoy,
               <br />
               resultados mañana
             </span>
+            <AutoDeCarrera className="w-full max-w-[210px]" />
           </div>
         </div>
 
