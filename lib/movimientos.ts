@@ -34,6 +34,7 @@ export type Movimiento = {
   telefono: string | null;
   agenteId: string | null;
   hora: string;
+  dia: "hoy" | "ayer";
   tipo: "mensaje" | "etiqueta";
   /** Lo que pasó, en una línea: el mensaje del cliente o el paso que dio. */
   detalle: string;
@@ -128,7 +129,12 @@ export async function movimientosDeHoy(soloAgente?: string | null): Promise<Movi
 }
 
 async function leerMovimientos(ahora: number): Promise<Movimiento[]> {
-  const desde = inicioDeHoyBogota(ahora);
+  const arrancaHoy = inicioDeHoyBogota(ahora);
+  // La ventana empieza ayer, no hoy. Un agente que abre el tablero a las 7 de
+  // la mañana con «hoy» vería una pantalla vacía —lo comprobamos: a las 8 am
+  // había un solo movimiento en toda la oficina— cuando lo que necesita es
+  // justamente lo que se movió mientras no estaba.
+  const desde = arrancaHoy - 864e5;
   const [conversaciones, porEtiqueta] = await Promise.all([
     conversacionesRecientes(TOPE_CONVERSACIONES),
     movimientosPorEtiqueta(desde),
@@ -146,6 +152,10 @@ async function leerMovimientos(ahora: number): Promise<Movimiento[]> {
     const hayMensajeHoy = horaMensaje >= desde;
     if (!hayMensajeHoy && !etiqueta) continue;
 
+    const horaFinal = hayMensajeHoy && (!etiqueta || horaMensaje >= new Date(etiqueta.hora).getTime())
+      ? horaMensaje
+      : new Date(etiqueta!.hora).getTime();
+
     // Si el lead escribió y además cambió de etiqueta, manda lo más reciente:
     // es lo que explica en qué está ahora.
     const porMensaje = hayMensajeHoy && (!etiqueta || horaMensaje >= new Date(etiqueta.hora).getTime());
@@ -158,6 +168,7 @@ async function leerMovimientos(ahora: number): Promise<Movimiento[]> {
       telefono: c.phone ?? null,
       agenteId: c.assignedTo ?? null,
       hora: porMensaje ? new Date(horaMensaje).toISOString() : etiqueta!.hora,
+      dia: horaFinal >= arrancaHoy ? "hoy" : "ayer",
       tipo: porMensaje ? "mensaje" : "etiqueta",
       detalle: porMensaje
         ? (c.lastMessageBody || "").trim().slice(0, 160) || "Mandó un audio o una imagen"

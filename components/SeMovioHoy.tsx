@@ -60,6 +60,7 @@ export function SeMovioHoy() {
   }, [cargar]);
 
   const esperando = movimientos?.filter((m) => m.esperando).length ?? 0;
+  const deHoy = movimientos?.filter((m) => m.dia === "hoy").length ?? 0;
 
   return (
     <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
@@ -70,7 +71,7 @@ export function SeMovioHoy() {
         <h2 className="text-[16px] font-semibold tracking-[-0.02em]">Se movió hoy</h2>
         {movimientos && (
           <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
-            {movimientos.length} {movimientos.length === 1 ? "movimiento" : "movimientos"}
+            {deHoy} hoy · {movimientos.length - deHoy} ayer
           </span>
         )}
         {esperando > 0 && (
@@ -98,16 +99,28 @@ export function SeMovioHoy() {
 
       {movimientos && movimientos.length === 0 && !cargando && (
         <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
-          Hoy no se movió nadie todavía.
+          No se movió nadie ni hoy ni ayer.
         </p>
       )}
 
       <div>
-        {(movimientos ?? []).map((m) => {
+        {(movimientos ?? []).map((m, i, todos) => {
           const meta = ESTADO_META[m.estado];
+          // El corte entre hoy y ayer: a las 7 de la mañana «hoy» está casi
+          // vacío, y lo que el agente necesita ver es lo que se movió mientras
+          // no estaba.
+          const corte = i === 0 || todos[i - 1].dia !== m.dia;
           return (
+            <div key={`${m.contactId}-${m.hora}`}>
+              {corte && (
+                <p
+                  className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
+                  style={{ background: CELESTE, color: AZUL }}
+                >
+                  {m.dia === "hoy" ? "Hoy" : "Ayer"}
+                </p>
+              )}
             <article
-              key={`${m.contactId}-${m.hora}`}
               className="flex gap-3 px-4 sm:px-5 py-3 border-t border-gridline"
               style={{ background: m.esperando ? "#FDF2F0" : undefined }}
             >
@@ -152,6 +165,7 @@ export function SeMovioHoy() {
                 <BotonWhatsApp telefono={m.telefono} nombre={m.nombre} tamano={28} />
               </div>
             </article>
+            </div>
           );
         })}
       </div>
