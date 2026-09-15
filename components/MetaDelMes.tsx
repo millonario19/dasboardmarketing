@@ -92,6 +92,26 @@ function useBarrido(objetivo: number, ms = 1200): number {
   return valor;
 }
 
+/**
+ * ¿Estamos en un teléfono?
+ *
+ * El reloj es un SVG que se escala al ancho disponible, y con él se escala su
+ * tipografía: los 13 puntos del rótulo terminan siendo 6 píxeles en una
+ * pantalla de 375. Lo que en el escritorio es un detalle, en el teléfono no se
+ * lee. Por eso el reloj se dibuja distinto según dónde esté.
+ */
+function useChico(): boolean {
+  const [chico, setChico] = useState(false);
+  useEffect(() => {
+    const m = window.matchMedia("(max-width: 640px)");
+    const ver = () => setChico(m.matches);
+    ver();
+    m.addEventListener("change", ver);
+    return () => m.removeEventListener("change", ver);
+  }, []);
+  return chico;
+}
+
 /* ── el reloj ─────────────────────────────────────────────────────────── */
 
 const CX = 380;
@@ -144,10 +164,12 @@ function Reloj({
   logrado,
   meta,
   simulando,
+  chico,
 }: {
   logrado: number;
   meta: number;
   simulando: boolean;
+  chico: boolean;
 }) {
   const pct = meta > 0 ? Math.min(logrado / meta, 1) : 0;
   const ang = INICIO + pct * BARRIDO;
@@ -190,7 +212,7 @@ function Reloj({
     if (grande) {
       const [lx, ly] = punto(g, R - GROSOR / 2 - 36);
       marcas.push(
-        <text key={`t${v}`} x={lx} y={ly + 8} textAnchor="middle" fontSize="24" fontWeight="700" fill={TINTA}>
+        <text key={`t${v}`} x={lx} y={ly + 8} textAnchor="middle" fontSize={chico ? 34 : 24} fontWeight="700" fill={TINTA}>
           {v}
         </text>
       );
@@ -212,7 +234,7 @@ function Reloj({
   };
 
   return (
-    <svg viewBox="0 0 760 516" className="w-full" aria-hidden>
+    <svg viewBox={chico ? "40 66 680 412" : "0 0 760 516"} className="w-full" aria-hidden>
       <path d={arco(INICIO, INICIO + BARRIDO, R)} stroke={RIEL} strokeWidth={GROSOR} fill="none" strokeLinecap="round" />
       {tramos.map((t, i) => (
         <path
@@ -238,30 +260,44 @@ function Reloj({
       <circle cx={CX} cy={CY} r={29} fill={TINTA} />
       <circle cx={CX} cy={CY} r={17} fill={TINTA} stroke={ORO} strokeWidth={4} />
 
-      <text x={CX} y={226} textAnchor="middle" fontSize="21" fill={TINTA} {...halo}>
-        Un sueño necesita un plan
-      </text>
-      <text x={CX} y={256} textAnchor="middle" fontSize="21" fontWeight="700" fill={TINTA} {...halo}>
-        para despertarlo.
-      </text>
-      <rect x={CX - 26} y={271} width={52} height={3} rx={1.5} fill={ORO} />
+      {!chico && (
+        <>
+          <text x={CX} y={226} textAnchor="middle" fontSize="21" fill={TINTA} {...halo}>
+            Un sueño necesita un plan
+          </text>
+          <text x={CX} y={256} textAnchor="middle" fontSize="21" fontWeight="700" fill={TINTA} {...halo}>
+            para despertarlo.
+          </text>
+          <rect x={CX - 26} y={271} width={52} height={3} rx={1.5} fill={ORO} />
+        </>
+      )}
 
       {/* Grande va la meta, no lo que lleva. Ver «$0» a principio de mes no
           mueve a nadie; ver a dónde va, sí. Lo que lleva lo dice la aguja, y
           el número chico de abajo lo pone en plata. */}
+      {!chico && (
+        <>
       <text
         x={CX}
         y={430}
         textAnchor="middle"
-        fontSize="64"
+        fontSize={64}
         fontWeight="900"
-        letterSpacing="-2.5"
+        letterSpacing={-2.5}
         fill={TINTA}
         {...halo}
       >
         {plata(meta)}
       </text>
-      <text x={CX} y={462} textAnchor="middle" fontSize="13" fontWeight="800" letterSpacing="5" fill={TINTA_2}>
+      <text
+        x={CX}
+        y={462}
+        textAnchor="middle"
+        fontSize={13}
+        fontWeight="800"
+        letterSpacing={5}
+        fill={TINTA_2}
+      >
         MI META DE {MES.toUpperCase()}
       </text>
       <rect x={CX - 26} y={476} width={52} height={3} rx={1.5} fill={ORO} />
@@ -269,12 +305,14 @@ function Reloj({
         x={CX}
         y={499}
         textAnchor="middle"
-        fontSize="17"
+        fontSize={17}
         fontWeight="700"
         fill={simulando ? AZUL : logrado > 0 ? VERDE : TINTA_3}
       >
         {simulando ? `si llegás a ${plata(logrado)}` : `llevás ${plata(logrado)}`}
       </text>
+        </>
+      )}
     </svg>
   );
 }
@@ -332,6 +370,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const [ftd, setFtd] = useState("45");
   const [usd, setUsd] = useState("1500");
   const [guardando, setGuardando] = useState(false);
+  const chico = useChico();
 
   useEffect(() => {
     try {
@@ -418,7 +457,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
     >
       <div className="flex justify-between items-start gap-4">
         <Rotulo titulo={`Comisión de ${MES}`} pie="Tu esfuerzo genera libertad" />
-        <span className="flex items-start gap-2.5">
+        <span className="hidden sm:flex items-start gap-2.5">
           <svg width="30" height="22" viewBox="0 0 30 22" aria-hidden className="mt-0.5 hidden sm:block">
             <g fill={TINTA_3}>
               <rect x="0" y="0" width="7.5" height="5.5" />
@@ -468,7 +507,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           </p>
         </div>
 
-        <Reloj logrado={mostrado} meta={objetivo} simulando={simulando} />
+        <Reloj logrado={mostrado} meta={objetivo} simulando={simulando} chico={chico} />
 
         <div
           className="hidden lg:block rounded-[20px] text-center px-4 py-10"
@@ -555,6 +594,28 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             </span>
           )}
         </div>
+      </div>
+
+      {/* En pantalla ancha todo esto vive adentro del arco. En el teléfono el
+          arco mide unos 250 px y ahí no entra: baja acá, con tamaños de CSS
+          que no dependen de cuánto se encoja el dibujo. */}
+      <div className="sm:hidden text-center -mt-1">
+        <p className="text-[44px] font-black tracking-[-0.045em] leading-none tabular-nums">
+          {plata(objetivo)}
+        </p>
+        <p className="text-[10px] font-extrabold uppercase tracking-[.26em] mt-2" style={{ color: TINTA_2 }}>
+          Mi meta de {MES}
+        </p>
+        <i className="block w-[52px] h-[3px] rounded-sm mx-auto my-2" style={{ background: ORO }} />
+        <p
+          className="text-[14px] font-bold"
+          style={{ color: simulando ? AZUL : pago > 0 ? VERDE : TINTA_3 }}
+        >
+          {simulando ? `si llegás a ${plata(mostrado)}` : `llevás ${plata(pago)}`}
+        </p>
+        <p className="text-[13px] leading-snug mt-3" style={{ color: TINTA }}>
+          Un sueño necesita un plan <b className="font-bold">para despertarlo.</b>
+        </p>
       </div>
 
       <div className="flex items-center justify-center gap-3.5 mt-5">
