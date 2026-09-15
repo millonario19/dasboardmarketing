@@ -319,7 +319,7 @@ function queToca(dia: number): string {
  */
 let enVuelo: { en: number; promesa: Promise<Datos> } | null = null;
 
-function pedirSeguimiento(forzar = false): Promise<Datos> {
+export function pedirSeguimiento(forzar = false): Promise<Datos> {
   if (!forzar && enVuelo && Date.now() - enVuelo.en < 30_000) return enVuelo.promesa;
   const promesa = fetch("/api/seguimiento")
     .then(async (r) => {

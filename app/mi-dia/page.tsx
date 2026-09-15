@@ -8,6 +8,7 @@ import { useSesion } from "@/components/useSesion";
 import { SeMovioHoy } from "@/components/SeMovioHoy";
 import { Seguimiento } from "@/components/Seguimiento";
 import { TareasDeHoy } from "@/components/TareasDeHoy";
+import { LlamarPorDia } from "@/components/LlamarPorDia";
 import { PasoSistema } from "@/components/PasoSistema";
 import { MetaDelMes } from "@/components/MetaDelMes";
 import { nombreCorto } from "@/lib/nombre";
@@ -116,7 +117,7 @@ export default function MiDiaPage() {
         <PasoSistema
           numero={1}
           titulo="Llamar hoy"
-          detalle="Lo que vos mismo programaste, más lo que se te pasó"
+          detalle="El día 2 y el día 3, más lo que vos mismo programaste"
           abiertoPorDefecto
           resumen={
             porHacer === null
@@ -126,6 +127,9 @@ export default function MiDiaPage() {
                 : { texto: "al día", fondo: "#E4F1EA", color: "#157F52" }
           }
         >
+          {/* Primero la cola del embudo —día 2 y día 3— y después lo que el
+              agente se programó él mismo. */}
+          <LlamarPorDia />
           <TareasDeHoy onResumen={setPorHacer} />
         </PasoSistema>
 
