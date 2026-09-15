@@ -46,6 +46,35 @@ const VIA_CORTA: Record<string, string> = {
   "no-responde": "no responde",
 };
 
+/**
+ * Cuándo entró el lead, con fecha, hora y cuánto lleva.
+ *
+ * En una pestaña que se llama «Día 2» el agente no tiene forma de saber de qué
+ * fecha habla, y con tres pestañas abiertas los leads se le mezclan. La fecha
+ * completa en cada fila cuesta un renglón y saca la duda de raíz.
+ */
+function llegada(iso: string): string {
+  const d = new Date(iso);
+  const fecha = d.toLocaleDateString("es-CO", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Bogota",
+  });
+  const hora = d.toLocaleTimeString("es-CO", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Bogota",
+  });
+  const dias = Math.floor(
+    (new Date(new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10)).getTime() -
+      new Date(new Date(d.getTime() - 5 * 3600e3).toISOString().slice(0, 10)).getTime()) /
+      864e5
+  );
+  const cuanto = dias <= 0 ? "hoy" : dias === 1 ? "ayer" : `hace ${dias} días`;
+  return `entró ${fecha}, ${hora} · ${cuanto}`;
+}
+
 function cuando(iso: string): string {
   const d = new Date(iso);
   const hoy = new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10);
@@ -120,6 +149,9 @@ export function FilaSeguimiento({
             )}
             {via && " · "}
             {contexto}
+          </span>
+          <span className="block text-[11px] mt-0.5 tabular-nums" style={{ color: GRIS }}>
+            {llegada(lead.creado)}
           </span>
           {/* En la lista de «en mi WhatsApp Business» acá va desde cuándo lo
               tiene: es el reloj que manda la cadencia del seguimiento. */}

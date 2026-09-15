@@ -130,6 +130,16 @@ const GRIS_2 = "#5E5C56";
 const AMBAR = "#B5701F";
 const GRIS = "#9A998F";
 
+/** «viernes, 12 de septiembre», que es como lo dice una persona. */
+function fechaLarga(fecha: string): string {
+  return new Date(`${fecha}T12:00:00-05:00`).toLocaleDateString("es-CO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Bogota",
+  });
+}
+
 function hora(iso: string): string {
   return new Date(iso).toLocaleString("es-CO", {
     day: "numeric",
@@ -447,6 +457,18 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
       {actual && actual.leads.length === 0 && !cargando && (
         <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
           Ese día no entró ningún lead que siga pendiente.
+        </p>
+      )}
+
+      {/* De qué fecha habla esta pestaña. «Día 2» solo no dice nada: el agente
+          tiene que poder cruzar lo que ve con su WhatsApp y con GHL. */}
+      {actual && (
+        <p
+          className="px-4 sm:px-5 py-2 text-[12px] border-t border-gridline first-letter:uppercase"
+          style={{ background: "var(--page-plane)", color: GRIS_2 }}
+        >
+          {fechaLarga(actual.fecha)}
+          {diaDelEmbudo && <> · el seguimiento sale con la etiqueta <b>seg-d{diaDelEmbudo}-…</b></>}
         </p>
       )}
 
