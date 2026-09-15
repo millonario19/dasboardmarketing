@@ -115,7 +115,14 @@ function Fila({
       </span>
 
       <span className="flex items-center gap-1.5 shrink-0">
-        {modo === "bajar" ? (
+        {modo === "bajar" && lead.enMiWhatsApp ? (
+          <span
+            className="rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap"
+            style={{ background: "#EEF7F2", color: VERDE }}
+          >
+            ✓ ya lo tenés
+          </span>
+        ) : modo === "bajar" ? (
           <button
             onClick={bajar}
             disabled={bajando || !lead.telefono}
@@ -150,7 +157,10 @@ export function LeadsDelDia({ modo }: { modo: "bajar" | "llamar" }) {
 
   useEffect(() => {
     pedirSeguimiento()
-      .then((d) => setLeads(d.dias.find((x) => x.etiqueta === "Día 1")?.leads ?? []))
+      // Todos los de hoy, no la pestaña del día 1: esa saca a los confirmados
+      // —que están en su propia lista— y el confirmado es justo al que hay que
+      // llamar. La lista de llamadas del día los quiere a todos.
+      .then((d) => setLeads(d.hoy))
       .catch(() => setLeads([]));
   }, []);
 
@@ -192,7 +202,7 @@ export function LeadsDelDia({ modo }: { modo: "bajar" | "llamar" }) {
         <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
           {leads.length === 0
             ? "Todavía no entró ningún lead hoy."
-            : "Ya te llevaste a todos los de hoy. Están en el paso 2."}
+            : "Ya te llevaste a todos los de hoy. Están en el paso 3."}
         </p>
       ) : (
         TEMPERATURAS.map((t) => {

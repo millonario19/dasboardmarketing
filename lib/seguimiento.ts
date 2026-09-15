@@ -109,6 +109,11 @@ export type LeadDeSeguimiento = {
    */
   porConfirmar: boolean;
   /**
+   * Ya está en el WhatsApp del agente, por cualquiera de los dos caminos: el
+   * cliente tocó el botón y él lo confirmó, o él se copió el número.
+   */
+  enMiWhatsApp: boolean;
+  /**
    * Cuánto le queda de la ventana de 24 horas de Meta. De acá sale si el
    * seguimiento del día sale gratis o hay que gastar una plantilla — y si se
    * puede mandar algo, para empezar.
@@ -188,6 +193,15 @@ export type Seguimiento = {
   ocultos: number;
   /** Los que ya están en el WhatsApp Business del agente. */
   enBusiness: LeadEnBusiness[];
+  /**
+   * Todos los que entraron hoy, sin filtrar.
+   *
+   * Las pestañas por día sacan a los confirmados —están en su propia lista— y
+   * eso tiene sentido para el seguimiento, pero no para la lista de llamadas
+   * del día: el confirmado es justamente al que hay que llamar. Acá van todos,
+   * fríos, tibios y calientes, incluidos los que ya se bajaron.
+   */
+  hoy: LeadDeSeguimiento[];
   /** Lo primero del día: el sistema sabe que hicieron clic, no si llegaron. */
   porConfirmar: PorConfirmar[];
   promesas: Promesa[];
@@ -316,6 +330,7 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
       tarea: tareas.get(contacto.id) ?? null,
       // Ya confirmado: no hay nada que preguntar.
       porConfirmar: false,
+      enMiWhatsApp: true,
       // Los confirmados no reciben automáticos: su ventana no se mira.
       ventana: SIN_VENTANA,
       enviadoHoy: null,
@@ -414,6 +429,8 @@ export async function computeSeguimiento(
 
   const clics = await clicsDeBusiness((contactos as GhlContact[]).map((c) => c.id));
 
+  const crudosDeHoy: { contacto: GhlContact; agente: string; estado: EstadoLead }[] = [];
+
   for (const contacto of contactos as GhlContact[]) {
     // Los que ya depositaron salen: el seguimiento es de lo que falta cerrar.
     if (yaDeposito(contacto)) continue;
@@ -426,6 +443,10 @@ export async function computeSeguimiento(
       confirmacionDeBajada(contacto) === "si" ||
       (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BAJADA_MANUAL);
     if (!yaConfirmado) utiles.push({ contacto, agente: agent, estado });
+    // La lista de llamadas del día los quiere a todos, confirmados incluidos.
+    if (diaBogota(contacto.dateAdded) === diaBogota(new Date(arrancaHoy + 3600e3).toISOString())) {
+      crudosDeHoy.push({ contacto, agente: agent, estado });
+    }
 
     // Los clics con su fecha. El recorte por día lo hace la pantalla, que es la
     // que sabe qué día está mirando el agente: si eligió el 14 en el paso 2, el
@@ -445,7 +466,9 @@ export async function computeSeguimiento(
     }
   }
 
-  const idsUtiles = utiles.map((u) => u.contacto.id);
+  const idsUtiles = [
+    ...new Set([...utiles.map((u) => u.contacto.id), ...crudosDeHoy.map((u) => u.contacto.id)]),
+  ];
 
   // La ventana solo se calcula para los días que mandan seguimiento —el 2 y el
   // 3—. Averiguarla cuesta abrir la conversación de cada lead, una llamada por
@@ -484,6 +507,9 @@ export async function computeSeguimiento(
       porConfirmar:
         (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS) &&
         confirmacionDeBajada(contacto) === null,
+      enMiWhatsApp:
+        confirmacionDeBajada(contacto) === "si" ||
+        (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BAJADA_MANUAL),
       ventana: ventanas.get(contacto.id) ?? SIN_VENTANA,
       enviadoHoy: enviados.get(contacto.id) ?? null,
       crmUrl: fichaEnCrm(contacto.id),
@@ -515,6 +541,39 @@ export async function computeSeguimiento(
     salida.push({ fecha, etiqueta: `Día ${n}`, leads, porEstado });
   }
 
+  const armar = (
+    contacto: GhlContact,
+    agente: string,
+    estado: EstadoLead
+  ): LeadDeSeguimiento => ({
+    id: contacto.id,
+    nombre: contactDisplayName(contacto),
+    telefono: contacto.phone ?? null,
+    creado: contacto.dateAdded,
+    agente,
+    estado,
+    acciones: accionesDeLead(contacto),
+    via: viaDeLead(contacto, estado),
+    nota: notas.get(contacto.id) ?? null,
+    tarea: tareasPorDia.get(contacto.id) ?? null,
+    porConfirmar:
+      (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS) &&
+      confirmacionDeBajada(contacto) === null,
+    enMiWhatsApp:
+      confirmacionDeBajada(contacto) === "si" ||
+      (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BAJADA_MANUAL),
+    ventana: ventanas.get(contacto.id) ?? SIN_VENTANA,
+    enviadoHoy: enviados.get(contacto.id) ?? null,
+    crmUrl: fichaEnCrm(contacto.id),
+  });
+
+  const ordenTemp: Record<EstadoLead, number> = { caliente: 0, tibio: 1, frio: 2 };
+  const hoy = crudosDeHoy
+    .map((u) => armar(u.contacto, u.agente, u.estado))
+    .sort(
+      (a, b) => ordenTemp[a.estado] - ordenTemp[b.estado] || a.creado.localeCompare(b.creado)
+    );
+
   const [enBusiness, promesas, flujos] = await Promise.all([
     enMiBusiness(soloAgente),
     promesasPendientes(usuario),
@@ -523,6 +582,7 @@ export async function computeSeguimiento(
 
   const datos: Seguimiento = {
     dias: salida,
+    hoy,
     ocultos,
     enBusiness,
     porConfirmar,
