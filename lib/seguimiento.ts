@@ -12,6 +12,7 @@ import {
   confirmacionDeBajada,
   TAG_BUSINESS,
   TAG_BAJADA_SI,
+  TAG_BAJADA_MANUAL,
   type EstadoLead,
 } from "./leadStates";
 import { notasDe, type Nota } from "./notas";
@@ -129,6 +130,8 @@ export type LeadDeSeguimiento = {
  * cuando deposita o cuando el agente marca «Cerrar seguimiento».
  */
 export type LeadEnBusiness = LeadDeSeguimiento & {
+  /** Cómo llegó al WhatsApp del agente. */
+  comoLlego: "confirmado" | "manual";
   /** Cuándo el agente dijo que sí. */
   confirmadoEn: string;
   /** Días completos desde entonces, para saber por dónde va la cadencia. */
@@ -264,12 +267,18 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
   const contactos = await soloDelAgente(
     await searchContacts([
       { field: "tags", operator: "contains", value: process.env.GHL_LEAD_TAG ?? "ingreso de pauta" },
-      { field: "tags", operator: "contains", value: TAG_BAJADA_SI },
     ]),
     soloAgente
   );
 
-  const conVida = (contactos as GhlContact[]).filter((c) => !yaDeposito(c));
+  // Dos formas de llegar al WhatsApp del agente y las dos cuentan: el cliente
+  // tocó el botón y el agente lo confirmó, o el agente se copió el número y se
+  // lo llevó él. La segunda es como trabaja la mayoría.
+  const enElWhatsApp = (c: GhlContact) => {
+    const t = (c.tags ?? []).map((x) => x.toLowerCase());
+    return t.includes(TAG_BAJADA_SI) || t.includes(TAG_BAJADA_MANUAL);
+  };
+  const conVida = (contactos as GhlContact[]).filter((c) => enElWhatsApp(c) && !yaDeposito(c));
   const idsTodos = conVida.map((c) => c.id);
   const yaCerrados = await cerrados(idsTodos);
   // El agente da por terminado el seguimiento desde la misma ficha donde lo
@@ -300,6 +309,9 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
       estado: estadoDeLead(contacto),
       acciones: accionesDeLead(contacto),
       via: "llego",
+      comoLlego: (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BAJADA_MANUAL)
+        ? "manual"
+        : "confirmado",
       nota,
       tarea: tareas.get(contacto.id) ?? null,
       // Ya confirmado: no hay nada que preguntar.
@@ -410,7 +422,9 @@ export async function computeSeguimiento(
     // Los confirmados no entran a las pestañas por día —tienen su propia lista,
     // que no se cae a los tres días— pero sí siguen contando para la pregunta
     // del día, con su respuesta puesta.
-    const yaConfirmado = confirmacionDeBajada(contacto) === "si";
+    const yaConfirmado =
+      confirmacionDeBajada(contacto) === "si" ||
+      (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BAJADA_MANUAL);
     if (!yaConfirmado) utiles.push({ contacto, agente: agent, estado });
 
     // Los clics con su fecha. El recorte por día lo hace la pantalla, que es la

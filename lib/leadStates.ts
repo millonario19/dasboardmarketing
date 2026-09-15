@@ -13,6 +13,15 @@ export const TAG_BUSINESS = "bajado a business";
 // Respuesta del agente sobre si la bajada a WhatsApp ocurrió de verdad. Las
 // pone el dashboard cuando el agente contesta; ningún flujo de GHL las usa.
 export const TAG_BAJADA_SI = "bajada confirmada";
+/**
+ * El agente se copió el número y lo guardó en su WhatsApp personal.
+ *
+ * Es la forma en que trabaja la mayoría: no esperan a que el cliente toque el
+ * botón, se llevan el contacto y lo llaman ellos. Antes eso no dejaba rastro y
+ * el lead se quedaba figurando como tibio mientras el agente ya lo estaba
+ * trabajando.
+ */
+export const TAG_BAJADA_MANUAL = "bajado manual";
 export const TAG_BAJADA_NO = "bajada no confirmada";
 
 /**
