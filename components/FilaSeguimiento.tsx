@@ -6,6 +6,7 @@ import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar } from "@/components/Llamada";
 import { FichaCliente } from "@/components/FichaCliente";
 import { metaTipo } from "@/lib/tiposAccion";
+import { olvidarSeguimiento } from "@/components/Seguimiento";
 import type { LeadDeSeguimiento } from "@/lib/seguimiento";
 
 /**
@@ -149,6 +150,8 @@ export function FilaSeguimiento({
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo mandar");
         setEnviado(new Date().toISOString());
+        // Para que el próximo pedido traiga el envío y no la foto de antes.
+        olvidarSeguimiento();
       })
       .catch((e) => setFalloEnvio(e.message))
       .finally(() => setEnviando(false));

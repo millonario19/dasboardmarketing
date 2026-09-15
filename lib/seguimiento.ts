@@ -54,6 +54,21 @@ const CACHE_MS = 60_000;
 const cache = new Map<string, { en: number; datos: Seguimiento }>();
 
 /**
+ * Tirar la caché cuando algo cambió de verdad.
+ *
+ * Armar el seguimiento cuesta un barrido de GHL, así que se guarda un minuto.
+ * El problema es que ese minuto tapaba el trabajo recién hecho: el agente
+ * mandaba un seguimiento, recargaba, y la pantalla le devolvía la foto de
+ * antes — sin el «✓ enviado» y con el botón otra vez disponible.
+ *
+ * Lo llaman las rutas que escriben: mandar un seguimiento, confirmar una
+ * bajada, registrar una acción.
+ */
+export function invalidarSeguimiento(): void {
+  cache.clear();
+}
+
+/**
  * Por dónde va este lead.
  *
  * No es la temperatura —eso dice cuánto interés tiene— sino qué hay que hacer

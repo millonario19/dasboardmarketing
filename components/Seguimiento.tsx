@@ -334,6 +334,11 @@ export function pedirSeguimiento(forzar = false): Promise<Datos> {
   return promesa;
 }
 
+/** Después de escribir algo, el próximo pedido va derecho al servidor. */
+export function olvidarSeguimiento(): void {
+  enVuelo = null;
+}
+
 export type ParteSeguimiento = "agenda" | "business" | "dias";
 
 export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {

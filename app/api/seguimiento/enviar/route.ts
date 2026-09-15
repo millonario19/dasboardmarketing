@@ -4,6 +4,7 @@ import { registrarAccion, enviadoHoy } from "@/lib/acciones";
 import { etiquetaDeSeguimiento, type DiaDelEmbudo } from "@/lib/seguimientoTags";
 import { esEstado } from "@/lib/leadStates";
 import { sesionActual } from "@/lib/sesion";
+import { invalidarSeguimiento } from "@/lib/seguimiento";
 
 export const dynamic = "force-dynamic";
 
@@ -69,5 +70,6 @@ export async function POST(req: NextRequest) {
     `etiqueta ${etiqueta}`
   ).catch(() => undefined);
 
+  invalidarSeguimiento();
   return NextResponse.json({ ok: true, etiqueta });
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hiloDe, registrarAccion, programarTarea } from "@/lib/acciones";
 import { esTipo } from "@/lib/tiposAccion";
 import { sesionActual } from "@/lib/sesion";
+import { invalidarSeguimiento } from "@/lib/seguimiento";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,7 @@ export async function POST(req: NextRequest, { params }: { params: { contactId: 
       return NextResponse.json({ error: "No mandaste nada que guardar" }, { status: 400 });
     }
 
+    invalidarSeguimiento();
     return NextResponse.json({ hilo: await hiloDe(params.contactId) });
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : "Error al guardar";
