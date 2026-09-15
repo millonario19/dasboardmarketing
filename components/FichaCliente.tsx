@@ -57,10 +57,19 @@ export function FichaCliente({
   nombre,
   telefono,
   onCambio,
+  soloHistorial = false,
 }: {
   contactId: string;
   nombre: string;
   telefono: string | null;
+  /**
+   * Solo el historial, sin el formulario.
+   *
+   * En el módulo de mensajes el agente viene a ver qué se le mandó a este
+   * cliente y cuándo, no a registrar una llamada. El formulario vive donde se
+   * usa: en el paso 1, con el teléfono en la mano.
+   */
+  soloHistorial?: boolean;
   /** La fila de arriba muestra la tarea abierta: hay que avisarle que cambió. */
   onCambio?: (cerrado: boolean) => void;
 }) {
@@ -149,7 +158,9 @@ export function FichaCliente({
 
       {hilo?.length === 0 && (
         <p className="text-[12.5px] mb-4" style={{ color: GRIS }}>
-          Todavía no registraste nada. Lo que escribas acá queda para siempre.
+          {soloHistorial
+          ? "Todavía no se le mandó nada. Lo que se mande queda acá, día por día."
+          : "Todavía no registraste nada. Lo que escribas acá queda para siempre."}
         </p>
       )}
 
@@ -194,7 +205,7 @@ export function FichaCliente({
 
       {/* El compositor. Un toque para el tipo, el texto libre para lo que dijo
           el cliente, y lo que sigue en el mismo botón. */}
-      <div className="rounded-xl border border-gridline bg-surface p-3">
+      <div className="rounded-xl border border-gridline bg-surface p-3" hidden={soloHistorial}>
         <span className="block text-[11px] font-bold mb-1.5" style={{ color: GRIS_2 }}>
           ¿Qué acabás de hacer?
         </span>

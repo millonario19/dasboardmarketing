@@ -182,6 +182,31 @@ export function FilaSeguimiento({
       .finally(() => setConfirmando(false));
   }
 
+  /** Ventana cerrada: la plantilla la manda el flujo de GHL, no el panel. */
+  function enviarPlantilla() {
+    setEnviando(true);
+    setFalloEnvio(null);
+    fetch("/api/seguimiento/enviar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contactId: lead.id,
+        dia,
+        plantilla: true,
+        estado: lead.estado,
+        nombre: lead.nombre,
+        telefono: lead.telefono,
+      }),
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo mandar");
+        setEnviado(new Date().toISOString());
+        olvidarSeguimiento();
+      })
+      .catch((e) => setFalloEnvio(e.message))
+      .finally(() => setEnviando(false));
+  }
+
   function enviarSeguimiento() {
     if (!texto.trim()) {
       setFalloEnvio("Escribí el mensaje antes de mandarlo.");
@@ -325,6 +350,20 @@ export function FilaSeguimiento({
         )}
 
         <span className="flex items-center gap-1.5 shrink-0">
+          {/* Ventana cerrada pero el cliente escribió alguna vez: la única
+              forma que deja Meta es una plantilla aprobada, y esa sale del
+              flujo de GHL. El botón lo dice, porque esta sí se cobra. */}
+          {dia && !enviado && !lead.ventana.abierta && lead.ventana.horas !== null && (
+            <button
+              onClick={enviarPlantilla}
+              disabled={enviando}
+              title={`Dispara el flujo seg-d${dia}-${lead.estado} en GHL`}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 whitespace-nowrap"
+              style={{ background: AMBAR }}
+            >
+              {enviando ? "Mandando…" : `Enviar plantilla día ${dia}`}
+            </button>
+          )}
           {dia && !enviado && lead.ventana.abierta && (
             <button
               onClick={() => (redactando ? setRedactando(false) : abrirRedaccion())}
@@ -415,6 +454,7 @@ export function FilaSeguimiento({
           contactId={lead.id}
           nombre={lead.nombre}
           telefono={lead.telefono}
+          soloHistorial={!!dia}
           onCambio={(cerrado) => {
             if (cerrado) {
               onCerrado?.(lead.id);

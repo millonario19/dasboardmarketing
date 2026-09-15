@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { enviarWhatsApp } from "@/lib/ghl";
+import { enviarWhatsApp, agregarTag } from "@/lib/ghl";
+import { etiquetaDeSeguimiento, type DiaDelEmbudo } from "@/lib/seguimientoTags";
+import { esEstado } from "@/lib/leadStates";
 import { registrarAccion, enviadoHoy } from "@/lib/acciones";
 import { invalidarSeguimiento } from "@/lib/seguimiento";
 import { sesionActual } from "@/lib/sesion";
@@ -26,6 +28,9 @@ export async function POST(req: NextRequest) {
     contactId?: string;
     dia?: number;
     texto?: string;
+    /** Con la ventana cerrada solo entra una plantilla, y esa la manda GHL. */
+    plantilla?: boolean;
+    estado?: string;
     nombre?: string | null;
     telefono?: string | null;
   };
@@ -35,9 +40,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const { contactId, dia, texto } = body;
-  if (!contactId || (dia !== 2 && dia !== 3) || !texto?.trim()) {
-    return NextResponse.json({ error: "Faltan contactId, día o texto" }, { status: 400 });
+  const { contactId, dia, texto, plantilla } = body;
+  if (!contactId || (dia !== 2 && dia !== 3)) {
+    return NextResponse.json({ error: "Faltan contactId o día" }, { status: 400 });
+  }
+  if (!plantilla && !texto?.trim()) {
+    return NextResponse.json({ error: "Falta el texto del mensaje" }, { status: 400 });
+  }
+  if (plantilla && !esEstado(body.estado)) {
+    return NextResponse.json({ error: "Falta la temperatura" }, { status: 400 });
   }
 
   // El tope de uno por día lo lleva el dashboard: GHL no sabe cuántas veces se
@@ -50,8 +61,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Dos caminos, uno por cada lado de la ventana de 24 horas.
+  //
+  // Abierta: el texto sale de acá, escrito y revisado por el agente.
+  // Cerrada: Meta solo acepta plantillas aprobadas, y esas no se pueden mandar
+  // por la API de conversaciones — las manda un flujo de GHL. El panel pone la
+  // etiqueta y el flujo hace el resto.
+  const etiqueta = plantilla
+    ? etiquetaDeSeguimiento(dia as DiaDelEmbudo, body.estado as "frio" | "tibio" | "caliente")
+    : null;
   try {
-    await enviarWhatsApp(contactId, texto.trim());
+    if (etiqueta) await agregarTag(contactId, etiqueta);
+    else await enviarWhatsApp(contactId, texto!.trim());
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : "GHL no pudo mandar el mensaje";
     return NextResponse.json({ error: mensaje }, { status: 502 });
@@ -66,7 +87,7 @@ export async function POST(req: NextRequest) {
       usuario: sesion.usuario,
     },
     dia === 2 ? "seg-d2" : "seg-d3",
-    texto.trim()
+    etiqueta ? `Plantilla del día ${dia} (${etiqueta})` : texto!.trim()
   ).catch(() => undefined);
 
   invalidarSeguimiento();
