@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { comisionPorFtd } from "@/lib/comision";
+import { comisionPorFtd, ESCALONES } from "@/lib/comision";
 import type { Meta } from "@/lib/metas";
 
 /**
@@ -140,7 +140,15 @@ function arco(d1: number, d2: number, r: number): string {
   return `M ${a[0].toFixed(2)} ${a[1].toFixed(2)} A ${r} ${r} 0 ${d2 - d1 > 180 ? 1 : 0} 1 ${b[0].toFixed(2)} ${b[1].toFixed(2)}`;
 }
 
-function Reloj({ logrado, meta }: { logrado: number; meta: number }) {
+function Reloj({
+  logrado,
+  meta,
+  simulando,
+}: {
+  logrado: number;
+  meta: number;
+  simulando: boolean;
+}) {
   const pct = meta > 0 ? Math.min(logrado / meta, 1) : 0;
   const ang = INICIO + pct * BARRIDO;
 
@@ -204,7 +212,7 @@ function Reloj({ logrado, meta }: { logrado: number; meta: number }) {
   };
 
   return (
-    <svg viewBox="0 0 760 502" className="w-full" aria-hidden>
+    <svg viewBox="0 0 760 516" className="w-full" aria-hidden>
       <path d={arco(INICIO, INICIO + BARRIDO, R)} stroke={RIEL} strokeWidth={GROSOR} fill="none" strokeLinecap="round" />
       {tramos.map((t, i) => (
         <path
@@ -238,9 +246,12 @@ function Reloj({ logrado, meta }: { logrado: number; meta: number }) {
       </text>
       <rect x={CX - 26} y={271} width={52} height={3} rx={1.5} fill={ORO} />
 
+      {/* Grande va la meta, no lo que lleva. Ver «$0» a principio de mes no
+          mueve a nadie; ver a dónde va, sí. Lo que lleva lo dice la aguja, y
+          el número chico de abajo lo pone en plata. */}
       <text
         x={CX}
-        y={432}
+        y={430}
         textAnchor="middle"
         fontSize="64"
         fontWeight="900"
@@ -248,12 +259,22 @@ function Reloj({ logrado, meta }: { logrado: number; meta: number }) {
         fill={TINTA}
         {...halo}
       >
-        {plata(logrado)}
+        {plata(meta)}
       </text>
-      <text x={CX} y={466} textAnchor="middle" fontSize="13" fontWeight="800" letterSpacing="5" fill={TINTA_2}>
-        COMISIÓN DE {MES.toUpperCase()}
+      <text x={CX} y={462} textAnchor="middle" fontSize="13" fontWeight="800" letterSpacing="5" fill={TINTA_2}>
+        MI META DE {MES.toUpperCase()}
       </text>
-      <rect x={CX - 26} y={482} width={52} height={3} rx={1.5} fill={ORO} />
+      <rect x={CX - 26} y={476} width={52} height={3} rx={1.5} fill={ORO} />
+      <text
+        x={CX}
+        y={499}
+        textAnchor="middle"
+        fontSize="17"
+        fontWeight="700"
+        fill={simulando ? AZUL : logrado > 0 ? VERDE : TINTA_3}
+      >
+        {simulando ? `si llegás a ${plata(logrado)}` : `llevás ${plata(logrado)}`}
+      </text>
     </svg>
   );
 }
@@ -365,7 +386,18 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const { pago, siguiente } = comisionPorFtd(ftdMes);
   const objetivo = meta?.usd ?? 1500;
   // La aguja y la barra suben juntas desde cero al abrir la pantalla.
-  const mostrado = useBarrido(pago);
+  const barrido = useBarrido(pago);
+  /**
+   * El agente puede arrastrar la barra para ver el reloj moverse.
+   *
+   * Podría quedar en un juguete, y un juguete sobre la plata de alguien es
+   * mentira. Lo que lo hace útil es la línea de abajo: mientras arrastra, el
+   * panel le dice cuántos FTD necesita para llegar ahí. Deja de ser «mirá cómo
+   * se mueve» y pasa a ser «esto es lo que te cuesta».
+   */
+  const [simulado, setSimulado] = useState<number | null>(null);
+  const simulando = simulado !== null;
+  const mostrado = simulando ? simulado : barrido;
 
   if (!cargada) return null;
   const quedan = diasQueQuedan();
@@ -436,7 +468,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           </p>
         </div>
 
-        <Reloj logrado={mostrado} meta={objetivo} />
+        <Reloj logrado={mostrado} meta={objetivo} simulando={simulando} />
 
         <div
           className="hidden lg:block rounded-[20px] text-center px-4 py-10"
@@ -464,18 +496,64 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         <div className="text-right text-[14px] font-extrabold tabular-nums mb-1.5">
           {Math.round(porcientoAnimado)}%
         </div>
-        <div className="h-[15px] rounded-full overflow-hidden" style={{ background: RIEL }}>
-          <span
-            className="block h-full rounded-full"
-            style={{
-              width: `${porcientoAnimado}%`,
-              background: "linear-gradient(90deg,#2e7bf6 0%,#1b4fe0 26%,#0f2a80 50%,#8a7a52 76%,#f5a623 100%)",
-            }}
+
+        {/* La barra se puede arrastrar y el reloj la sigue. Es un input de
+            rango de verdad —no un div con eventos— así que también anda con el
+            teclado y lo lee un lector de pantalla. */}
+        <div className="relative h-[26px] flex items-center">
+          <div className="absolute inset-x-0 h-[15px] rounded-full overflow-hidden" style={{ background: RIEL }}>
+            <span
+              className="block h-full rounded-full"
+              style={{
+                width: `${porcientoAnimado}%`,
+                background: "linear-gradient(90deg,#2e7bf6 0%,#1b4fe0 26%,#0f2a80 50%,#8a7a52 76%,#f5a623 100%)",
+              }}
+            />
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(objetivo, 1)}
+            step={Math.max(Math.round(objetivo / 100), 1)}
+            value={Math.round(mostrado)}
+            onChange={(e) => setSimulado(Number(e.target.value))}
+            aria-label="Mover para simular otra comisión"
+            className="relative w-full appearance-none bg-transparent cursor-grab active:cursor-grabbing
+                       [&::-webkit-slider-runnable-track]:h-[15px] [&::-webkit-slider-runnable-track]:bg-transparent
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[24px]
+                       [&::-webkit-slider-thumb]:h-[24px] [&::-webkit-slider-thumb]:rounded-full
+                       [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-[3px]
+                       [&::-webkit-slider-thumb]:border-[#16233f] [&::-webkit-slider-thumb]:shadow-md
+                       [&::-webkit-slider-thumb]:mt-[-4.5px]
+                       [&::-moz-range-track]:h-[15px] [&::-moz-range-track]:bg-transparent
+                       [&::-moz-range-thumb]:w-[24px] [&::-moz-range-thumb]:h-[24px]
+                       [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white
+                       [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-[#16233f]"
           />
         </div>
-        <div className="flex justify-between text-[12px] tabular-nums mt-1.5" style={{ color: TINTA_3 }}>
+
+        <div className="flex justify-between text-[12px] tabular-nums mt-1" style={{ color: TINTA_3 }}>
           <span>$0</span>
           <span>{plata(objetivo)}</span>
+        </div>
+
+        {/* Lo que convierte el arrastre en información: cuánto cuesta llegar. */}
+        <div className="h-[22px] mt-1.5 text-center text-[12px]">
+          {simulando && (
+            <span style={{ color: TINTA_2 }}>
+              {(() => {
+                const escalon = ESCALONES.find(([, p]) => p >= (simulado ?? 0));
+                if (!escalon) return "Eso pasa el último escalón de la tabla.";
+                const faltan = Math.max(escalon[0] - ftdMes, 0);
+                return faltan === 0
+                  ? `Ya cobrás eso con tus ${ftdMes} FTD.`
+                  : `Necesitás ${escalon[0]} FTD — te faltan ${faltan} en ${quedan} días.`;
+              })()}{" "}
+              <button onClick={() => setSimulado(null)} className="underline font-semibold" style={{ color: AZUL }}>
+                volver a mi número
+              </button>
+            </span>
+          )}
         </div>
       </div>
 
