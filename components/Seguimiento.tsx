@@ -382,7 +382,10 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
   // existen. Los que mandan son el 2 y el 3.
   // El día 1 no manda nada: lo cubren los flujos de bienvenida. El día 7
   // tampoco: a esa altura el trabajo es llamar, no escribir.
-  const etiquetaActual = datos?.dias[dia]?.etiqueta;
+  // De la pestaña visible, no de la lista completa: al sacar el día 1 los dos
+  // índices dejaron de coincidir y la etiqueta salía corrida un día — en el
+  // día 2 no aparecía el botón y en el día 3 habría puesto seg-d2.
+  const etiquetaActual = actual?.etiqueta;
   const diaDelEmbudo: 2 | 3 | undefined =
     etiquetaActual === "Día 2" ? 2 : etiquetaActual === "Día 3" ? 3 : undefined;
 
