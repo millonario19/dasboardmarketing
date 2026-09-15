@@ -353,7 +353,7 @@ export function FilaSeguimiento({
           {/* Ventana cerrada pero el cliente escribió alguna vez: la única
               forma que deja Meta es una plantilla aprobada, y esa sale del
               flujo de GHL. El botón lo dice, porque esta sí se cobra. */}
-          {dia && !enviado && !lead.ventana.abierta && lead.ventana.horas !== null && (
+          {dia && !enviado && !lead.ventana.abierta && (
             <button
               onClick={enviarPlantilla}
               disabled={enviando}
@@ -523,11 +523,13 @@ function EstadoVentana({
     );
   }
 
+  // Vacío no quiere decir «nunca escribió»: el barrido de conversaciones abre
+  // un tope de fichas por vuelta y las que quedan afuera vuelven sin dato.
+  // Decirle al agente que el cliente nunca escribió sería inventarle un hecho.
   if (v.horas === null) {
     return (
       <span className="block text-[11.5px] mt-1" style={{ color: GRIS_2 }}>
-        Nunca escribió: <b className="font-semibold">no hay ventana abierta</b> y Meta no deja mandar
-        nada.
+        No pude leer su ventana. <b className="font-semibold">Con plantilla se puede igual.</b>
       </span>
     );
   }
@@ -535,8 +537,12 @@ function EstadoVentana({
   const horas = Math.floor(v.horas);
   if (!v.abierta) {
     return (
-      <span className="block text-[11.5px] font-semibold mt-1" style={{ color: ROJO }}>
-        ✕ Ventana de WhatsApp cerrada · hace falta una plantilla
+      <span className="block text-[11.5px] mt-1" style={{ color: GRIS_2 }}>
+        <span aria-hidden style={{ color: ROJO }}>
+          ●
+        </span>{" "}
+        Ventana de WhatsApp <b className="font-semibold">cerrada</b> hace {horas - 24} h · solo entra
+        una plantilla
       </span>
     );
   }
