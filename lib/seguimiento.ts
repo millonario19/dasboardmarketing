@@ -114,6 +114,8 @@ export type LeadDeSeguimiento = {
   ventana: Ventana;
   /** Si ya le salió el seguimiento del embudo hoy, a qué hora. */
   enviadoHoy: string | null;
+  /** La ficha del contacto en GHL, para ir a ver la conversación de verdad. */
+  crmUrl: string;
 };
 
 /**
@@ -187,6 +189,12 @@ export type Seguimiento = {
   promesas: Promesa[];
   generadoEn: string;
 };
+
+/** La ficha del contacto en el CRM. */
+function fichaEnCrm(contactId: string): string {
+  const base = (process.env.GHL_CRM_URL ?? "https://app.nexusia.com.co").replace(/\/+$/, "");
+  return `${base}/v2/location/${process.env.GHL_LOCATION_ID}/contacts/detail/${contactId}`;
+}
 
 function inicioDeDiaBogota(ms: number): number {
   const local = new Date(ms - BOGOTA_OFFSET_MS);
@@ -290,6 +298,7 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
       // Los confirmados no reciben automáticos: su ventana no se mira.
       ventana: SIN_VENTANA,
       enviadoHoy: null,
+      crmUrl: fichaEnCrm(contacto.id),
       confirmadoEn,
       dias: Math.max(
         0,
@@ -454,6 +463,7 @@ export async function computeSeguimiento(
         confirmacionDeBajada(contacto) === null,
       ventana: ventanas.get(contacto.id) ?? SIN_VENTANA,
       enviadoHoy: enviados.get(contacto.id) ?? null,
+      crmUrl: fichaEnCrm(contacto.id),
     });
     porDia.set(dia, lista);
   }

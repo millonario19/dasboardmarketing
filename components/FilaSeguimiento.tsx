@@ -89,6 +89,34 @@ function cuando(iso: string): string {
   return `${d.toLocaleDateString("es-CO", { day: "numeric", month: "short", timeZone: "America/Bogota" })} ${hora}`;
 }
 
+/** La marca de WhatsApp: el agente reconoce el canal antes de leer nada. */
+function IconoWhatsApp() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2Zm5.8 14.17c-.25.69-1.44 1.32-1.99 1.36-.53.04-1.02.23-3.44-.72-2.9-1.14-4.73-4.1-4.87-4.29-.14-.19-1.16-1.54-1.16-2.94s.73-2.09.99-2.37c.26-.29.57-.36.76-.36l.54.01c.17 0 .41-.07.64.49.24.58.81 2 .88 2.14.07.14.12.31.02.5-.09.19-.14.31-.28.47l-.42.49c-.14.14-.28.29-.12.57.16.29.71 1.17 1.53 1.9 1.05.94 1.94 1.23 2.22 1.37.28.14.44.12.6-.07.17-.19.69-.8.87-1.08.19-.29.37-.24.62-.14.25.09 1.6.75 1.87.89.28.14.46.21.53.33.07.12.07.67-.18 1.36Z" />
+    </svg>
+  );
+}
+
+/** Ir a la ficha en GHL, a ver la conversación de verdad. */
+function IrAlCrm({ url, texto = false }: { url: string; texto?: boolean }) {
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Ver la conversación en el CRM"
+      className={`inline-flex items-center gap-1.5 rounded-full font-semibold hover:opacity-80 whitespace-nowrap ${
+        texto ? "px-3 py-1.5 text-[12px]" : "px-2.5 py-[3px] text-[11px]"
+      }`}
+      style={{ background: CELESTE, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
+    >
+      <span aria-hidden>↗</span>
+      {texto ? "Ver en el CRM" : "CRM"}
+    </a>
+  );
+}
+
 export function FilaSeguimiento({
   lead,
   pie,
@@ -286,11 +314,11 @@ export function FilaSeguimiento({
           {dia && !enviado && lead.ventana.abierta && (
             <button
               onClick={() => (redactando ? setRedactando(false) : abrirRedaccion())}
-              title="Ver el mensaje antes de mandarlo"
-              className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold disabled:opacity-40 hover:opacity-70 whitespace-nowrap"
-              style={{ border: `1px solid ${meta.color}`, color: meta.color, background: "transparent" }}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 whitespace-nowrap"
+              style={{ background: redactando ? GRIS : VERDE_WA }}
             >
-              {redactando ? "Cancelar" : "↗ Escribir"}
+              <IconoWhatsApp />
+              {redactando ? "Cancelar" : "Escribirle"}
             </button>
           )}
           <button
@@ -300,13 +328,18 @@ export function FilaSeguimiento({
           >
             {abierta ? "Cerrar" : "Ver"}
           </button>
+          <IrAlCrm url={lead.crmUrl} />
           <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} contactId={lead.id} tamano={26} />
           <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={26} />
         </span>
       </article>
 
       {redactando && dia && (
-        <div className="px-4 sm:px-5 pb-3" style={{ background: "#FCFCFA" }}>
+        <div className="px-4 sm:px-5 pb-3 pt-2" style={{ background: "#FCFCFA" }}>
+          <p className="text-[11.5px] mb-1.5" style={{ color: GRIS_2 }}>
+            Escribile a <b>{lead.nombre}</b> por WhatsApp. Está escrito para vos — cambialo a tu
+            gusto antes de mandarlo.
+          </p>
           <textarea
             rows={3}
             value={texto}
@@ -404,15 +437,27 @@ function EstadoVentana({
 
   if (enviado) {
     return (
-      <span
-        className="inline-block text-[10.5px] font-bold rounded-full px-2 py-[2px] mt-1.5"
-        style={{ background: VERDE_CLARO, color: VERDE }}
-      >
-        ✓ seguimiento enviado {new Date(enviado).toLocaleTimeString("es-CO", {
-          hour: "2-digit",
-          minute: "2-digit",
-          timeZone: "America/Bogota",
-        })}
+      <span className="flex items-center gap-2 flex-wrap mt-1.5">
+        <span
+          className="inline-block text-[10.5px] font-bold rounded-full px-2 py-[2px]"
+          style={{ background: VERDE_CLARO, color: VERDE }}
+        >
+          ✓ mensaje enviado {new Date(enviado).toLocaleTimeString("es-CO", {
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "America/Bogota",
+          })}
+        </span>
+        {/* Adónde ir a comprobar que llegó. Sin esto el «✓» es una promesa. */}
+        <a
+          href={lead.crmUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10.5px] font-semibold underline"
+          style={{ color: AZUL }}
+        >
+          ver la conversación
+        </a>
       </span>
     );
   }

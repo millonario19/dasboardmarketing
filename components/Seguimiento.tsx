@@ -488,7 +488,9 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
           style={{ background: "var(--page-plane)", color: GRIS_2 }}
         >
           {fechaLarga(actual.fecha)}
-          {diaDelEmbudo && <> · el seguimiento del día {diaDelEmbudo} sale desde acá, por WhatsApp</>}
+          {diaDelEmbudo && (
+            <> · tocá <b>Escribirle</b> y mandale el mensaje del día {diaDelEmbudo} por WhatsApp</>
+          )}
         </p>
       )}
 
