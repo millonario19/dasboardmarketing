@@ -145,8 +145,8 @@ export default function MiDiaPage() {
 
         <PasoSistema
           numero={3}
-          titulo="Todavía no bajaron"
-          detalle="Fríos y tibios · día 2, día 3 y el rescate del día 7"
+          titulo="Todavía no bajaron a WhatsApp"
+          detalle="Seguimiento por WhatsApp · fríos y tibios, hasta que bajen o hagan FTD"
         >
           <Seguimiento parte="dias" />
         </PasoSistema>

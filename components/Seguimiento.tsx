@@ -424,9 +424,11 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
         className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
         style={{ background: AZUL, color: "#fff" }}
       >
-        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Todavía no bajaron</h2>
-        <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
-          día 1, 2, 3 y el rescate del día 7
+        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
+          Todavía no bajaron a WhatsApp
+        </h2>
+        <span className="text-[11.5px]" style={{ color: "rgba(255,255,255,.66)" }}>
+          fríos y tibios, hasta que bajen o hagan FTD
         </span>
         <button
           onClick={() => cargar(true)}
@@ -488,9 +490,7 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
           style={{ background: "var(--page-plane)", color: GRIS_2 }}
         >
           {fechaLarga(actual.fecha)}
-          {diaDelEmbudo && (
-            <> · tocá <b>Escribirle</b> y mandale el mensaje del día {diaDelEmbudo} por WhatsApp</>
-          )}
+          {diaDelEmbudo && <> · seguimiento del día {diaDelEmbudo} por WhatsApp</>}
         </p>
       )}
 

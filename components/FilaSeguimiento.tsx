@@ -230,52 +230,57 @@ export function FilaSeguimiento({
 
         <span className="min-w-0 flex-1">
           <span className="block text-[13.5px] font-semibold leading-tight">{lead.nombre}</span>
-          <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
-            {via && (
-              <b className="font-semibold" style={{ color: meta.color }}>
-                {via}
-              </b>
+
+          {/* Qué hizo. En el módulo de mensajes la vía sobra: lo que importa es
+              hasta dónde llegó, no el diagnóstico de por qué se trabó. */}
+          <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS_2 }}>
+            {!dia && via && (
+              <>
+                <b className="font-semibold" style={{ color: meta.color }}>
+                  {via}
+                </b>
+                {" · "}
+              </>
             )}
-            {via && " · "}
-            {contexto}
+            {lead.acciones.length > 0 ? lead.acciones.join(" · ") : "Solicitó información"}
           </span>
-          <span className="block text-[11px] mt-0.5 tabular-nums" style={{ color: GRIS }}>
+
+          <span className="block text-[11px] mt-0.5" style={{ color: GRIS }}>
             {llegada(lead.creado)}
           </span>
-          {/* En la lista de «en mi WhatsApp Business» acá va desde cuándo lo
-              tiene: es el reloj que manda la cadencia del seguimiento. */}
+
           {pie && (
             <span className="block text-[11px] font-semibold mt-0.5" style={{ color: VERDE }}>
               {pie}
             </span>
           )}
 
-          {tarea ? (
-            <span
-              className="block text-[11.5px] mt-1.5 pl-2"
-              style={{ borderLeft: `2px solid ${vencida ? ROJO : AZUL}`, color: vencida ? ROJO : GRIS_2 }}
-            >
-              {vencida && "⏰ "}
-              <b className="font-semibold">{metaTipo(tarea.tipo).tarea}</b>
-              {" — "}
-              <b className="tabular-nums font-semibold">
-                {vencida ? "era " : ""}
-                {cuando(tarea.venceEn!)}
-              </b>
-              {tarea.detalle && <> · «{tarea.detalle}»</>}
-            </span>
-          ) : (
-            <button
-              onClick={() => setAbierta(true)}
-              className="block text-[11.5px] mt-1.5 text-left"
-              style={{ color: ROJO }}
-            >
-              Sin próximo paso · <b className="font-semibold underline">ponele una tarea</b>
-            </button>
-          )}
+          {/* La tarea es del módulo de llamadas. Acá se escribe, no se agenda. */}
+          {!dia &&
+            (tarea ? (
+              <span
+                className="block text-[11.5px] mt-1.5 pl-2"
+                style={{ borderLeft: `2px solid ${vencida ? ROJO : AZUL}`, color: vencida ? ROJO : GRIS_2 }}
+              >
+                {vencida && "⏰ "}
+                <b className="font-semibold">{metaTipo(tarea.tipo).tarea}</b>
+                {" — "}
+                <b className="tabular-nums font-semibold">
+                  {vencida ? "era " : ""}
+                  {cuando(tarea.venceEn!)}
+                </b>
+                {tarea.detalle && <> · «{tarea.detalle}»</>}
+              </span>
+            ) : (
+              <button
+                onClick={() => setAbierta(true)}
+                className="block text-[11.5px] mt-1.5 text-left"
+                style={{ color: ROJO }}
+              >
+                Sin próximo paso · <b className="font-semibold underline">ponele una tarea</b>
+              </button>
+            ))}
 
-          {/* Tocó el botón de bajar y nadie contestó si llegó. Mientras siga
-              así cuenta como caliente, y puede ser mentira. */}
           {porConfirmar && (
             <span className="flex items-center gap-2 flex-wrap mt-1.5">
               <span className="text-[11.5px]" style={{ color: ROJO }}>
@@ -300,8 +305,6 @@ export function FilaSeguimiento({
             </span>
           )}
 
-          {/* La ventana de Meta. Se muestra solo donde se puede mandar algo:
-              en el paso 2 el seguimiento es a mano y el dato sobra. */}
           {dia && <EstadoVentana lead={lead} dia={dia} enviado={enviado} />}
           {falloEnvio && (
             <span className="block text-[11px] mt-1" style={{ color: ROJO }}>
@@ -309,6 +312,17 @@ export function FilaSeguimiento({
             </span>
           )}
         </span>
+
+        {/* La temperatura, donde antes estaba el teléfono: es lo que decide qué
+            mensaje le toca, y en una lista larga se busca con el ojo. */}
+        {dia && (
+          <span
+            className="text-[10px] font-bold uppercase tracking-[.12em] rounded-full px-2.5 py-1 shrink-0 hidden sm:inline"
+            style={{ background: `${meta.color}1A`, color: meta.color }}
+          >
+            {lead.estado === "frio" ? "Frío" : lead.estado === "tibio" ? "Tibio" : "Caliente"}
+          </span>
+        )}
 
         <span className="flex items-center gap-1.5 shrink-0">
           {dia && !enviado && lead.ventana.abierta && (
@@ -329,8 +343,15 @@ export function FilaSeguimiento({
             {abierta ? "Cerrar" : "Ver"}
           </button>
           <IrAlCrm url={lead.crmUrl} />
-          <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} contactId={lead.id} tamano={26} />
-          <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={26} />
+          {/* En el módulo de mensajes no van el teléfono ni el WhatsApp
+              personal: acá se escribe desde el panel, y dos botones más de
+              canal hacen que el agente se vaya por el camino que no cierra. */}
+          {!dia && (
+            <>
+              <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} contactId={lead.id} tamano={26} />
+              <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={26} />
+            </>
+          )}
         </span>
       </article>
 
@@ -464,8 +485,9 @@ function EstadoVentana({
 
   if (v.horas === null) {
     return (
-      <span className="block text-[11px] mt-1.5" style={{ color: GRIS }}>
-        Nunca escribió: no hay ventana abierta y Meta no deja mandar nada.
+      <span className="block text-[11.5px] mt-1" style={{ color: GRIS_2 }}>
+        Nunca escribió: <b className="font-semibold">no hay ventana abierta</b> y Meta no deja mandar
+        nada.
       </span>
     );
   }
@@ -473,29 +495,32 @@ function EstadoVentana({
   const horas = Math.floor(v.horas);
   if (!v.abierta) {
     return (
-      <span
-        className="inline-block text-[10.5px] font-bold rounded-full px-2 py-[2px] mt-1.5"
-        style={{ background: ROJO_CLARO, color: ROJO }}
-      >
-        ✕ ventana cerrada hace {horas - 24} h · {dia === 2 ? "va mañana con plantilla" : "hace falta plantilla"}
+      <span className="block text-[11.5px] font-semibold mt-1" style={{ color: ROJO }}>
+        ✕ Ventana de WhatsApp cerrada · hace falta una plantilla
       </span>
     );
   }
 
+  const cierra = new Date(v.cierraEn!).toLocaleTimeString("es-CO", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Bogota",
+  });
   const faltan = Math.max(Math.ceil(24 - v.horas), 0);
   const urge = v.porCerrarse;
   return (
-    <span
-      className="inline-block text-[10.5px] font-bold rounded-full px-2 py-[2px] mt-1.5"
-      style={
-        urge
-          ? { background: ROJO_CLARO, color: ROJO }
-          : { background: AMBAR_CLARO, color: AMBAR }
-      }
-    >
-      {urge ? "⏰ " : ""}
-      hora {horas} · cierra en {faltan} h
-      {!urge && ` · se manda a la ${HORA_DE_ENVIO}`}
+    <span className="block text-[11.5px] mt-1" style={{ color: urge ? ROJO : GRIS_2 }}>
+      <span aria-hidden style={{ color: urge ? ROJO : VERDE }}>
+        ●
+      </span>{" "}
+      Ventana de WhatsApp abierta hasta las{" "}
+      <b className="font-semibold tabular-nums">{cierra}</b>
+      {urge ? (
+        <b className="font-semibold"> · quedan {faltan} h, mandalo ahora</b>
+      ) : (
+        <> · quedan {faltan} h</>
+      )}
     </span>
   );
+
 }
