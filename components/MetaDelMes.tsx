@@ -43,6 +43,55 @@ const MES = new Date(Date.now() - 5 * 3600e3).toLocaleDateString("es-CO", {
   timeZone: "UTC",
 });
 
+/**
+ * El barrido de arranque: la aguja sale de cero y sube hasta donde va.
+ *
+ * No es adorno. Ver el recorrido es lo que hace que el número se sienta ganado
+ * en vez de dado, y de paso muestra cuánto falta antes de que uno lea nada.
+ *
+ * La red de seguridad importa: con la pestaña en segundo plano el navegador
+ * congela requestAnimationFrame y la aguja se quedaría clavada en cero. Ya
+ * pasó una vez. El temporizador la deja siempre donde corresponde, corra la
+ * animación o no.
+ */
+function useBarrido(objetivo: number, ms = 1200): number {
+  const [valor, setValor] = useState(objetivo);
+
+  useEffect(() => {
+    const quieto =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (quieto || objetivo <= 0) {
+      setValor(objetivo);
+      return;
+    }
+
+    let cuadro = 0;
+    const arranque = performance.now();
+    setValor(0);
+
+    const paso = (ahora: number) => {
+      const k = Math.min((ahora - arranque) / ms, 1);
+      // Frena al final: llega rápido y se acomoda, como una aguja de verdad.
+      setValor(objetivo * (1 - Math.pow(1 - k, 3)));
+      if (k < 1) cuadro = requestAnimationFrame(paso);
+    };
+    cuadro = requestAnimationFrame(paso);
+
+    const red = setTimeout(() => {
+      cancelAnimationFrame(cuadro);
+      setValor(objetivo);
+    }, ms + 500);
+
+    return () => {
+      cancelAnimationFrame(cuadro);
+      clearTimeout(red);
+    };
+  }, [objetivo, ms]);
+
+  return valor;
+}
+
 /* ── el reloj ─────────────────────────────────────────────────────────── */
 
 const CX = 380;
@@ -314,11 +363,14 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
 
   const { pago, siguiente } = comisionPorFtd(ftdMes);
   const objetivo = meta?.usd ?? 1500;
+  // La aguja y la barra suben juntas desde cero al abrir la pantalla.
+  const mostrado = useBarrido(pago);
   const quedan = diasQueQuedan();
   const faltaFtd = meta ? Math.max(meta.ftd - ftdMes, 0) : 0;
   const faltaUsd = meta ? Math.max(meta.usd - pago, 0) : 0;
   const pct = (a: number, b: number) => (b > 0 ? Math.min((a / b) * 100, 100) : 0);
   const porciento = Math.round(pct(pago, objetivo));
+  const porcientoAnimado = pct(mostrado, objetivo);
 
   return (
     <section
@@ -381,7 +433,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           </p>
         </div>
 
-        <Reloj logrado={pago} meta={objetivo} />
+        <Reloj logrado={mostrado} meta={objetivo} />
 
         <div
           className="hidden lg:block rounded-[20px] text-center px-4 py-10"
@@ -406,12 +458,14 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       </div>
 
       <div className="mt-2">
-        <div className="text-right text-[14px] font-extrabold tabular-nums mb-1.5">{porciento}%</div>
+        <div className="text-right text-[14px] font-extrabold tabular-nums mb-1.5">
+          {Math.round(porcientoAnimado)}%
+        </div>
         <div className="h-[15px] rounded-full overflow-hidden" style={{ background: RIEL }}>
           <span
             className="block h-full rounded-full"
             style={{
-              width: `${porciento}%`,
+              width: `${porcientoAnimado}%`,
               background: "linear-gradient(90deg,#2e7bf6 0%,#1b4fe0 26%,#0f2a80 50%,#8a7a52 76%,#f5a623 100%)",
             }}
           />
