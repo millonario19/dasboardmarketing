@@ -445,11 +445,15 @@ export async function extractAttribution(contact: GhlContact): Promise<Attributi
  * texto libre y GHL devuelve error — por eso el panel calcula la ventana antes
  * de ofrecer el botón, en vez de intentar y fallar en silencio.
  */
-export async function enviarWhatsApp(contactId: string, texto: string): Promise<void> {
+export async function enviarWhatsApp(
+  contactId: string,
+  texto: string,
+  tipo = "WhatsApp"
+): Promise<void> {
   const res = await fetchWithRetry(`${GHL_BASE_URL}/conversations/messages`, {
     method: "POST",
     headers: { ...ghlHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ contactId, type: "WhatsApp", message: texto }),
+    body: JSON.stringify({ contactId, type: tipo, message: texto }),
     cache: "no-store",
   });
   if (!res.ok) {

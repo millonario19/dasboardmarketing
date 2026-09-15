@@ -30,6 +30,8 @@ export async function POST(req: NextRequest) {
     texto?: string;
     /** Con la ventana cerrada solo entra una plantilla, y esa la manda GHL. */
     plantilla?: boolean;
+    /** Por dónde habla el cliente: WhatsApp, IG, FB… */
+    tipo?: string;
     estado?: string;
     nombre?: string | null;
     telefono?: string | null;
@@ -88,7 +90,7 @@ export async function POST(req: NextRequest) {
 
   try {
     if (etiqueta) await agregarTag(contactId, etiqueta);
-    else await enviarWhatsApp(contactId, texto!.trim());
+    else await enviarWhatsApp(contactId, texto!.trim(), body.tipo || "WhatsApp");
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : "GHL no pudo mandar el mensaje";
     return NextResponse.json({ error: mensaje }, { status: 502 });

@@ -38,6 +38,22 @@ const GRIS_2 = "#5E5C56";
 // navegador arrastra medio servidor al paquete.
 const HORA_DE_ENVIO = 20;
 
+// Por dónde habla el cliente. Una buena parte de los leads entra por Instagram
+// o Facebook y no tiene teléfono: ofrecerles WhatsApp era mandarlos a un error
+// de GHL en vez de escribirles por donde sí se puede.
+const CANAL_NOMBRE: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  facebook: "Messenger",
+  sms: "SMS",
+};
+const CANAL_TIPO: Record<string, string> = {
+  whatsapp: "WhatsApp",
+  instagram: "IG",
+  facebook: "FB",
+  sms: "SMS",
+};
+
 // El diagnóstico del lead, en dos palabras. Va junto a las acciones: la
 // temperatura dice cuánto interés hay, esto dice por dónde se trabó.
 const VIA_CORTA: Record<string, string> = {
@@ -148,6 +164,10 @@ export function FilaSeguimiento({
   // flujo. Lo que se muestra es una copia guardada, para no tocar a ciegas.
   const [editandoCopia, setEditandoCopia] = useState(false);
   const esPlantilla = !lead.ventana.abierta;
+  const canal = lead.ventana.canal;
+  const canalNombre = canal ? CANAL_NOMBRE[canal] : null;
+  // Sin teléfono no hay WhatsApp ni SMS posible, por más ventana que haya.
+  const sePuedeEscribir = !!canal && (canal === "instagram" || canal === "facebook" || !!lead.telefono);
 
   const clave = dia ? `d${dia}-${lead.estado}` : "";
 
@@ -244,12 +264,22 @@ export function FilaSeguimiento({
         contactId: lead.id,
         dia,
         texto,
+        tipo: canal ? CANAL_TIPO[canal] : "WhatsApp",
         nombre: lead.nombre,
         telefono: lead.telefono,
       }),
     })
       .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo mandar");
+        if (!r.ok) {
+          const e = (await r.json()).error ?? "";
+          // GHL devuelve su error crudo con traceId y todo. Al agente no le
+          // dice nada; lo que necesita saber es qué hacer.
+          throw new Error(
+            /NO_PHONE|Missing phone/i.test(e)
+              ? "Este contacto no tiene teléfono en el CRM, así que no se le puede escribir por acá."
+              : e || "No se pudo mandar"
+          );
+        }
         setEnviado(new Date().toISOString());
         setRedactando(false);
         // Para que el próximo pedido traiga el envío y no la foto de antes.
@@ -387,14 +417,22 @@ export function FilaSeguimiento({
               {redactando ? "Cancelar" : `Ver la plantilla`}
             </button>
           )}
-          {dia && !enviado && lead.ventana.abierta && (
+          {dia && !enviado && lead.ventana.abierta && !sePuedeEscribir && (
+            <span
+              className="text-[11px] font-semibold rounded-full px-2.5 py-1 whitespace-nowrap"
+              style={{ background: "#F1F0EB", color: GRIS_2 }}
+            >
+              sin teléfono
+            </span>
+          )}
+          {dia && !enviado && lead.ventana.abierta && sePuedeEscribir && (
             <button
               onClick={() => (redactando ? setRedactando(false) : abrirRedaccion())}
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 whitespace-nowrap"
               style={{ background: redactando ? GRIS : VERDE_WA }}
             >
               <IconoWhatsApp />
-              {redactando ? "Cancelar" : "Escribirle"}
+              {redactando ? "Cancelar" : canalNombre ? `Escribirle por ${canalNombre}` : "Escribirle"}
             </button>
           )}
           <button
@@ -428,8 +466,8 @@ export function FilaSeguimiento({
             </p>
           ) : (
             <p className="text-[11.5px] mb-1.5" style={{ color: GRIS_2 }}>
-              Escribile a <b>{lead.nombre}</b> por WhatsApp. Está escrito para vos — cambialo a tu
-              gusto antes de mandarlo.
+              Escribile a <b>{lead.nombre}</b> por <b>{canalNombre ?? "WhatsApp"}</b>, que es por
+              donde te habla. Está escrito para vos — cambialo a tu gusto antes de mandarlo.
             </p>
           )}
 
@@ -455,7 +493,7 @@ export function FilaSeguimiento({
             <span className="text-[11px]" style={{ color: GRIS }}>
               {esPlantilla
                 ? "la manda el flujo de GHL · esta sí se cobra"
-                : "sale por el WhatsApp de la oficina y queda guardado en la conversación"}
+                : `sale por el ${canalNombre ?? "WhatsApp"} de la oficina y queda en la conversación`}
             </span>
           </div>
 

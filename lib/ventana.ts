@@ -19,7 +19,41 @@ const VENTANA_MS = 24 * 60 * 60 * 1000;
 /** A la hora 20 se manda: quedan cuatro horas de colchón. */
 export const HORA_DE_ENVIO = 20;
 
+/**
+ * Por dónde habla este cliente.
+ *
+ * No todos llegan por WhatsApp: un buen tercio entra por Instagram o Facebook
+ * y esos no tienen teléfono. Ofrecerles «escribirle por WhatsApp» era mandar
+ * al agente a un error de GHL —«Missing phone number»— en vez de escribirle
+ * por donde sí se puede.
+ */
+export type Canal = "whatsapp" | "instagram" | "facebook" | "sms" | null;
+
+const CANALES: Record<string, Canal> = {
+  TYPE_WHATSAPP: "whatsapp",
+  TYPE_INSTAGRAM: "instagram",
+  TYPE_FACEBOOK: "facebook",
+  TYPE_SMS: "sms",
+};
+
+/** El nombre del canal en la API de mensajes de GHL. */
+export const TIPO_GHL: Record<NonNullable<Canal>, string> = {
+  whatsapp: "WhatsApp",
+  instagram: "IG",
+  facebook: "FB",
+  sms: "SMS",
+};
+
+export const CANAL_NOMBRE: Record<NonNullable<Canal>, string> = {
+  whatsapp: "WhatsApp",
+  instagram: "Instagram",
+  facebook: "Messenger",
+  sms: "SMS",
+};
+
 export type Ventana = {
+  /** Por dónde habla. Null si no se pudo saber. */
+  canal: Canal;
   /** Cuándo escribió el cliente por última vez. */
   ultimoEntrante: string | null;
   /** Hora a la que Meta cierra la puerta. */
@@ -32,6 +66,7 @@ export type Ventana = {
 };
 
 export const SIN_VENTANA: Ventana = {
+  canal: null,
   ultimoEntrante: null,
   cierraEn: null,
   horas: null,
@@ -39,12 +74,13 @@ export const SIN_VENTANA: Ventana = {
   porCerrarse: false,
 };
 
-function calcular(ultimoEntrante: string | null): Ventana {
-  if (!ultimoEntrante) return SIN_VENTANA;
+function calcular(ultimoEntrante: string | null, canal: Canal = null): Ventana {
+  if (!ultimoEntrante) return { ...SIN_VENTANA, canal };
   const desde = new Date(ultimoEntrante).getTime();
   const horas = (Date.now() - desde) / 3600e3;
   const abierta = horas < 24;
   return {
+    canal,
     ultimoEntrante,
     cierraEn: new Date(desde + VENTANA_MS).toISOString(),
     horas,
@@ -90,8 +126,9 @@ export async function ventanasDe(
 
   const aAbrir: GhlConversacion[] = [];
   for (const [id, c] of porContacto) {
+    const canal = CANALES[c.lastMessageType ?? ""] ?? null;
     if (c.lastMessageDirection === "inbound") {
-      salida.set(id, calcular(new Date(c.lastMessageDate).toISOString()));
+      salida.set(id, calcular(new Date(c.lastMessageDate).toISOString(), canal));
     } else {
       aAbrir.push(c);
     }
@@ -107,7 +144,7 @@ export async function ventanasDe(
         .map((m) => m.dateAdded)
         .sort();
       const ultimo = entrantes[entrantes.length - 1] ?? null;
-      salida.set(c.contactId, calcular(ultimo));
+      salida.set(c.contactId, calcular(ultimo, CANALES[c.lastMessageType ?? ""] ?? null));
     } catch {
       /* sin mensajes no se sabe: mejor sin ventana que con una inventada */
     }
