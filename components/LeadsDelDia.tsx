@@ -130,7 +130,7 @@ function Fila({
             className="rounded-full px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40 hover:opacity-90 whitespace-nowrap"
             style={{ background: VERDE_WA }}
           >
-            {bajando ? "Bajando…" : "Bajar a mi WhatsApp"}
+            {bajando ? "Bajando…" : "Bajar manualmente"}
           </button>
         ) : (
           <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={28} />
@@ -183,12 +183,14 @@ export function LeadsDelDia({ modo }: { modo: "bajar" | "llamar" }) {
         style={{ background: AZUL, color: "#fff" }}
       >
         <h2 className="text-[15px] font-semibold tracking-[-0.02em]">
-          {modo === "bajar" ? "Bajar a mi WhatsApp" : "Llamar a los de hoy"}
+          {modo === "bajar"
+            ? "Bajar a mi WhatsApp Business manualmente"
+            : "Llamar inmediatamente a mis leads nuevos"}
         </h2>
         <span className="text-[11.5px]" style={{ color: "rgba(255,255,255,.66)" }}>
           {modo === "bajar"
-            ? "copia el contacto y lo marca para el seguimiento"
-            : "en orden de llegada · lo que programés aparece mañana"}
+            ? "lo copiás vos · no es el que baja solo por el CRM"
+            : "mientras más rápido llamás, más convierten"}
         </span>
         <span
           className="ml-auto text-[12px] font-bold rounded-full px-2.5 py-0.5 tabular-nums"

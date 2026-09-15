@@ -181,8 +181,8 @@ export default function DashboardPage() {
           {!esAdmin && (
             <PasoSistema
               numero={4}
-              titulo="Bajar a mi WhatsApp"
-              detalle="Los de hoy · te copiás el contacto y queda marcado para el seguimiento"
+              titulo="Bajar a mi WhatsApp Business manualmente"
+              detalle="Vos te copiás el contacto y lo guardás en tu teléfono. No es el que baja solo por el CRM."
             >
               <LeadsDelDia modo="bajar" />
             </PasoSistema>
@@ -191,8 +191,8 @@ export default function DashboardPage() {
           {!esAdmin && (
             <PasoSistema
               numero={5}
-              titulo="Llamar a los de hoy"
-              detalle="La lista del día en orden · lo que programés aparece mañana en Mis leads"
+              titulo="Llamar inmediatamente a mis leads nuevos"
+              detalle="Hay mayor conversión si llamás de inmediato · lo que programés aparece mañana en Mis leads"
             >
               <LeadsDelDia modo="llamar" />
             </PasoSistema>
