@@ -581,6 +581,10 @@ function EstadoVentana({
   enviado: string | null;
 }) {
   const v = lead.ventana;
+  // Meta abre la misma ventana de 24 horas en Instagram y en Messenger, así
+  // que decir siempre «WhatsApp» era mentirle al agente sobre por dónde habla
+  // el cliente — justo el dato que el botón de al lado acaba de darle.
+  const canal = v.canal ? CANAL_NOMBRE[v.canal] : "WhatsApp";
 
   if (enviado) {
     return (
@@ -627,7 +631,7 @@ function EstadoVentana({
         <span aria-hidden style={{ color: ROJO }}>
           ●
         </span>{" "}
-        Ventana de WhatsApp <b className="font-semibold">cerrada</b> hace {horas - 24} h · solo entra
+        Ventana de {canal} <b className="font-semibold">cerrada</b> hace {horas - 24} h · solo entra
         una plantilla
       </span>
     );
@@ -645,7 +649,7 @@ function EstadoVentana({
       <span aria-hidden style={{ color: urge ? ROJO : VERDE }}>
         ●
       </span>{" "}
-      Ventana de WhatsApp abierta hasta las{" "}
+      Ventana de {canal} abierta hasta las{" "}
       <b className="font-semibold tabular-nums">{cierra}</b>
       {urge ? (
         <b className="font-semibold"> · quedan {faltan} h, mandalo ahora</b>
