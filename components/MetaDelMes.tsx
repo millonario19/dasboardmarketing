@@ -359,12 +359,15 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       .finally(() => setGuardando(false));
   }
 
-  if (!cargada) return null;
-
+  // Los hooks van antes de cualquier return: mientras carga el componente
+  // devolvía null, y al llegar la meta aparecía un hook nuevo. React cuenta
+  // los hooks por render y esa diferencia tumba la pantalla entera.
   const { pago, siguiente } = comisionPorFtd(ftdMes);
   const objetivo = meta?.usd ?? 1500;
   // La aguja y la barra suben juntas desde cero al abrir la pantalla.
   const mostrado = useBarrido(pago);
+
+  if (!cargada) return null;
   const quedan = diasQueQuedan();
   const faltaFtd = meta ? Math.max(meta.ftd - ftdMes, 0) : 0;
   const faltaUsd = meta ? Math.max(meta.usd - pago, 0) : 0;
