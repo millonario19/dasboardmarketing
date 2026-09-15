@@ -149,7 +149,7 @@ export default function MiDiaPage() {
       <div className="flex flex-col items-center text-center gap-3 mb-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left sm:gap-4">
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
           <h1 className="text-[21px] sm:text-[25px] font-semibold text-ink-primary tracking-tight leading-[1.15]">
-            CRM - Marketing
+            Seguimiento mis leads
           </h1>
           <div className="flex items-center gap-2">
             {sesion && esAgente && (
@@ -218,31 +218,35 @@ export default function MiDiaPage() {
         {/* Los tres pasos del seguimiento, el mismo orden que en Dirección.
             Primero lo que vos programaste, después los que ya tenés en el
             WhatsApp, y al final los que todavía no bajaron. */}
-        {/* Arriba y sin número: no es un paso del embudo, es la lista de hoy.
-            Los pasos son los mismos que en Dirección y siguen su numeración —
-            «Paso 2» tiene que significar lo mismo en las dos pantallas. */}
-        <TareasDeHoy onResumen={setPorHacer} />
-
         <PasoSistema
-          numero={4}
-          titulo="En mi WhatsApp Business"
-          detalle="Los que confirmaste en el paso 3 · acá el sistema ya no ve nada, solo vos"
+          numero={1}
+          titulo="Llamar hoy"
+          detalle="Lo que vos mismo programaste, más lo que se te pasó"
           abiertoPorDefecto
           resumen={
             porHacer === null
               ? null
               : porHacer > 0
-                ? { texto: `${porHacer} por hacer hoy`, fondo: "#FBE9E7", color: "#C0392B" }
+                ? { texto: `${porHacer} por hacer`, fondo: "#FBE9E7", color: "#C0392B" }
                 : { texto: "al día", fondo: "#E4F1EA", color: "#157F52" }
           }
+        >
+          <TareasDeHoy onResumen={setPorHacer} />
+        </PasoSistema>
+
+        <PasoSistema
+          numero={2}
+          titulo="En mi WhatsApp Business"
+          detalle="Calientes que ya bajaron y confirmaste · acá el sistema no ve nada, solo vos"
+          abiertoPorDefecto
         >
           <Seguimiento parte="business" />
         </PasoSistema>
 
         <PasoSistema
-          numero={5}
+          numero={3}
           titulo="Todavía no bajaron"
-          detalle="El embudo de tres días, y el rescate del día 7"
+          detalle="Fríos y tibios · día 2, día 3 y el rescate del día 7"
         >
           <Seguimiento parte="dias" />
         </PasoSistema>

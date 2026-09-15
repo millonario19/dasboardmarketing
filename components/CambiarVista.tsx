@@ -9,8 +9,8 @@ import Link from "next/link";
 // informe.
 export function CambiarVista({ actual }: { actual: "mi-dia" | "direccion" | "metricas" }) {
   const opciones = [
-    { id: "mi-dia" as const, href: "/mi-dia", texto: "Mi día" },
-    { id: "direccion" as const, href: "/", texto: "Dirección" },
+    { id: "mi-dia" as const, href: "/mi-dia", texto: "Mis leads" },
+    { id: "direccion" as const, href: "/", texto: "Mi día" },
     { id: "metricas" as const, href: "/metricas", texto: "Métricas" },
   ];
 

@@ -356,7 +356,8 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
       .then((d: Datos) => {
         setDatos(d);
         if (!elegido) {
-          const conAlgo = d.dias.findIndex((x) => x.leads.length > 0);
+          const sinDia1 = d.dias.filter((x) => x.etiqueta !== "Día 1");
+          const conAlgo = sinDia1.findIndex((x) => x.leads.length > 0);
           setDia(conAlgo >= 0 ? conAlgo : 0);
         }
       })
@@ -368,7 +369,15 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
     cargar();
   }, [cargar]);
 
-  const actual: DiaDeSeguimiento | undefined = datos?.dias[dia];
+  /**
+   * El día 1 no se ofrece como pestaña.
+   *
+   * No tiene seguimiento que mandar —lo cubren los flujos de bienvenida que ya
+   * existen— y esa gente ya se ve en «Quién escribió hoy», en Mi día. Una
+   * pestaña que solo repite otra pantalla y no deja hacer nada es ruido.
+   */
+  const visibles = (datos?.dias ?? []).filter((d) => d.etiqueta !== "Día 1");
+  const actual: DiaDeSeguimiento | undefined = visibles[dia];
   // El día 1 no manda seguimiento: lo cubren los flujos de bienvenida que ya
   // existen. Los que mandan son el 2 y el 3.
   // El día 1 no manda nada: lo cubren los flujos de bienvenida. El día 7
@@ -425,7 +434,7 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
           que es como se trabaja una lista de seguimiento. */}
       {datos && (
         <div className="flex gap-1.5 px-4 sm:px-5 py-2 border-b border-gridline flex-wrap items-center">
-          {datos.dias.map((d, i) => (
+          {visibles.map((d, i) => (
             <button
               key={d.fecha}
               onClick={() => {
