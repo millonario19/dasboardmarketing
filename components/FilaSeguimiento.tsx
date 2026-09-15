@@ -383,7 +383,8 @@ export function FilaSeguimiento({
               className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 whitespace-nowrap"
               style={{ background: redactando ? GRIS : AMBAR }}
             >
-              {redactando ? "Cancelar" : `Ver plantilla día ${dia}`}
+              <IconoWhatsApp />
+              {redactando ? "Cancelar" : `Ver la plantilla`}
             </button>
           )}
           {dia && !enviado && lead.ventana.abierta && (
@@ -401,7 +402,7 @@ export function FilaSeguimiento({
             className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
             style={{ background: CELESTE, color: AZUL }}
           >
-            {abierta ? "Cerrar" : "Ver"}
+            {abierta ? "Cerrar" : dia ? "Historial" : "Ver"}
           </button>
           <IrAlCrm url={lead.crmUrl} />
           {/* En el módulo de mensajes no van el teléfono ni el WhatsApp
