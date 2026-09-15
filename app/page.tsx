@@ -7,6 +7,7 @@ import { CambiarVista } from "@/components/CambiarVista";
 import { InteraccionLeads } from "@/components/InteraccionLeads";
 import { ConfirmarBajadas } from "@/components/ConfirmarBajadas";
 import { PasoSistema } from "@/components/PasoSistema";
+import { LeadsDelDia } from "@/components/LeadsDelDia";
 import { MetaDelMes } from "@/components/MetaDelMes";
 import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
@@ -170,6 +171,30 @@ export default function DashboardPage() {
               abiertoPorDefecto
             >
               <ConfirmarBajadas dentroDePaso dia={diaMirado} />
+            </PasoSistema>
+          )}
+
+          {/* Los dos trabajos del día sobre los leads de hoy: llevárselos al
+              WhatsApp propio y llamarlos. Van acá y no en Mis leads porque
+              hablan de los que entraron hoy; Mis leads es el seguimiento de
+              los días que siguen. */}
+          {!esAdmin && (
+            <PasoSistema
+              numero={4}
+              titulo="Bajar a mi WhatsApp"
+              detalle="Los de hoy · te copiás el contacto y queda marcado para el seguimiento"
+            >
+              <LeadsDelDia modo="bajar" />
+            </PasoSistema>
+          )}
+
+          {!esAdmin && (
+            <PasoSistema
+              numero={5}
+              titulo="Llamar a los de hoy"
+              detalle="La lista del día en orden · lo que programés aparece mañana en Mis leads"
+            >
+              <LeadsDelDia modo="llamar" />
             </PasoSistema>
           )}
 

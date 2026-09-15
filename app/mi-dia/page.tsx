@@ -9,7 +9,6 @@ import { SeMovioHoy } from "@/components/SeMovioHoy";
 import { Seguimiento } from "@/components/Seguimiento";
 import { TareasDeHoy } from "@/components/TareasDeHoy";
 import { LlamarPorDia } from "@/components/LlamarPorDia";
-import { LeadsDelDia } from "@/components/LeadsDelDia";
 import { PasoSistema } from "@/components/PasoSistema";
 import { MetaDelMes } from "@/components/MetaDelMes";
 import { nombreCorto } from "@/lib/nombre";
@@ -150,22 +149,6 @@ export default function MiDiaPage() {
           detalle="Seguimiento por WhatsApp · fríos y tibios, hasta que bajen o hagan FTD"
         >
           <Seguimiento parte="dias" />
-        </PasoSistema>
-
-        <PasoSistema
-          numero={4}
-          titulo="Bajar a mi WhatsApp"
-          detalle="Los de hoy · te copiás el contacto y queda marcado para el seguimiento"
-        >
-          <LeadsDelDia modo="bajar" />
-        </PasoSistema>
-
-        <PasoSistema
-          numero={5}
-          titulo="Llamar a los de hoy"
-          detalle="La lista del día en orden · lo que programés aparece mañana en el día 2"
-        >
-          <LeadsDelDia modo="llamar" />
         </PasoSistema>
 
     </main>
