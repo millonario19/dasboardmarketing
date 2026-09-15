@@ -8,6 +8,7 @@ import { FilaSeguimiento } from "@/components/FilaSeguimiento";
 import type {
   Via,
   DiaDeSeguimiento,
+  LeadDeSeguimiento,
   LeadEnBusiness,
   Promesa,
   Seguimiento as Datos,
@@ -39,6 +40,78 @@ const VIA_COLOR: Record<Via, string> = {
   "tibio-sin-bajar": "#C08400",
   "no-responde": "#2A78D6",
 };
+
+/**
+ * Las tres temperaturas, siempre las tres.
+ *
+ * Un grupo vacío no se dibujaba, y entonces un agente que ese día recibió tres
+ * leads y los tres calientes veía una sola franja y creía que la pantalla se
+ * había comido a sus tibios. Mostrar el cero cuesta un renglón y contesta la
+ * pregunta antes de que nazca.
+ */
+function PorTemperatura({
+  leads,
+  dia,
+  pie,
+  onCerrado,
+}: {
+  leads: LeadDeSeguimiento[];
+  dia?: 2 | 3;
+  pie?: string;
+  onCerrado?: (id: string) => void;
+}) {
+  return (
+    <>
+      {TEMPERATURAS.map((t) => {
+        const suyos = leads.filter((l) => l.estado === t.id);
+        return (
+          <div key={t.id}>
+            <div
+              className="flex items-center gap-2 px-4 sm:px-5 py-[7px] border-t border-gridline"
+              style={{ background: suyos.length > 0 ? t.fondo : undefined }}
+            >
+              <span
+                className="w-[6px] h-[6px] rounded-full shrink-0"
+                style={{ background: t.color, opacity: suyos.length > 0 ? 1 : 0.3 }}
+              />
+              <span
+                className="text-[10px] font-bold uppercase tracking-[.16em]"
+                style={{ color: t.color, opacity: suyos.length > 0 ? 1 : 0.45 }}
+              >
+                {t.titulo}
+              </span>
+              <span
+                className="text-[11px] tabular-nums font-bold"
+                style={{ color: t.color, opacity: suyos.length > 0 ? 0.55 : 0.35 }}
+              >
+                {suyos.length}
+              </span>
+              {/* Qué flujo se dispara desde acá: el único lugar donde el agente
+                  ata lo que ve con lo que marketing armó en GHL. */}
+              {dia && suyos.length > 0 && (
+                <span
+                  className="ml-auto text-[10.5px] hidden sm:inline"
+                  style={{ color: t.color, opacity: 0.5 }}
+                >
+                  seg-d{dia}-{t.tag}
+                </span>
+              )}
+            </div>
+            {suyos.length === 0 ? (
+              <p className="px-4 sm:px-5 py-2 text-[11.5px]" style={{ color: GRIS }}>
+                Ninguno.
+              </p>
+            ) : (
+              suyos.map((l) => (
+                <FilaSeguimiento key={l.id} lead={l} dia={dia} pie={pie} onCerrado={onCerrado} />
+              ))
+            )}
+          </div>
+        );
+      })}
+    </>
+  );
+}
 
 /**
  * El seguimiento de los días anteriores y la agenda de promesas.
@@ -211,9 +284,7 @@ function EnMiBusiness({
                 : `Nadie confirmado en el día ${dia}.`}
             </p>
           ) : (
-            suyos.map((l) => (
-              <FilaSeguimiento key={l.id} lead={l} pie={queToca(dia)} onCerrado={onCerrado} />
-            ))
+            <PorTemperatura leads={suyos} pie={queToca(dia)} onCerrado={onCerrado} />
           )}
         </>
       )}
@@ -325,7 +396,7 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
       >
         <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Todavía no bajaron</h2>
         <span className="text-[12px]" style={{ color: "rgba(255,255,255,.6)" }}>
-          hoy y los tres días anteriores
+          día 1, 2, 3 y el rescate del día 7
         </span>
         <button
           onClick={() => cargar(true)}
@@ -379,44 +450,7 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
         </p>
       )}
 
-      {/* Agrupado por TEMPERATURA, que es lo que elige la etiqueta y por lo
-          tanto el flujo que se dispara. Antes agrupaba por vía —hizo clic, no
-          responde— y eso contaba otra historia: buena para entender al lead,
-          inútil para saber qué mensaje le toca. La vía no se pierde: sigue en
-          la fila, debajo del nombre. */}
-      {TEMPERATURAS.map((t) => {
-        const suyos = (actual?.leads ?? []).filter((l) => l.estado === t.id);
-        if (suyos.length === 0) return null;
-        return (
-          <div key={t.id}>
-            <div
-              className="flex items-center gap-2 px-4 sm:px-5 py-[7px] border-t border-gridline"
-              style={{ background: t.fondo }}
-            >
-              <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: t.color }} />
-              <span className="text-[10px] font-bold uppercase tracking-[.16em]" style={{ color: t.color }}>
-                {t.titulo}
-              </span>
-              <span className="text-[11px] tabular-nums font-bold" style={{ color: t.color, opacity: 0.55 }}>
-                {suyos.length}
-              </span>
-              {/* Qué flujo se dispara desde acá. Es el único lugar donde el
-                  agente ata lo que ve con lo que armó marketing en GHL. */}
-              {diaDelEmbudo && (
-                <span
-                  className="ml-auto text-[10.5px] hidden sm:inline"
-                  style={{ color: t.color, opacity: 0.5 }}
-                >
-                  seg-d{diaDelEmbudo}-{t.tag}
-                </span>
-              )}
-            </div>
-            {suyos.map((l) => (
-              <FilaSeguimiento key={l.id} lead={l} dia={diaDelEmbudo} />
-            ))}
-          </div>
-        );
-      })}
+      <PorTemperatura leads={actual?.leads ?? []} dia={diaDelEmbudo} />
     </section>
   );
 }
