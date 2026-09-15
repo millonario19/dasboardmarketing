@@ -87,6 +87,11 @@ export type LeadDeSeguimiento = {
    */
   tarea: Accion | null;
   /**
+   * Tocó el botón de bajar a WhatsApp y nadie dijo si del otro lado apareció.
+   * Mientras siga así cuenta como caliente, y puede ser mentira.
+   */
+  porConfirmar: boolean;
+  /**
    * Cuánto le queda de la ventana de 24 horas de Meta. De acá sale si el
    * seguimiento del día sale gratis o hay que gastar una plantilla — y si se
    * puede mandar algo, para empezar.
@@ -119,6 +124,8 @@ export type PorConfirmar = {
   telefono: string | null;
   agente: string;
   creado: string;
+  /** Cuándo tocó el botón. Null si el clic es anterior al sondeo. */
+  clicEn: string | null;
 };
 
 export type Promesa = {
@@ -164,6 +171,32 @@ function inicioDeDiaBogota(ms: number): number {
 
 function diaBogota(iso: string): string {
   return new Date(new Date(iso).getTime() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/**
+ * Cuándo tocó cada uno el botón de bajar a WhatsApp.
+ *
+ * La etiqueta de GHL no trae hora, pero el sondeo de `tag_history` anota la
+ * primera vez que la vio. Es aproximado —hasta lo que tarde el sondeo— y
+ * alcanza de sobra para saber si el clic fue hoy.
+ *
+ * Sin esto, el aviso «tocaron tu WhatsApp» acumulaba una semana entera de
+ * preguntas sin decir de cuándo era cada una.
+ */
+async function clicsDeBusiness(contactIds: string[]): Promise<Map<string, string>> {
+  const salida = new Map<string, string>();
+  if (contactIds.length === 0) return salida;
+  try {
+    const { rows } = await getPool().query<{ contact_id: string; occurred_at: Date }>(
+      `select contact_id, occurred_at from tag_history
+        where tag = $1 and contact_id = any($2::text[])`,
+      [TAG_BUSINESS, contactIds]
+    );
+    for (const f of rows) salida.set(f.contact_id, f.occurred_at.toISOString());
+  } catch {
+    /* sin sondeo no se sabe la hora del clic */
+  }
+  return salida;
 }
 
 function viaDeLead(contacto: GhlContact, estado: EstadoLead): Via {
@@ -228,6 +261,8 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
       via: "llego",
       nota,
       tarea: tareas.get(contacto.id) ?? null,
+      // Ya confirmado: no hay nada que preguntar.
+      porConfirmar: false,
       // Los confirmados no reciben automáticos: su ventana no se mira.
       ventana: SIN_VENTANA,
       enviadoHoy: null,
@@ -323,6 +358,8 @@ export async function computeSeguimiento(
   const porConfirmar: PorConfirmar[] = [];
   const utiles: { contacto: GhlContact; agente: string; estado: EstadoLead }[] = [];
 
+  const clics = await clicsDeBusiness((contactos as GhlContact[]).map((c) => c.id));
+
   for (const contacto of contactos as GhlContact[]) {
     // Los que ya depositaron salen: el seguimiento es de lo que falta cerrar.
     if (yaDeposito(contacto)) continue;
@@ -334,14 +371,21 @@ export async function computeSeguimiento(
     utiles.push({ contacto, agente: agent, estado });
 
     // El clic está registrado y nadie dijo si del otro lado apareció alguien.
+    // Al aviso de entrada solo van los de hoy: los tres pasos hablan del día, y
+    // una semana de preguntas acumuladas se vuelve un muro que nadie contesta.
+    // Los más viejos no se pierden — se preguntan en su fila del seguimiento,
+    // en el día que les toca.
     const hizoClic = (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS);
-    if (hizoClic && confirmacionDeBajada(contacto) === null) {
+    const pendiente = hizoClic && confirmacionDeBajada(contacto) === null;
+    const clic = clics.get(contacto.id) ?? null;
+    if (pendiente && clic && new Date(clic).getTime() >= arrancaHoy) {
       porConfirmar.push({
         id: contacto.id,
         nombre: contactDisplayName(contacto),
         telefono: contacto.phone ?? null,
         agente: agent,
         creado: contacto.dateAdded,
+        clicEn: clic,
       });
     }
   }
@@ -371,6 +415,9 @@ export async function computeSeguimiento(
       via: viaDeLead(contacto, estado),
       nota: notas.get(contacto.id) ?? null,
       tarea: tareasPorDia.get(contacto.id) ?? null,
+      porConfirmar:
+        (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS) &&
+        confirmacionDeBajada(contacto) === null,
       ventana: ventanas.get(contacto.id) ?? SIN_VENTANA,
       enviadoHoy: enviados.get(contacto.id) ?? null,
     });

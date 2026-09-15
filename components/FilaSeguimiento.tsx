@@ -107,6 +107,30 @@ export function FilaSeguimiento({
   const [enviado, setEnviado] = useState(lead.enviadoHoy);
   const [enviando, setEnviando] = useState(false);
   const [falloEnvio, setFalloEnvio] = useState<string | null>(null);
+  // La pregunta del paso 3, acá mismo. El aviso de arriba solo trae los clics
+  // de hoy; los de días anteriores se preguntan en la fila que les toca, que
+  // es donde el agente igual los está mirando.
+  const [porConfirmar, setPorConfirmar] = useState(lead.porConfirmar);
+  const [confirmando, setConfirmando] = useState(false);
+
+  function confirmar(llego: boolean) {
+    setConfirmando(true);
+    fetch("/api/contacts/confirmar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId: lead.id, confirmado: llego }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error();
+        // Un «sí» lo manda al paso 2 y un «no» lo baja a tibio: en los dos
+        // casos deja de ser esta fila. El dato vive en una sola etiqueta de
+        // GHL, así que las dos pantallas quedan iguales sin sincronizar nada.
+        setPorConfirmar(false);
+        onCerrado?.(lead.id);
+      })
+      .catch(() => setFalloEnvio("No se pudo guardar la confirmación"))
+      .finally(() => setConfirmando(false));
+  }
 
   function enviarSeguimiento() {
     setEnviando(true);
@@ -183,6 +207,32 @@ export function FilaSeguimiento({
             >
               Sin próximo paso · <b className="font-semibold underline">ponele una tarea</b>
             </button>
+          )}
+
+          {/* Tocó el botón de bajar y nadie contestó si llegó. Mientras siga
+              así cuenta como caliente, y puede ser mentira. */}
+          {porConfirmar && (
+            <span className="flex items-center gap-2 flex-wrap mt-1.5">
+              <span className="text-[11.5px]" style={{ color: ROJO }}>
+                ¿llegó a tu WhatsApp Business?
+              </span>
+              <button
+                onClick={() => confirmar(true)}
+                disabled={confirmando}
+                className="rounded-full px-2.5 py-[2px] text-[11px] font-semibold text-white disabled:opacity-50"
+                style={{ background: VERDE }}
+              >
+                Sí
+              </button>
+              <button
+                onClick={() => confirmar(false)}
+                disabled={confirmando}
+                className="rounded-full px-2.5 py-[2px] text-[11px] font-semibold disabled:opacity-50"
+                style={{ border: `1px solid ${GRIS}`, color: GRIS_2 }}
+              >
+                No
+              </button>
+            </span>
           )}
 
           {/* La ventana de Meta. Se muestra solo donde se puede mandar algo:

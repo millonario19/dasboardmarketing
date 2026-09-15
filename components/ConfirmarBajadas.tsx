@@ -93,6 +93,20 @@ function Pregunta({
         <b className="text-[13.5px] font-semibold">¿{persona.nombre} llegó a tu WhatsApp Business?</b>
         <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
           {persona.agente}
+          {/* A qué hora tocó el botón. La lista solo trae los clics de hoy, y
+              sin la hora eso es una promesa que nadie puede comprobar. */}
+          {persona.clicEn && (
+            <>
+              {" · tocó a las "}
+              <b className="font-semibold tabular-nums">
+                {new Date(persona.clicEn).toLocaleTimeString("es-CO", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  timeZone: "America/Bogota",
+                })}
+              </b>
+            </>
+          )}
         </span>
       </span>
       <button

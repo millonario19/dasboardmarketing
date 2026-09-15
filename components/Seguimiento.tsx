@@ -345,6 +345,9 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
   // un «Ayer» vacío hace pensar que el módulo está roto, y el domingo pasado
   // no entró un solo lead.
   const [elegido, setElegido] = useState(false);
+  // Confirmados o cerrados en esta sesión: se sacan en el acto porque el
+  // seguimiento se guarda en caché un minuto y recargarlo los devolvería.
+  const [resueltos, setResueltos] = useState<string[]>([]);
 
   const cargar = useCallback((forzar = false) => {
     setCargando(true);
@@ -472,7 +475,11 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
         </p>
       )}
 
-      <PorTemperatura leads={actual?.leads ?? []} dia={diaDelEmbudo} />
+      <PorTemperatura
+        leads={(actual?.leads ?? []).filter((l) => !resueltos.includes(l.id))}
+        dia={diaDelEmbudo}
+        onCerrado={(id) => setResueltos((r) => [...r, id])}
+      />
     </section>
   );
 }
