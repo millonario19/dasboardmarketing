@@ -52,7 +52,7 @@ function Pregunta({
   compacto = false,
 }: {
   persona: PorConfirmar;
-  onResponder: (id: string, llego: boolean) => void;
+  onResponder: (id: string, respuesta: "si" | "no") => void;
   compacto?: boolean;
 }) {
   const [respondido, setRespondido] = useState<boolean | null>(null);
@@ -68,7 +68,7 @@ function Pregunta({
     })
       .then((r) => {
         if (!r.ok) throw new Error();
-        onResponder(persona.id, llego);
+        onResponder(persona.id, llego ? "si" : "no");
       })
       .catch(() => setRespondido(null))
       .finally(() => setGuardando(false));
@@ -109,22 +109,40 @@ function Pregunta({
           )}
         </span>
       </span>
-      <button
-        onClick={() => responder(true)}
-        disabled={guardando}
-        className="rounded-full px-4 py-1 text-[12.5px] font-bold text-white disabled:opacity-50"
-        style={{ background: VERDE }}
-      >
-        Sí
-      </button>
-      <button
-        onClick={() => responder(false)}
-        disabled={guardando}
-        className="rounded-full px-4 py-1 text-[12.5px] font-bold border border-gridline hover:border-[#C0392B] hover:text-[#C0392B] disabled:opacity-50"
-        style={{ color: GRIS_2 }}
-      >
-        No
-      </button>
+      {persona.confirmado === "si" ? (
+        <span
+          className="rounded-full px-3 py-1 text-[12px] font-bold whitespace-nowrap"
+          style={{ background: "#EEF7F2", color: VERDE }}
+        >
+          ✓ está en tu WhatsApp
+        </span>
+      ) : persona.confirmado === "no" ? (
+        <span
+          className="rounded-full px-3 py-1 text-[12px] font-bold whitespace-nowrap"
+          style={{ background: "#FDF2F0", color: "#C0392B" }}
+        >
+          ✕ no llegó · volvió a tibio
+        </span>
+      ) : (
+        <>
+          <button
+            onClick={() => responder(true)}
+            disabled={guardando}
+            className="rounded-full px-4 py-1 text-[12.5px] font-bold text-white disabled:opacity-50"
+            style={{ background: VERDE }}
+          >
+            Sí
+          </button>
+          <button
+            onClick={() => responder(false)}
+            disabled={guardando}
+            className="rounded-full px-4 py-1 text-[12.5px] font-bold border border-gridline hover:border-[#C0392B] hover:text-[#C0392B] disabled:opacity-50"
+            style={{ color: GRIS_2 }}
+          >
+            No
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -137,8 +155,10 @@ export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: bool
   // y dos acordeones anidados obligaban a tres clics para llegar al dato.
   const [abierto, setAbierto] = useState(dentroDePaso);
 
-  const quitar = useCallback((id: string) => {
-    setGente((prev) => (prev ? prev.filter((p) => p.id !== id) : prev));
+  // Contestar marca la fila, no la borra: el agente tiene que poder ver al
+  // final del día a quiénes confirmó esa mañana.
+  const marcar = useCallback((id: string, respuesta: "si" | "no") => {
+    setGente((prev) => (prev ? prev.map((p) => (p.id === id ? { ...p, confirmado: respuesta } : p)) : prev));
   }, []);
 
   useEffect(() => {
@@ -146,8 +166,9 @@ export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: bool
       .then((r) => (r.ok ? r.json() : { porConfirmar: [] }))
       .then((d: { porConfirmar: PorConfirmar[] }) => {
         setGente(d.porConfirmar);
-        // Sin pendientes no sale nada. Nunca.
-        if (d.porConfirmar.length === 0) return;
+        // Sin pendientes no sale nada. Nunca. Los ya contestados se quedan en
+        // la lista para verlos, pero no vuelven a interrumpir.
+        if (d.porConfirmar.every((p) => p.confirmado !== null)) return;
         if (avisosDados() < AVISOS_POR_SESION) {
           setAviso(true);
           anotarAviso();
@@ -158,7 +179,7 @@ export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: bool
 
   // El segundo aviso de la sesión: solo si quedaron pendientes sin responder.
   useEffect(() => {
-    if (!gente || gente.length === 0) return;
+    if (!gente || gente.every((p) => p.confirmado !== null)) return;
     if (avisosDados() >= AVISOS_POR_SESION) return;
     const t = setTimeout(() => {
       setAviso(true);
@@ -182,8 +203,11 @@ export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: bool
     );
   }
 
+  const pendientes = gente.filter((p) => p.confirmado === null);
+  const bajaron = gente.filter((p) => p.confirmado === "si").length;
+
   const bloque = (compacto: boolean) =>
-    gente.map((p) => <Pregunta key={p.id} persona={p} onResponder={quitar} compacto={compacto} />);
+    gente.map((p) => <Pregunta key={p.id} persona={p} onResponder={marcar} compacto={compacto} />);
 
   return (
     <>
@@ -195,16 +219,25 @@ export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: bool
           className={`w-full flex items-center gap-2.5 flex-wrap px-4 sm:px-5 py-3 text-left ${
             dentroDePaso ? "cursor-default" : "hover:opacity-95"
           }`}
-          style={{ background: ROJO, color: "#fff" }}
+          style={{ background: pendientes.length > 0 ? ROJO : VERDE, color: "#fff" }}
         >
           <span
             className="text-[13px] font-extrabold rounded-full w-[26px] h-[26px] flex items-center justify-center tabular-nums shrink-0"
-            style={{ background: "#fff", color: ROJO }}
+            style={{ background: "#fff", color: pendientes.length > 0 ? ROJO : VERDE }}
           >
-            {gente.length}
+            {pendientes.length > 0 ? pendientes.length : bajaron}
           </span>
           <span className="text-[14px] font-semibold tracking-[-0.02em]">
-            {gente.length === 1 ? "cliente tocó" : "clientes tocaron"} tu WhatsApp y no sabés si llegaron
+            {pendientes.length > 0 ? (
+              <>
+                {pendientes.length === 1 ? "cliente tocó" : "clientes tocaron"} tu WhatsApp y no sabés si
+                llegaron
+              </>
+            ) : (
+              <>
+                {bajaron === 1 ? "cliente bajó" : "clientes bajaron"} a tu WhatsApp hoy · todos confirmados
+              </>
+            )}
           </span>
           {/* Dentro del paso no hay nada que plegar: el encabezado del paso ya
               lo hace, y dos acordeones anidados son tres clics para un dato. */}

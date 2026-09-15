@@ -126,6 +126,15 @@ export type PorConfirmar = {
   creado: string;
   /** Cuándo tocó el botón. Null si el clic es anterior al sondeo. */
   clicEn: string | null;
+  /**
+   * Lo que ya contestó el agente, si contestó.
+   *
+   * Los contestados se quedan en la lista hasta que termina el día. Antes
+   * desaparecían al responder y el agente perdía de vista a quién había
+   * confirmado esa mañana — la lista del día no puede borrarse sola mientras
+   * se trabaja.
+   */
+  confirmado: "si" | "no" | null;
 };
 
 export type Promesa = {
@@ -363,12 +372,13 @@ export async function computeSeguimiento(
   for (const contacto of contactos as GhlContact[]) {
     // Los que ya depositaron salen: el seguimiento es de lo que falta cerrar.
     if (yaDeposito(contacto)) continue;
-    // Y los confirmados también: están en su propia lista, que no se cae a los
-    // tres días. Dejarlos acá los mostraba dos veces y con dos relojes.
-    if (confirmacionDeBajada(contacto) === "si") continue;
     const { agent } = await extractAttribution(contacto);
     const estado = estadoDeLead(contacto);
-    utiles.push({ contacto, agente: agent, estado });
+    // Los confirmados no entran a las pestañas por día —tienen su propia lista,
+    // que no se cae a los tres días— pero sí siguen contando para la pregunta
+    // del día, con su respuesta puesta.
+    const yaConfirmado = confirmacionDeBajada(contacto) === "si";
+    if (!yaConfirmado) utiles.push({ contacto, agente: agent, estado });
 
     // El clic está registrado y nadie dijo si del otro lado apareció alguien.
     // Al aviso de entrada solo van los de hoy: los tres pasos hablan del día, y
@@ -376,9 +386,8 @@ export async function computeSeguimiento(
     // Los más viejos no se pierden — se preguntan en su fila del seguimiento,
     // en el día que les toca.
     const hizoClic = (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS);
-    const pendiente = hizoClic && confirmacionDeBajada(contacto) === null;
     const clic = clics.get(contacto.id) ?? null;
-    if (pendiente && clic && new Date(clic).getTime() >= arrancaHoy) {
+    if (hizoClic && clic && new Date(clic).getTime() >= arrancaHoy) {
       porConfirmar.push({
         id: contacto.id,
         nombre: contactDisplayName(contacto),
@@ -386,6 +395,7 @@ export async function computeSeguimiento(
         agente: agent,
         creado: contacto.dateAdded,
         clicEn: clic,
+        confirmado: confirmacionDeBajada(contacto),
       });
     }
   }
