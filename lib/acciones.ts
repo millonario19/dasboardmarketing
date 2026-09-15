@@ -33,6 +33,12 @@ export type Accion = {
   usuario: string;
   tipo: TipoAccion;
   detalle: string | null;
+  /**
+   * Cómo salió, cuando el tipo lo admite. En una llamada es lo único que
+   * después se puede contar: «no contestó» escrito adentro de la observación
+   * no se suma, y el marcador del día es justo eso, una suma.
+   */
+  resultado: string | null;
   /** Cuándo pasó. Vacío mientras sea una tarea por hacer. */
   hechaEn: string | null;
   /** Cuándo hay que hacerlo. Vacío si es solo el registro de algo que pasó. */
@@ -55,12 +61,16 @@ function asegurarTabla(): Promise<void> {
            usuario    text        not null,
            tipo       text        not null,
            detalle    text,
+           resultado  text,
            hecha_en   timestamptz,
            vence_en   timestamptz,
            cerrada_en timestamptz,
            creada_en  timestamptz not null default now()
          )`
       )
+      // La columna llegó después de la tabla: en las bases que ya existían hay
+      // que agregarla aparte.
+      .then(() => getPool().query(`alter table acciones add column if not exists resultado text`))
       .then(() =>
         getPool().query(`create index if not exists acciones_contacto_idx on acciones (contact_id, creada_en desc)`)
       )
@@ -152,6 +162,7 @@ type Fila = {
   usuario: string;
   tipo: string;
   detalle: string | null;
+  resultado: string | null;
   hecha_en: Date | null;
   vence_en: Date | null;
   cerrada_en: Date | null;
@@ -166,6 +177,7 @@ const aAccion = (f: Fila): Accion => ({
   usuario: f.usuario,
   tipo: f.tipo as TipoAccion,
   detalle: f.detalle,
+  resultado: f.resultado,
   hechaEn: f.hecha_en?.toISOString() ?? null,
   venceEn: f.vence_en?.toISOString() ?? null,
   cerradaEn: f.cerrada_en?.toISOString() ?? null,
@@ -189,17 +201,26 @@ export type Quien = {
 export async function registrarAccion(
   quien: Quien,
   tipo: TipoAccion,
-  detalle: string | null
+  detalle: string | null,
+  resultado: string | null = null
 ): Promise<Accion> {
   await asegurarTabla();
   const cliente = await getPool().connect();
   try {
     await cliente.query("begin");
     const { rows } = await cliente.query<Fila>(
-      `insert into acciones (contact_id, nombre, telefono, usuario, tipo, detalle, hecha_en)
-       values ($1, $2, $3, $4, $5, $6, now())
+      `insert into acciones (contact_id, nombre, telefono, usuario, tipo, detalle, resultado, hecha_en)
+       values ($1, $2, $3, $4, $5, $6, $7, now())
        returning *`,
-      [quien.contactId, quien.nombre ?? null, quien.telefono ?? null, quien.usuario, tipo, detalle]
+      [
+        quien.contactId,
+        quien.nombre ?? null,
+        quien.telefono ?? null,
+        quien.usuario,
+        tipo,
+        detalle,
+        resultado,
+      ]
     );
     await cliente.query(
       `update acciones set cerrada_en = now()
@@ -393,20 +414,22 @@ export async function tareasDeHoy(usuario: string | null): Promise<Tareas> {
 
 export type ResumenDelDia = {
   llamadas: number;
-  mensajes: number;
-  material: number;
-  cumplidas: number;
+  noContesto: number;
+  reprogramadas: number;
+  efectivas: number;
   vencidas: number;
 };
 
 /**
  * El marcador del día, contado de las mismas filas.
  *
- * Es el número que hoy vive en el Excel escrito a mano. Acá sale solo: si cada
- * acción es una fila con tipo y hora, nadie tiene que escribirlo dos veces.
+ * Solo de llamadas: el paso 1 es el módulo del teléfono y mezclarle mensajes y
+ * videos lo volvía un resumen de todo que no decía nada de lo único que se
+ * hace ahí. «Efectivas» son las que terminaron en registro — no las que
+ * contestaron, porque contestar y colgar no es un resultado.
  */
 export async function resumenDeHoy(usuario: string | null): Promise<ResumenDelDia> {
-  const vacio = { llamadas: 0, mensajes: 0, material: 0, cumplidas: 0, vencidas: 0 };
+  const vacio = { llamadas: 0, noContesto: 0, reprogramadas: 0, efectivas: 0, vencidas: 0 };
   try {
     await asegurarTabla();
     const local = new Date(Date.now() - BOGOTA_OFFSET_MS);
@@ -417,17 +440,24 @@ export async function resumenDeHoy(usuario: string | null): Promise<ResumenDelDi
     if (usuario) args.push(usuario);
     const filtro = usuario ? "and usuario = $2" : "";
 
-    const { rows } = await getPool().query<{ tipo: string; n: string }>(
-      `select tipo, count(*) as n from acciones
-        where hecha_en >= $1 ${filtro}
-        group by tipo`,
+    const { rows } = await getPool().query<{
+      llamadas: string;
+      no_contesto: string;
+      efectivas: string;
+    }>(
+      `select
+         count(*) filter (where tipo = 'llame') as llamadas,
+         count(*) filter (where tipo = 'llame' and resultado = 'no-contesto') as no_contesto,
+         count(*) filter (where tipo = 'llame' and resultado = 'registro') as efectivas
+       from acciones
+       where hecha_en >= $1 ${filtro}`,
       args
     );
-    const por = (t: string) => Number(rows.find((r) => r.tipo === t)?.n ?? 0);
 
-    const { rows: cerradas } = await getPool().query<{ n: string }>(
+    // Reprogramadas: las llamadas que quedaron agendadas hoy para más adelante.
+    const { rows: repro } = await getPool().query<{ n: string }>(
       `select count(*) as n from acciones
-        where cerrada_en >= $1 and vence_en is not null ${filtro}`,
+        where creada_en >= $1 and tipo = 'llame' and vence_en is not null and hecha_en is null ${filtro}`,
       args
     );
     const { rows: vencidas } = await getPool().query<{ n: string }>(
@@ -437,10 +467,10 @@ export async function resumenDeHoy(usuario: string | null): Promise<ResumenDelDi
     );
 
     return {
-      llamadas: por("llame"),
-      mensajes: por("escribi") + por("me-escribio"),
-      material: por("video") + por("foto") + por("audio"),
-      cumplidas: Number(cerradas[0]?.n ?? 0),
+      llamadas: Number(rows[0]?.llamadas ?? 0),
+      noContesto: Number(rows[0]?.no_contesto ?? 0),
+      reprogramadas: Number(repro[0]?.n ?? 0),
+      efectivas: Number(rows[0]?.efectivas ?? 0),
       vencidas: Number(vencidas[0]?.n ?? 0),
     };
   } catch {

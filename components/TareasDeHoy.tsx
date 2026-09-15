@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar } from "@/components/Llamada";
 import { FichaCliente } from "@/components/FichaCliente";
 import { metaTipo } from "@/lib/tiposAccion";
@@ -96,7 +95,6 @@ function Fila({ tarea, onHecha }: { tarea: Accion; onHecha: () => void }) {
             contactId={tarea.contactId}
             tamano={26}
           />
-          <BotonWhatsApp telefono={tarea.telefono} nombre={tarea.nombre ?? ""} tamano={26} />
         </span>
       </article>
 
@@ -142,9 +140,9 @@ export function TareasDeHoy({ onResumen }: { onResumen?: (pendientes: number) =>
         className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
         style={{ background: AZUL, color: "#fff" }}
       >
-        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Hoy tenés que llamar</h2>
+        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Leads programados</h2>
         <span className="text-[12px]" style={{ color: "rgba(255,255,255,.7)" }}>
-          lo que vos mismo programaste
+          las llamadas que vos mismo agendaste
         </span>
         <button
           onClick={cargar}
@@ -207,16 +205,16 @@ export function TareasDeHoy({ onResumen }: { onResumen?: (pendientes: number) =>
             className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
             style={{ background: VERDE_CLARO, color: VERDE }}
           >
-            Mis acciones de hoy
+            Mis llamadas de hoy
           </p>
           <div className="flex flex-wrap">
-            {[
+            {([
               { l: "Llamadas", v: r.llamadas },
-              { l: "Mensajes", v: r.mensajes },
-              { l: "Material enviado", v: r.material },
-              { l: "Tareas cumplidas", v: r.cumplidas },
+              { l: "No contestó", v: r.noContesto },
+              { l: "Reprogramadas", v: r.reprogramadas },
+              { l: "Efectivas", v: r.efectivas, bueno: true },
               { l: "Se te pasaron", v: r.vencidas, malo: true },
-            ].map((c) => (
+            ] as { l: string; v: number; malo?: boolean; bueno?: boolean }[]).map((c) => (
               <div
                 key={c.l}
                 className="flex-1 min-w-[120px] px-4 sm:px-5 py-3 border-r border-gridline last:border-r-0"
@@ -229,7 +227,9 @@ export function TareasDeHoy({ onResumen }: { onResumen?: (pendientes: number) =>
                 </span>
                 <div
                   className="text-[24px] font-bold tracking-[-0.035em] leading-none tabular-nums mt-1"
-                  style={{ color: c.malo && c.v > 0 ? ROJO : undefined }}
+                  style={{
+                    color: c.malo && c.v > 0 ? ROJO : c.bueno && c.v > 0 ? VERDE : undefined,
+                  }}
                 >
                   {c.v}
                 </div>

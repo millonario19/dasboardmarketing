@@ -117,8 +117,8 @@ export default function MiDiaPage() {
 
         <PasoSistema
           numero={1}
-          titulo="Llamar hoy"
-          detalle="El día 2 y el día 3, más lo que vos mismo programaste"
+          titulo="Llamadas para hoy"
+          detalle="Pendientes de FTD, día 2 y día 3, y lo que vos agendaste"
           abiertoPorDefecto
           resumen={
             porHacer === null

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar } from "@/components/Llamada";
 import { pedirSeguimiento } from "@/components/Seguimiento";
 import type { DiaDeSeguimiento, LeadDeSeguimiento } from "@/lib/seguimiento";
@@ -80,6 +79,9 @@ function Fila({ lead, onListo }: { lead: LeadDeSeguimiento; onListo: (id: string
         nombre: lead.nombre,
         telefono: lead.telefono,
         tipo: "llame",
+        // El resultado va aparte de la observación: metido adentro del texto no
+        // se puede contar, y el marcador del día es una suma.
+        resultado,
         detalle: nota.trim() ? `${texto} · ${nota.trim()}` : texto,
         // Reagendar va en la misma llamada: si fueran dos pasos, el agente
         // hace el primero y el cliente queda sin próxima llamada.
@@ -104,8 +106,9 @@ function Fila({ lead, onListo }: { lead: LeadDeSeguimiento; onListo: (id: string
           </span>
         </span>
         <span className="flex items-center gap-1.5 shrink-0">
+          {/* Solo el teléfono: este es el módulo de llamadas. El WhatsApp
+              está en el paso 3, donde el trabajo es escribir. */}
           <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} contactId={lead.id} tamano={28} />
-          <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={28} />
           <button
             onClick={() => setAbierto((v) => !v)}
             className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
@@ -168,11 +171,32 @@ function Fila({ lead, onListo }: { lead: LeadDeSeguimiento; onListo: (id: string
 
 export function LlamarPorDia() {
   const [dias, setDias] = useState<DiaDeSeguimiento[] | null>(null);
+  const [ftd, setFtd] = useState<LeadDeSeguimiento[]>([]);
   const [listos, setListos] = useState<string[]>([]);
 
   useEffect(() => {
     pedirSeguimiento()
-      .then((d) => setDias(d.dias.filter((x) => x.etiqueta === "Día 2" || x.etiqueta === "Día 3")))
+      .then((d) => {
+        setDias(d.dias.filter((x) => x.etiqueta === "Día 2" || x.etiqueta === "Día 3"));
+        // Los que se registraron en el broker y todavía no depositaron, de
+        // cualquier día. Son la llamada que más plata tiene cerca: ya dijeron
+        // que sí, les falta poner el dinero.
+        const vistos = new Set<string>();
+        const pendientes: LeadDeSeguimiento[] = [];
+        for (const dia of d.dias) {
+          for (const l of dia.leads) {
+            if (!l.acciones.includes("Se registró") || vistos.has(l.id)) continue;
+            vistos.add(l.id);
+            pendientes.push(l);
+          }
+        }
+        for (const l of d.enBusiness) {
+          if (!l.acciones.includes("Se registró") || vistos.has(l.id)) continue;
+          vistos.add(l.id);
+          pendientes.push(l);
+        }
+        setFtd(pendientes);
+      })
       .catch(() => setDias([]));
   }, []);
 
@@ -186,7 +210,9 @@ export function LlamarPorDia() {
     );
   }
 
-  const total = dias.reduce((s, d) => s + d.leads.filter((l) => !listos.includes(l.id)).length, 0);
+  const ftdVivos = ftd.filter((l) => !listos.includes(l.id));
+  const total =
+    ftdVivos.length + dias.reduce((s, d) => s + d.leads.filter((l) => !listos.includes(l.id)).length, 0);
 
   return (
     <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-4">
@@ -194,9 +220,9 @@ export function LlamarPorDia() {
         className="flex items-center gap-x-3 gap-y-1 flex-wrap px-4 sm:px-5 py-2.5"
         style={{ background: AZUL, color: "#fff" }}
       >
-        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">A quién llamar</h2>
+        <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Llamadas para hoy</h2>
         <span className="text-[12px]" style={{ color: "rgba(255,255,255,.7)" }}>
-          los del día 2 y del día 3 que siguen sin registrarse
+          los que se registraron y no depositaron, y los del día 2 y el día 3
         </span>
         <span
           className="ml-auto text-[12px] font-bold rounded-full px-2.5 py-0.5 tabular-nums"
@@ -210,6 +236,31 @@ export function LlamarPorDia() {
         <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
           No queda nadie por llamar del día 2 ni del día 3.
         </p>
+      )}
+
+      {/* Primero los que ya se registraron y les falta depositar: es la
+          llamada con la plata más cerca, y no espera a ningún día del embudo. */}
+      {ftdVivos.length > 0 && (
+        <div>
+          <div
+            className="flex items-center gap-2 px-4 sm:px-5 py-[7px] border-t border-gridline"
+            style={{ background: "#EEF7F2" }}
+          >
+            <span className="w-[6px] h-[6px] rounded-full" style={{ background: VERDE }} />
+            <span className="text-[10px] font-bold uppercase tracking-[.16em]" style={{ color: VERDE }}>
+              Pendientes de FTD
+            </span>
+            <span className="text-[11px] tabular-nums font-bold" style={{ color: VERDE, opacity: 0.55 }}>
+              {ftdVivos.length}
+            </span>
+            <span className="ml-auto text-[11px] hidden sm:inline" style={{ color: VERDE, opacity: 0.7 }}>
+              se registraron y falta el depósito
+            </span>
+          </div>
+          {ftdVivos.map((l) => (
+            <Fila key={l.id} lead={l} onListo={(id) => setListos((r) => [...r, id])} />
+          ))}
+        </div>
       )}
 
       {dias.map((d) => {

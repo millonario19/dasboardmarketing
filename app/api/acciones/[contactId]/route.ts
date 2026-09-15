@@ -24,6 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: { contactId: 
   let body: {
     tipo?: string;
     detalle?: string | null;
+    resultado?: string | null;
     nombre?: string | null;
     telefono?: string | null;
     siguiente?: { tipo?: string; cuando?: string; detalle?: string | null } | null;
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest, { params }: { params: { contactId: 
   try {
     if (body.tipo) {
       if (!esTipo(body.tipo)) return NextResponse.json({ error: "Tipo desconocido" }, { status: 400 });
-      await registrarAccion(quien, body.tipo, body.detalle ?? null);
+      await registrarAccion(quien, body.tipo, body.detalle ?? null, body.resultado ?? null);
     }
 
     const sig = body.siguiente;
