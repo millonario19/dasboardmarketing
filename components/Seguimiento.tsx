@@ -111,7 +111,11 @@ function PorTemperatura({
                   lead={l}
                   dia={dia}
                   pie={pie}
-                  hayFlujo={dia ? flujos.includes(`seg-d${dia}-${t.id === "frio" ? "frio" : t.id}`) : false}
+                  hayFlujo={
+                    dia
+                      ? flujos.some((n) => n.includes(`seg-d${dia}-${t.id === "frio" ? "frio" : t.id}`))
+                      : false
+                  }
                   onCerrado={onCerrado}
                 />
               ))

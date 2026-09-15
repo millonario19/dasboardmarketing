@@ -72,7 +72,10 @@ export async function POST(req: NextRequest) {
     : null;
   // Sin flujo publicado que la escuche, la etiqueta no manda nada y queda
   // pegada al contacto para siempre: el próximo intento tampoco dispararía.
-  if (etiqueta && !(await flujosPublicados()).includes(etiqueta)) {
+  // Por nombre que CONTENGA la etiqueta, no que sea igual: en GHL la gente les
+  // pone prefijos —«Follow-up seg-d2-frio»— y exigir el nombre exacto obligaba
+  // a renombrar seis flujos para que el panel los viera.
+  if (etiqueta && !(await flujosPublicados()).some((n) => n.includes(etiqueta))) {
     return NextResponse.json(
       {
         error:
