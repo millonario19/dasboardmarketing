@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { enviarWhatsApp, agregarTag } from "@/lib/ghl";
+import { enviarWhatsApp, agregarTag, flujosPublicados } from "@/lib/ghl";
 import { etiquetaDeSeguimiento, type DiaDelEmbudo } from "@/lib/seguimientoTags";
 import { esEstado } from "@/lib/leadStates";
 import { registrarAccion, enviadoHoy } from "@/lib/acciones";
@@ -70,6 +70,19 @@ export async function POST(req: NextRequest) {
   const etiqueta = plantilla
     ? etiquetaDeSeguimiento(dia as DiaDelEmbudo, body.estado as "frio" | "tibio" | "caliente")
     : null;
+  // Sin flujo publicado que la escuche, la etiqueta no manda nada y queda
+  // pegada al contacto para siempre: el próximo intento tampoco dispararía.
+  if (etiqueta && !(await flujosPublicados()).includes(etiqueta)) {
+    return NextResponse.json(
+      {
+        error:
+          `No existe el flujo «${etiqueta}» publicado en GHL. Sin él la etiqueta no manda nada. ` +
+          "Armalo primero y volvé a intentar.",
+      },
+      { status: 409 }
+    );
+  }
+
   try {
     if (etiqueta) await agregarTag(contactId, etiqueta);
     else await enviarWhatsApp(contactId, texto!.trim());

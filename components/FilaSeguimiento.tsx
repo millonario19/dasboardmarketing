@@ -122,6 +122,7 @@ export function FilaSeguimiento({
   pie,
   onCerrado,
   dia,
+  hayFlujo = false,
 }: {
   lead: LeadDeSeguimiento;
   pie?: string;
@@ -129,6 +130,8 @@ export function FilaSeguimiento({
   onCerrado?: (id: string) => void;
   /** Día del embudo, si esta fila está en una pestaña que manda seguimiento. */
   dia?: 2 | 3;
+  /** Si existe en GHL el flujo que manda la plantilla de este grupo. */
+  hayFlujo?: boolean;
 }) {
   const meta = ESTADO_META[lead.estado];
   const [abierta, setAbierta] = useState(false);
@@ -353,7 +356,16 @@ export function FilaSeguimiento({
           {/* Ventana cerrada pero el cliente escribió alguna vez: la única
               forma que deja Meta es una plantilla aprobada, y esa sale del
               flujo de GHL. El botón lo dice, porque esta sí se cobra. */}
-          {dia && !enviado && !lead.ventana.abierta && (
+          {dia && !enviado && !lead.ventana.abierta && !hayFlujo && (
+            <span
+              className="text-[11px] font-semibold rounded-full px-2.5 py-1 whitespace-nowrap"
+              style={{ background: "#F1F0EB", color: GRIS_2 }}
+              title={`Armá el flujo seg-d${dia}-${lead.estado} en GHL para poder mandar la plantilla`}
+            >
+              falta el flujo en GHL
+            </span>
+          )}
+          {dia && !enviado && !lead.ventana.abierta && hayFlujo && (
             <button
               onClick={enviarPlantilla}
               disabled={enviando}

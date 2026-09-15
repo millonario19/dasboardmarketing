@@ -53,11 +53,14 @@ function PorTemperatura({
   leads,
   dia,
   pie,
+  flujos = [],
   onCerrado,
 }: {
   leads: LeadDeSeguimiento[];
   dia?: 2 | 3;
   pie?: string;
+  /** Los flujos publicados en GHL, para no ofrecer plantillas sin flujo. */
+  flujos?: string[];
   onCerrado?: (id: string) => void;
 }) {
   return (
@@ -103,7 +106,14 @@ function PorTemperatura({
               </p>
             ) : (
               suyos.map((l) => (
-                <FilaSeguimiento key={l.id} lead={l} dia={dia} pie={pie} onCerrado={onCerrado} />
+                <FilaSeguimiento
+                  key={l.id}
+                  lead={l}
+                  dia={dia}
+                  pie={pie}
+                  hayFlujo={dia ? flujos.includes(`seg-d${dia}-${t.id === "frio" ? "frio" : t.id}`) : false}
+                  onCerrado={onCerrado}
+                />
               ))
             )}
           </div>
@@ -497,6 +507,7 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
       <PorTemperatura
         leads={(actual?.leads ?? []).filter((l) => !resueltos.includes(l.id))}
         dia={diaDelEmbudo}
+        flujos={datos?.flujos ?? []}
         onCerrado={(id) => setResueltos((r) => [...r, id])}
       />
     </section>

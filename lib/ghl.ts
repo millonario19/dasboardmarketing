@@ -457,3 +457,27 @@ export async function enviarWhatsApp(contactId: string, texto: string): Promise<
     throw new Error(`GHL no pudo mandar el WhatsApp (${res.status}): ${cuerpo.slice(0, 300)}`);
   }
 }
+
+/**
+ * Los flujos publicados de la subcuenta, por nombre.
+ *
+ * El panel lo usa para no ofrecer un botón que no hace nada: mandar una
+ * plantilla es poner una etiqueta, y una etiqueta sin flujo que la escuche no
+ * manda nada y encima queda pegada al contacto para siempre.
+ */
+export async function flujosPublicados(): Promise<string[]> {
+  const locationId = requireEnv("GHL_LOCATION_ID");
+  try {
+    const res = await fetchWithRetry(
+      `${GHL_BASE_URL}/workflows/?locationId=${encodeURIComponent(locationId)}`,
+      { headers: ghlHeaders(), cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    return ((data.workflows ?? []) as { name?: string; status?: string }[])
+      .filter((w) => w.status === "published" && w.name)
+      .map((w) => w.name as string);
+  } catch {
+    return [];
+  }
+}

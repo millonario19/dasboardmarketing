@@ -1,5 +1,6 @@
 import {
   searchContacts,
+  flujosPublicados,
   extractAttribution,
   contactDisplayName,
   type GhlContact,
@@ -187,6 +188,14 @@ export type Seguimiento = {
   /** Lo primero del día: el sistema sabe que hicieron clic, no si llegaron. */
   porConfirmar: PorConfirmar[];
   promesas: Promesa[];
+  /**
+   * Los flujos de GHL que existen y están publicados.
+   *
+   * Sin esto el panel ofrecía «enviar plantilla» para una etiqueta que nadie
+   * escuchaba: no salía nada, la etiqueta quedaba pegada al contacto, y la
+   * pantalla decía «mensaje enviado». Tres mentiras en un clic.
+   */
+  flujos: string[];
   generadoEn: string;
 };
 
@@ -492,9 +501,10 @@ export async function computeSeguimiento(
     salida.push({ fecha, etiqueta: `Día ${n}`, leads, porEstado });
   }
 
-  const [enBusiness, promesas] = await Promise.all([
+  const [enBusiness, promesas, flujos] = await Promise.all([
     enMiBusiness(soloAgente),
     promesasPendientes(usuario),
+    flujosPublicados(),
   ]);
 
   const datos: Seguimiento = {
@@ -503,6 +513,7 @@ export async function computeSeguimiento(
     enBusiness,
     porConfirmar,
     promesas,
+    flujos,
     generadoEn: new Date(ahora).toISOString(),
   };
   cache.set(llave, { en: ahora, datos });
