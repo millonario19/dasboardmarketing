@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hiloDe, registrarAccion, programarTarea } from "@/lib/acciones";
-import { buscarConversacion, mensajesDeConversacion } from "@/lib/ghl";
+import { buscarConversacion, mensajesDeConversacion, llamadasDeContacto } from "@/lib/ghl";
 import { esTipo } from "@/lib/tiposAccion";
 import { sesionActual } from "@/lib/sesion";
 import { invalidarSeguimiento } from "@/lib/seguimiento";
@@ -43,8 +43,44 @@ async function conTextoReal(hilo: Awaited<ReturnType<typeof hiloDe>>, contactId:
   }
 }
 
+/**
+ * Las llamadas del CRM, mezcladas en el hilo.
+ *
+ * El agente anota a mano lo que habló, pero la hora, si contestaron, cuánto
+ * duró y la grabación solo las tiene GHL. Mezclarlas en el mismo hilo es la
+ * única forma de ver la conversación completa de un cliente en un solo lugar.
+ */
 export async function GET(_req: NextRequest, { params }: { params: { contactId: string } }) {
-  return NextResponse.json({ hilo: await conTextoReal(await hiloDe(params.contactId), params.contactId) });
+  const [propio, llamadas] = await Promise.all([
+    conTextoReal(await hiloDe(params.contactId), params.contactId),
+    llamadasDeContacto(params.contactId),
+  ]);
+
+  const deGhl = llamadas.map((l) => ({
+    id: -Number(BigInt("0x" + Buffer.from(l.mensajeId).toString("hex").slice(0, 12))),
+    contactId: params.contactId,
+    nombre: null,
+    telefono: l.hacia,
+    usuario: "crm",
+    tipo: "llame" as const,
+    detalle:
+      l.duracion > 0
+        ? `${l.direccion === "inbound" ? "Entrante" : "Saliente"} por el CRM · ${l.duracion} s`
+        : `${l.direccion === "inbound" ? "Entrante" : "Saliente"} por el CRM · no contestaron`,
+    resultado: l.duracion > 0 ? "contesto" : "no-contesto",
+    hechaEn: l.en,
+    venceEn: null,
+    cerradaEn: null,
+    creadaEn: l.en,
+    /** Para reproducir la grabación, si quedó. */
+    grabacion: l.duracion > 0 ? l.mensajeId : null,
+  }));
+
+  const hilo = [...propio, ...deGhl].sort((a, b) =>
+    (a.hechaEn ?? a.creadaEn).localeCompare(b.hechaEn ?? b.creadaEn)
+  );
+
+  return NextResponse.json({ hilo });
 }
 
 /**

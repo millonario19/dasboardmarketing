@@ -5,6 +5,9 @@ import { ConversacionLead } from "@/components/ConversacionLead";
 import { TIPOS, TIPOS_DEL_EMBUDO, metaTipo, TIPO_CIERRE, type TipoAccion } from "@/lib/tiposAccion";
 import type { Accion } from "@/lib/acciones";
 
+/** El hilo trae además las llamadas del CRM, que pueden venir con grabación. */
+type Entrada = Accion & { grabacion?: string | null };
+
 /**
  * Todo lo que pasó con un cliente, y lo que sigue.
  *
@@ -73,7 +76,7 @@ export function FichaCliente({
   /** La fila de arriba muestra la tarea abierta: hay que avisarle que cambió. */
   onCambio?: (cerrado: boolean) => void;
 }) {
-  const [hilo, setHilo] = useState<Accion[] | null>(null);
+  const [hilo, setHilo] = useState<Entrada[] | null>(null);
   const [tipo, setTipo] = useState<TipoAccion | null>(null);
   const [detalle, setDetalle] = useState("");
   const [sigue, setSigue] = useState("");
@@ -86,7 +89,7 @@ export function FichaCliente({
   const traer = useCallback(() => {
     fetch(`/api/acciones/${encodeURIComponent(contactId)}`)
       .then((r) => (r.ok ? r.json() : { hilo: [] }))
-      .then((d: { hilo: Accion[] }) => setHilo(d.hilo))
+      .then((d: { hilo: Entrada[] }) => setHilo(d.hilo))
       .catch(() => setHilo([]));
   }, [contactId]);
 
@@ -116,7 +119,7 @@ export function FichaCliente({
         if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo guardar");
         return r.json();
       })
-      .then((d: { hilo: Accion[] }) => {
+      .then((d: { hilo: Entrada[] }) => {
         setHilo(d.hilo);
         setTipo(null);
         setDetalle("");
@@ -206,6 +209,17 @@ export function FichaCliente({
                     {cuando(a.hechaEn ?? a.venceEn ?? a.creadaEn)}
                     {pendiente && " · lo programaste vos"}
                   </span>
+                  {/* La grabación de la llamada, si el CRM la guardó. Es lo
+                      único del historial que no depende de que alguien la
+                      escriba: quedó registrada sola. */}
+                  {a.grabacion && (
+                    <audio
+                      controls
+                      preload="none"
+                      src={`/api/grabacion/${encodeURIComponent(a.grabacion)}`}
+                      className="mt-1.5 h-9 max-w-[280px] w-full"
+                    />
+                  )}
                 </span>
               </li>
             );

@@ -485,3 +485,57 @@ export async function flujosPublicados(): Promise<string[]> {
     return [];
   }
 }
+
+export type LlamadaGhl = {
+  mensajeId: string;
+  en: string;
+  direccion: "inbound" | "outbound";
+  estado: string;
+  /** Segundos. Cero cuando no contestaron. */
+  duracion: number;
+  desde: string | null;
+  hacia: string | null;
+};
+
+/**
+ * Las llamadas que salieron por el CRM, no las del celular del agente.
+ *
+ * Son las únicas que traen la verdad completa: hora exacta, si contestaron,
+ * cuánto duró y —si la grabación está encendida— el audio. Del celular del
+ * agente solo sabemos que tocó el botón.
+ */
+export async function llamadasDeContacto(contactId: string): Promise<LlamadaGhl[]> {
+  try {
+    const conversacion = await buscarConversacion(contactId);
+    if (!conversacion) return [];
+    const res = await fetchWithRetry(
+      `${GHL_BASE_URL}/conversations/${conversacion}/messages?limit=40`,
+      { headers: ghlHeaders(), cache: "no-store" }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    type Cruda = {
+      id: string;
+      messageType?: string;
+      direction?: string;
+      status?: string;
+      dateAdded: string;
+      from?: string;
+      to?: string;
+      meta?: { call?: { duration?: number } };
+    };
+    return ((data.messages?.messages ?? []) as Cruda[])
+      .filter((m) => m.messageType === "TYPE_CALL")
+      .map((m) => ({
+        mensajeId: m.id,
+        en: m.dateAdded,
+        direccion: m.direction === "inbound" ? ("inbound" as const) : ("outbound" as const),
+        estado: m.status ?? "",
+        duracion: m.meta?.call?.duration ?? 0,
+        desde: m.from ?? null,
+        hacia: m.to ?? null,
+      }));
+  } catch {
+    return [];
+  }
+}
