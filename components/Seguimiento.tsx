@@ -93,7 +93,7 @@ function PorTemperatura({
                   className="ml-auto text-[10.5px] hidden sm:inline"
                   style={{ color: t.color, opacity: 0.5 }}
                 >
-                  seg-d{dia}-{t.tag}
+                  mensaje del día {dia}
                 </span>
               )}
             </div>
@@ -488,7 +488,7 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
           style={{ background: "var(--page-plane)", color: GRIS_2 }}
         >
           {fechaLarga(actual.fecha)}
-          {diaDelEmbudo && <> · el seguimiento sale con la etiqueta <b>seg-d{diaDelEmbudo}-…</b></>}
+          {diaDelEmbudo && <> · el seguimiento del día {diaDelEmbudo} sale desde acá, por WhatsApp</>}
         </p>
       )}
 

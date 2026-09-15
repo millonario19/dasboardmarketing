@@ -1,23 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { agregarTag } from "@/lib/ghl";
+import { enviarWhatsApp } from "@/lib/ghl";
 import { registrarAccion, enviadoHoy } from "@/lib/acciones";
-import { etiquetaDeSeguimiento, type DiaDelEmbudo } from "@/lib/seguimientoTags";
-import { esEstado } from "@/lib/leadStates";
-import { sesionActual } from "@/lib/sesion";
 import { invalidarSeguimiento } from "@/lib/seguimiento";
+import { sesionActual } from "@/lib/sesion";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Mandar el seguimiento del día: poner la etiqueta y anotarlo.
+ * Mandar el seguimiento del día.
  *
- * El mensaje no sale de acá. Sale del flujo de GHL que escucha esa etiqueta —
- * así el texto lo cambia marketing sin tocar código, que es lo único que la API
- * de GHL no deja automatizar.
+ * El texto viaja en la petición porque el agente lo acaba de ver y lo pudo
+ * editar. Antes esto ponía una etiqueta y un flujo de GHL escribía el mensaje;
+ * el problema es que la API de GHL deja listar los flujos pero no leer qué
+ * dicen, así que el panel nunca podía mostrar qué iba a salir. Ahora sale de
+ * acá: lo que el agente lee es lo que el cliente recibe.
  *
- * El tope de uno por día lo pone el dashboard y no el flujo: GHL no sabe cuántas
- * veces se le mandó hoy a alguien, y dos mensajes el mismo día es exactamente
- * lo que hace que a un número lo bloqueen.
+ * El mensaje cae igual en la conversación de GHL, así que el historial no
+ * cambia. Y queda anotado en el hilo del cliente con el texto exacto.
  */
 export async function POST(req: NextRequest) {
   const sesion = await sesionActual();
@@ -26,7 +25,7 @@ export async function POST(req: NextRequest) {
   let body: {
     contactId?: string;
     dia?: number;
-    estado?: string;
+    texto?: string;
     nombre?: string | null;
     telefono?: string | null;
   };
@@ -36,12 +35,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Cuerpo inválido" }, { status: 400 });
   }
 
-  const { contactId, dia, estado } = body;
-  if (!contactId || (dia !== 2 && dia !== 3) || !esEstado(estado)) {
-    return NextResponse.json({ error: "Faltan contactId, día o estado" }, { status: 400 });
+  const { contactId, dia, texto } = body;
+  if (!contactId || (dia !== 2 && dia !== 3) || !texto?.trim()) {
+    return NextResponse.json({ error: "Faltan contactId, día o texto" }, { status: 400 });
   }
 
-  const tipo = dia === 2 ? "seg-d2" : "seg-d3";
+  // El tope de uno por día lo lleva el dashboard: GHL no sabe cuántas veces se
+  // le escribió hoy a alguien, y dos mensajes el mismo día es justo lo que
+  // hace que a un número lo bloqueen.
   if (await enviadoHoy(contactId)) {
     return NextResponse.json(
       { error: "Ya se le mandó un seguimiento hoy. Mañana se puede de nuevo." },
@@ -49,16 +50,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const etiqueta = etiquetaDeSeguimiento(dia as DiaDelEmbudo, estado);
   try {
-    await agregarTag(contactId, etiqueta);
+    await enviarWhatsApp(contactId, texto.trim());
   } catch (e) {
-    const mensaje = e instanceof Error ? e.message : "GHL no aceptó la etiqueta";
+    const mensaje = e instanceof Error ? e.message : "GHL no pudo mandar el mensaje";
     return NextResponse.json({ error: mensaje }, { status: 502 });
   }
 
-  // La etiqueta ya está puesta: si esto falla, el mensaje igual sale. Por eso
-  // no tumba la respuesta — solo se pierde la anotación en el hilo.
+  // El mensaje ya salió: si esto falla, solo se pierde la anotación.
   await registrarAccion(
     {
       contactId,
@@ -66,10 +65,10 @@ export async function POST(req: NextRequest) {
       telefono: body.telefono ?? null,
       usuario: sesion.usuario,
     },
-    tipo,
-    `etiqueta ${etiqueta}`
+    dia === 2 ? "seg-d2" : "seg-d3",
+    texto.trim()
   ).catch(() => undefined);
 
   invalidarSeguimiento();
-  return NextResponse.json({ ok: true, etiqueta });
+  return NextResponse.json({ ok: true });
 }

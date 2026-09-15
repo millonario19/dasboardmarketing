@@ -108,6 +108,27 @@ export function FilaSeguimiento({
   const [enviado, setEnviado] = useState(lead.enviadoHoy);
   const [enviando, setEnviando] = useState(false);
   const [falloEnvio, setFalloEnvio] = useState<string | null>(null);
+  // El texto se ve antes de salir y se puede editar. Es lo único de todo el
+  // sistema que el cliente lee, así que no puede ser una caja negra.
+  const [redactando, setRedactando] = useState(false);
+  const [texto, setTexto] = useState("");
+  const [guardarComoDefecto, setGuardarComoDefecto] = useState(false);
+
+  const clave = dia ? `d${dia}-${lead.estado}` : "";
+
+  function abrirRedaccion() {
+    setRedactando(true);
+    setFalloEnvio(null);
+    if (texto) return;
+    fetch("/api/mensajes")
+      .then((r) => (r.ok ? r.json() : { mensajes: {} }))
+      .then((d: { mensajes: Record<string, string> }) => {
+        const plantilla = d.mensajes[clave] ?? "";
+        const primero = lead.nombre.trim().split(/\s+/)[0] ?? "";
+        setTexto(plantilla.replace(/\{nombre\}/g, primero));
+      })
+      .catch(() => setTexto(""));
+  }
   // La pregunta del paso 3, acá mismo. El aviso de arriba solo trae los clics
   // de hoy; los de días anteriores se preguntan en la fila que les toca, que
   // es donde el agente igual los está mirando.
@@ -134,15 +155,27 @@ export function FilaSeguimiento({
   }
 
   function enviarSeguimiento() {
+    if (!texto.trim()) {
+      setFalloEnvio("Escribí el mensaje antes de mandarlo.");
+      return;
+    }
     setEnviando(true);
     setFalloEnvio(null);
+    if (guardarComoDefecto) {
+      // El texto queda como punto de partida para el próximo del mismo grupo.
+      fetch("/api/mensajes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clave, texto }),
+      }).catch(() => undefined);
+    }
     fetch("/api/seguimiento/enviar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contactId: lead.id,
         dia,
-        estado: lead.estado,
+        texto,
         nombre: lead.nombre,
         telefono: lead.telefono,
       }),
@@ -150,6 +183,7 @@ export function FilaSeguimiento({
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo mandar");
         setEnviado(new Date().toISOString());
+        setRedactando(false);
         // Para que el próximo pedido traiga el envío y no la foto de antes.
         olvidarSeguimiento();
       })
@@ -251,13 +285,12 @@ export function FilaSeguimiento({
         <span className="flex items-center gap-1.5 shrink-0">
           {dia && !enviado && lead.ventana.abierta && (
             <button
-              onClick={enviarSeguimiento}
-              disabled={enviando}
-              title={`Pone la etiqueta seg-d${dia}-${lead.estado === "frio" ? "frio" : lead.estado} y el flujo manda el mensaje`}
+              onClick={() => (redactando ? setRedactando(false) : abrirRedaccion())}
+              title="Ver el mensaje antes de mandarlo"
               className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold disabled:opacity-40 hover:opacity-70 whitespace-nowrap"
               style={{ border: `1px solid ${meta.color}`, color: meta.color, background: "transparent" }}
             >
-              {enviando ? "Mandando…" : dia === 2 ? "↗ Enviar" : "↗ Plantilla"}
+              {redactando ? "Cancelar" : "↗ Escribir"}
             </button>
           )}
           <button
@@ -271,6 +304,39 @@ export function FilaSeguimiento({
           <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={26} />
         </span>
       </article>
+
+      {redactando && dia && (
+        <div className="px-4 sm:px-5 pb-3" style={{ background: "#FCFCFA" }}>
+          <textarea
+            rows={3}
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            placeholder="Escribí el mensaje…"
+            className="w-full resize-none rounded-lg border border-gridline bg-surface px-2.5 py-2 text-[13px] leading-snug outline-none focus:border-[#2A6FB8]"
+          />
+          <div className="flex items-center gap-3 flex-wrap mt-2">
+            <button
+              onClick={enviarSeguimiento}
+              disabled={enviando}
+              className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+              style={{ background: VERDE_WA }}
+            >
+              {enviando ? "Mandando…" : "Mandar por WhatsApp"}
+            </button>
+            <label className="flex items-center gap-1.5 text-[11.5px]" style={{ color: GRIS_2 }}>
+              <input
+                type="checkbox"
+                checked={guardarComoDefecto}
+                onChange={(e) => setGuardarComoDefecto(e.target.checked)}
+              />
+              guardarlo para los {lead.estado === "frio" ? "fríos" : `${lead.estado}s`} del día {dia}
+            </label>
+            <span className="text-[11px]" style={{ color: GRIS }}>
+              sale por tu WhatsApp de la oficina y queda en la conversación
+            </span>
+          </div>
+        </div>
+      )}
 
       {abierta && (
         <FichaCliente

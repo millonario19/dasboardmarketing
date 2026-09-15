@@ -434,3 +434,26 @@ export async function extractAttribution(contact: GhlContact): Promise<Attributi
 
   return { agent, agentId, office };
 }
+
+/**
+ * Mandar un WhatsApp al contacto, por el número de la oficina.
+ *
+ * Cae en la misma conversación que todo lo demás, así que el mensaje queda en
+ * el historial de GHL como cualquier otro y el dashboard lo lee sin cambios.
+ *
+ * Solo funciona con la ventana de 24 horas abierta. Afuera Meta no entrega
+ * texto libre y GHL devuelve error — por eso el panel calcula la ventana antes
+ * de ofrecer el botón, en vez de intentar y fallar en silencio.
+ */
+export async function enviarWhatsApp(contactId: string, texto: string): Promise<void> {
+  const res = await fetchWithRetry(`${GHL_BASE_URL}/conversations/messages`, {
+    method: "POST",
+    headers: { ...ghlHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ contactId, type: "WhatsApp", message: texto }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const cuerpo = await res.text();
+    throw new Error(`GHL no pudo mandar el WhatsApp (${res.status}): ${cuerpo.slice(0, 300)}`);
+  }
+}
