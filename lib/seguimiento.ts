@@ -56,6 +56,16 @@ const CACHE_MS = 60_000;
 const cache = new Map<string, { en: number; datos: Seguimiento }>();
 
 /**
+ * Lo que se está armando en este momento.
+ *
+ * Los pasos 3, 4 y 5 piden lo mismo por dos rutas distintas —«por-confirmar» y
+ * «seguimiento»—, así que abrir dos pasos con la caché fría lanzaba dos veces
+ * el mismo barrido de GHL, y las dos tardaban el doble por competir. Acá el
+ * segundo se cuelga de la promesa del primero.
+ */
+const armando = new Map<string, Promise<Seguimiento>>();
+
+/**
  * Tirar la caché cuando algo cambió de verdad.
  *
  * Armar el seguimiento cuesta un barrido de GHL, así que se guarda un minuto.
@@ -278,21 +288,39 @@ function viaDeLead(contacto: GhlContact, estado: EstadoLead): Via {
  * depositan, y a mano cuando el agente elige «Cerrar seguimiento».
  */
 async function enMiBusiness(soloAgente: string | null | undefined): Promise<LeadEnBusiness[]> {
-  const contactos = await soloDelAgente(
-    await searchContacts([
-      { field: "tags", operator: "contains", value: process.env.GHL_LEAD_TAG ?? "ingreso de pauta" },
-    ]),
-    soloAgente
-  );
+  const leadTag = process.env.GHL_LEAD_TAG ?? "ingreso de pauta";
 
-  // Dos formas de llegar al WhatsApp del agente y las dos cuentan: el cliente
-  // tocó el botón y el agente lo confirmó, o el agente se copió el número y se
-  // lo llevó él. La segunda es como trabaja la mayoría.
-  const enElWhatsApp = (c: GhlContact) => {
-    const t = (c.tags ?? []).map((x) => x.toLowerCase());
-    return t.includes(TAG_BAJADA_SI) || t.includes(TAG_BAJADA_MANUAL);
-  };
-  const conVida = (contactos as GhlContact[]).filter((c) => enElWhatsApp(c) && !yaDeposito(c));
+  /**
+   * Se busca por la etiqueta de bajada, no por toda la pauta.
+   *
+   * Esta lista no tiene corte de fecha —el seguimiento de un confirmado no se
+   * puede caer a los tres días— y por eso antes barría el histórico completo:
+   * 5.213 contactos en 53 páginas seguidas, 47 segundos, cada vez que alguien
+   * abría un paso. Era el 90% de la demora de la pantalla.
+   *
+   * GHL cruza los filtros con Y, así que pedirle «pauta + bajada confirmada»
+   * devuelve exactamente los mismos contactos en una página y medio segundo.
+   * Son dos búsquedas porque las dos formas de llegar al WhatsApp del agente
+   * cuentan: el cliente tocó el botón y el agente lo confirmó, o el agente se
+   * copió el número y se lo llevó él. La segunda es como trabaja la mayoría.
+   */
+  const [porClic, porMano] = await Promise.all([
+    searchContacts([
+      { field: "tags", operator: "contains", value: leadTag },
+      { field: "tags", operator: "contains", value: TAG_BAJADA_SI },
+    ]),
+    searchContacts([
+      { field: "tags", operator: "contains", value: leadTag },
+      { field: "tags", operator: "contains", value: TAG_BAJADA_MANUAL },
+    ]),
+  ]);
+
+  // Quien tiene las dos etiquetas aparece en las dos búsquedas.
+  const unicos = new Map<string, GhlContact>();
+  for (const c of [...porClic, ...porMano]) unicos.set(c.id, c);
+
+  const contactos = await soloDelAgente([...unicos.values()], soloAgente);
+  const conVida = (contactos as GhlContact[]).filter((c) => !yaDeposito(c));
   const idsTodos = conVida.map((c) => c.id);
   const yaCerrados = await cerrados(idsTodos);
   // El agente da por terminado el seguimiento desde la misma ficha donde lo
@@ -402,10 +430,27 @@ export async function computeSeguimiento(
   usuario: string | null,
   dias = DIAS_ATRAS
 ): Promise<Seguimiento> {
-  const ahora = Date.now();
   const llave = `${soloAgente ?? "todos"}|${usuario ?? "-"}|${dias}`;
   const guardado = cache.get(llave);
-  if (guardado && ahora - guardado.en < CACHE_MS) return guardado.datos;
+  if (guardado && Date.now() - guardado.en < CACHE_MS) return guardado.datos;
+
+  const yaVa = armando.get(llave);
+  if (yaVa) return yaVa;
+
+  const trabajo = construirSeguimiento(soloAgente, usuario, dias, llave).finally(() => {
+    armando.delete(llave);
+  });
+  armando.set(llave, trabajo);
+  return trabajo;
+}
+
+async function construirSeguimiento(
+  soloAgente: string | null | undefined,
+  usuario: string | null,
+  dias: number,
+  llave: string
+): Promise<Seguimiento> {
+  const ahora = Date.now();
 
   const arrancaHoy = inicioDeDiaBogota(ahora);
   // La ventana incluye hoy: el seguimiento del día en curso es el primero que
@@ -591,5 +636,8 @@ export async function computeSeguimiento(
     generadoEn: new Date(ahora).toISOString(),
   };
   cache.set(llave, { en: ahora, datos });
+  // Queda en el log del contenedor: si la pantalla vuelve a ponerse lenta, este
+  // número dice en un vistazo si es el barrido de GHL o es otra cosa.
+  console.log(`[seguimiento] ${llave} armado en ${Date.now() - ahora}ms`);
   return datos;
 }

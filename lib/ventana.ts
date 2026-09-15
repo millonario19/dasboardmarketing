@@ -136,19 +136,38 @@ export async function ventanasDe(
 
   // Los más recientes primero: son los que todavía pueden tener ventana viva.
   aAbrir.sort((a, b) => b.lastMessageDate - a.lastMessageDate);
-  for (const c of aAbrir.slice(0, maxDetalle)) {
-    try {
-      const mensajes = await mensajesDeConversacion(c.id);
-      const entrantes = mensajes
-        .filter((m) => m.direction === "inbound")
-        .map((m) => m.dateAdded)
-        .sort();
-      const ultimo = entrantes[entrantes.length - 1] ?? null;
-      salida.set(c.contactId, calcular(ultimo, CANALES[c.lastMessageType ?? ""] ?? null));
-    } catch {
-      /* sin mensajes no se sabe: mejor sin ventana que con una inventada */
+
+  /**
+   * De a seis a la vez.
+   *
+   * Cada conversación es una llamada a GHL de medio segundo, y en fila india
+   * cuarenta de esas son veinte segundos de pantalla en blanco. En paralelo son
+   * tres. El tope de seis es por el límite de ráfaga de GHL: más arriba empieza
+   * a contestar 429 y el reintento sale más caro que la espera.
+   */
+  const pendientes = aAbrir.slice(0, maxDetalle);
+  const EN_PARALELO = 6;
+  let siguiente = 0;
+  async function trabajar(): Promise<void> {
+    for (;;) {
+      const c = pendientes[siguiente++];
+      if (!c) return;
+      try {
+        const mensajes = await mensajesDeConversacion(c.id);
+        const entrantes = mensajes
+          .filter((m) => m.direction === "inbound")
+          .map((m) => m.dateAdded)
+          .sort();
+        const ultimo = entrantes[entrantes.length - 1] ?? null;
+        salida.set(c.contactId, calcular(ultimo, CANALES[c.lastMessageType ?? ""] ?? null));
+      } catch {
+        /* sin mensajes no se sabe: mejor sin ventana que con una inventada */
+      }
     }
   }
+  await Promise.all(
+    Array.from({ length: Math.min(EN_PARALELO, pendientes.length) }, () => trabajar())
+  );
 
   return salida;
 }

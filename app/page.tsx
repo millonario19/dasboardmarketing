@@ -11,6 +11,7 @@ import { LeadsDelDia } from "@/components/LeadsDelDia";
 import { MetaDelMes } from "@/components/MetaDelMes";
 import { CerrarSesion } from "@/components/CerrarSesion";
 import { useSesion } from "@/components/useSesion";
+import { pedirSeguimiento } from "@/components/Seguimiento";
 import { nombreCorto } from "@/lib/nombre";
 import type { AgentProduction } from "@/lib/metrics";
 
@@ -27,6 +28,21 @@ export default function DashboardPage() {
   const [diaMirado, setDiaMirado] = useState<string | null>(null);
   const sesion = useSesion();
   const esAdmin = sesion?.rol === "admin";
+
+  /**
+   * Los pasos 3, 4 y 5 se piden apenas abre la pantalla, no al hacer clic.
+   *
+   * Los tres salen de la misma consulta, y como están plegados el pedido
+   * arrancaba recién cuando el agente tocaba el título: quedaba mirando un
+   * «Buscando…» varios segundos, con el tablero ya cargado al lado. Pedirlo de
+   * entrada usa el rato en que él está leyendo la meta y el paso 1, y cuando
+   * llega al 3 ya está servido. Si nunca los abre, no costó nada: los mismos
+   * datos alimentan el aviso de pendientes del paso 3.
+   */
+  useEffect(() => {
+    if (esAdmin) return;
+    pedirSeguimiento().catch(() => undefined);
+  }, [esAdmin]);
 
   const load = useCallback(() => {
     setLoading(true);
