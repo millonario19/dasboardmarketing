@@ -144,6 +144,10 @@ export function FilaSeguimiento({
   const [redactando, setRedactando] = useState(false);
   const [texto, setTexto] = useState("");
   const [guardarComoDefecto, setGuardarComoDefecto] = useState(false);
+  // Con la ventana cerrada el texto no sale de acá: lo manda la plantilla del
+  // flujo. Lo que se muestra es una copia guardada, para no tocar a ciegas.
+  const [editandoCopia, setEditandoCopia] = useState(false);
+  const esPlantilla = !lead.ventana.abierta;
 
   const clave = dia ? `d${dia}-${lead.estado}` : "";
 
@@ -189,6 +193,13 @@ export function FilaSeguimiento({
   function enviarPlantilla() {
     setEnviando(true);
     setFalloEnvio(null);
+    if (guardarComoDefecto) {
+      fetch("/api/mensajes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clave, texto }),
+      }).catch(() => undefined);
+    }
     fetch("/api/seguimiento/enviar", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -204,6 +215,7 @@ export function FilaSeguimiento({
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo mandar");
         setEnviado(new Date().toISOString());
+        setRedactando(false);
         olvidarSeguimiento();
       })
       .catch((e) => setFalloEnvio(e.message))
@@ -367,13 +379,11 @@ export function FilaSeguimiento({
           )}
           {dia && !enviado && !lead.ventana.abierta && hayFlujo && (
             <button
-              onClick={enviarPlantilla}
-              disabled={enviando}
-              title={`Dispara el flujo seg-d${dia}-${lead.estado} en GHL`}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-50 hover:opacity-90 whitespace-nowrap"
-              style={{ background: AMBAR }}
+              onClick={() => (redactando ? setRedactando(false) : abrirRedaccion())}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold text-white hover:opacity-90 whitespace-nowrap"
+              style={{ background: redactando ? GRIS : AMBAR }}
             >
-              {enviando ? "Mandando…" : `Enviar plantilla día ${dia}`}
+              {redactando ? "Cancelar" : `Ver plantilla día ${dia}`}
             </button>
           )}
           {dia && !enviado && lead.ventana.abierta && (
@@ -408,56 +418,81 @@ export function FilaSeguimiento({
 
       {redactando && dia && (
         <div className="px-4 sm:px-5 pb-3 pt-2" style={{ background: "#FCFCFA" }}>
-          <p className="text-[11.5px] mb-1.5" style={{ color: GRIS_2 }}>
-            Escribile a <b>{lead.nombre}</b> por WhatsApp. Está escrito para vos — cambialo a tu
-            gusto antes de mandarlo.
-          </p>
+          {esPlantilla ? (
+            <p className="text-[11.5px] mb-1.5" style={{ color: GRIS_2 }}>
+              Su ventana está cerrada, así que sale la <b>plantilla aprobada</b> del flujo{" "}
+              <b>seg-d{dia}-{lead.estado}</b>. Esto es una <b>copia</b> de ese texto guardada en el
+              panel: GHL no deja leer las plantillas por fuera, así que si alguien la cambia allá,
+              hay que actualizarla acá.
+            </p>
+          ) : (
+            <p className="text-[11.5px] mb-1.5" style={{ color: GRIS_2 }}>
+              Escribile a <b>{lead.nombre}</b> por WhatsApp. Está escrito para vos — cambialo a tu
+              gusto antes de mandarlo.
+            </p>
+          )}
+
           <textarea
             rows={3}
             value={texto}
+            readOnly={esPlantilla && !editandoCopia}
             onChange={(e) => setTexto(e.target.value)}
             placeholder="Escribí el mensaje…"
-            className="w-full resize-none rounded-lg border border-gridline bg-surface px-2.5 py-2 text-[13px] leading-snug outline-none focus:border-[#2A6FB8]"
+            className="w-full resize-none rounded-lg border border-gridline px-2.5 py-2 text-[13px] leading-snug outline-none focus:border-[#2A6FB8]"
+            style={{ background: esPlantilla && !editandoCopia ? "var(--page-plane)" : undefined }}
           />
+
           <div className="flex items-center gap-3 flex-wrap mt-2">
             <button
-              onClick={enviarSeguimiento}
+              onClick={esPlantilla ? enviarPlantilla : enviarSeguimiento}
               disabled={enviando}
               className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
-              style={{ background: VERDE_WA }}
+              style={{ background: esPlantilla ? AMBAR : VERDE_WA }}
             >
-              {enviando ? "Mandando…" : "Mandar por WhatsApp"}
+              {enviando ? "Mandando…" : esPlantilla ? `Enviar la plantilla` : "Mandar por WhatsApp"}
             </button>
             <span className="text-[11px]" style={{ color: GRIS }}>
-              sale por el WhatsApp de la oficina y queda guardado en la conversación
+              {esPlantilla
+                ? "la manda el flujo de GHL · esta sí se cobra"
+                : "sale por el WhatsApp de la oficina y queda guardado en la conversación"}
             </span>
           </div>
 
-          {/* La casilla iba al lado del botón y parecía una condición para
-              mandar. No lo es: cambia lo que va a aparecer escrito la próxima
-              vez, no lo que sale ahora. */}
-          <label
-            className="flex items-start gap-2 text-[11.5px] mt-2 pt-2 border-t border-gridline"
-            style={{ color: GRIS_2 }}
-          >
-            <input
-              type="checkbox"
-              className="mt-[3px]"
-              checked={guardarComoDefecto}
-              onChange={(e) => setGuardarComoDefecto(e.target.checked)}
-            />
-            <span>
-              Dejar este texto para los próximos{" "}
-              <b style={{ color: meta.color }}>
-                {lead.estado === "frio" ? "fríos" : `${lead.estado}s`} del día {dia}
-              </b>
-              .{" "}
-              <span style={{ color: GRIS }}>
-                No cambia el mensaje que estás por mandar: cambia el que va a venir escrito la
-                próxima vez.
+          {esPlantilla && !editandoCopia && (
+            <button
+              onClick={() => setEditandoCopia(true)}
+              className="text-[11px] underline mt-2"
+              style={{ color: AZUL }}
+            >
+              La plantilla cambió en GHL · corregir la copia
+            </button>
+          )}
+
+          {(!esPlantilla || editandoCopia) && (
+            <label
+              className="flex items-start gap-2 text-[11.5px] mt-2 pt-2 border-t border-gridline"
+              style={{ color: GRIS_2 }}
+            >
+              <input
+                type="checkbox"
+                className="mt-[3px]"
+                checked={guardarComoDefecto}
+                onChange={(e) => setGuardarComoDefecto(e.target.checked)}
+              />
+              <span>
+                Dejar este texto para los próximos{" "}
+                <b style={{ color: meta.color }}>
+                  {lead.estado === "frio" ? "fríos" : `${lead.estado}s`} del día {dia}
+                </b>
+                .{" "}
+                <span style={{ color: GRIS }}>
+                  {esPlantilla
+                    ? "Solo cambia lo que se muestra acá, no la plantilla de GHL."
+                    : "No cambia el mensaje que estás por mandar: cambia el que va a venir escrito la próxima vez."}
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+          )}
         </div>
       )}
 
