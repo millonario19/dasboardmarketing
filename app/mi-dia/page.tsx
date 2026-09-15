@@ -149,7 +149,7 @@ export default function MiDiaPage() {
       <div className="flex flex-col items-center text-center gap-3 mb-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left sm:gap-4">
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
           <h1 className="text-[21px] sm:text-[25px] font-semibold text-ink-primary tracking-tight leading-[1.15]">
-            Seguimiento mis leads
+            CRM - Marketing
           </h1>
           <div className="flex items-center gap-2">
             {sesion && esAgente && (
@@ -218,6 +218,18 @@ export default function MiDiaPage() {
         {/* Los tres pasos del seguimiento, el mismo orden que en Dirección.
             Primero lo que vos programaste, después los que ya tenés en el
             WhatsApp, y al final los que todavía no bajaron. */}
+        {/* El rótulo de la sección. Las dos pantallas tienen un paso 1, un 2 y
+            un 3, y sin esto el agente no sabe de cuáles está leyendo. */}
+        <div className="flex items-center gap-3 mb-3">
+          <h2
+            className="text-[12px] sm:text-[13px] font-bold uppercase tracking-[.2em] whitespace-nowrap"
+            style={{ color: "#17457F" }}
+          >
+            Seguimiento mis leads
+          </h2>
+          <span className="flex-1 h-px" style={{ background: "var(--gridline)" }} />
+        </div>
+
         <PasoSistema
           numero={1}
           titulo="Llamar hoy"
