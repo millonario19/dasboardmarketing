@@ -38,6 +38,9 @@ export function tagConfiableEn(tag: string, fechaIso: string): boolean {
 
 export type EstadoLead = "frio" | "tibio" | "caliente";
 
+export const esEstado = (x: unknown): x is EstadoLead =>
+  x === "frio" || x === "tibio" || x === "caliente";
+
 export const ESTADOS: EstadoLead[] = ["frio", "tibio", "caliente"];
 
 export const ESTADO_META: Record<

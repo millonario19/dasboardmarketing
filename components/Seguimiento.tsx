@@ -227,6 +227,9 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
   }, [cargar]);
 
   const actual: DiaDeSeguimiento | undefined = datos?.dias[dia];
+  // El día 1 no manda seguimiento: lo cubren los flujos de bienvenida que ya
+  // existen. Los que mandan son el 2 y el 3.
+  const diaDelEmbudo: 2 | 3 | undefined = dia === 1 ? 2 : dia === 2 ? 3 : undefined;
 
   if (parte === "agenda") {
     return datos ? <Agenda promesas={datos.promesas} /> : null;
@@ -321,7 +324,7 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
               {VIA_TITULO[via]} · {suyos.length}
             </p>
             {suyos.map((l) => (
-              <FilaSeguimiento key={l.id} lead={l} />
+              <FilaSeguimiento key={l.id} lead={l} dia={diaDelEmbudo} />
             ))}
           </div>
         );

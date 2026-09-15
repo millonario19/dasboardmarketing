@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ConversacionLead } from "@/components/ConversacionLead";
-import { TIPOS, metaTipo, TIPO_CIERRE, type TipoAccion } from "@/lib/tiposAccion";
+import { TIPOS, TIPOS_DEL_EMBUDO, metaTipo, TIPO_CIERRE, type TipoAccion } from "@/lib/tiposAccion";
 import type { Accion } from "@/lib/acciones";
 
 /**
@@ -199,7 +199,7 @@ export function FichaCliente({
           ¿Qué acabás de hacer?
         </span>
         <div className="flex gap-1.5 flex-wrap mb-2.5">
-          {TIPOS.filter((t) => t.id !== TIPO_CIERRE).map((t) => (
+          {TIPOS.filter((t) => t.id !== TIPO_CIERRE && !TIPOS_DEL_EMBUDO.includes(t.id)).map((t) => (
             <button
               key={t.id}
               onClick={() => setTipo(tipo === t.id ? null : t.id)}
@@ -233,7 +233,7 @@ export function FichaCliente({
             className="rounded-lg border border-gridline bg-surface px-2 py-1.5 text-[12.5px] outline-none focus:border-[#2A6FB8]"
           >
             <option value="">nada por ahora</option>
-            {TIPOS.map((t) => (
+            {TIPOS.filter((t) => !TIPOS_DEL_EMBUDO.includes(t.id)).map((t) => (
               <option key={t.id} value={t.id}>
                 {t.tarea}
               </option>

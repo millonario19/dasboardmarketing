@@ -25,7 +25,16 @@ const CELESTE = "#EAF1FA";
 const VERDE = "#157F52";
 const ROJO = "#C0392B";
 const ROJO_CLARO = "#FDF2F0";
+const VERDE_WA = "#1DA851";
+const AMBAR = "#B5701F";
+const AMBAR_CLARO = "#FDF3E6";
+const VERDE_CLARO = "#EEF7F2";
 const GRIS = "#9A998F";
+
+// La hora de la ventana a la que sale el seguimiento. El número vive también
+// en lib/ventana; acá va suelto porque ese módulo habla con GHL y traerlo al
+// navegador arrastra medio servidor al paquete.
+const HORA_DE_ENVIO = 20;
 
 function cuando(iso: string): string {
   const d = new Date(iso);
@@ -44,15 +53,43 @@ export function FilaSeguimiento({
   lead,
   pie,
   onCerrado,
+  dia,
 }: {
   lead: LeadDeSeguimiento;
   pie?: string;
   /** Al cerrar el seguimiento la fila se va de la lista de arriba. */
   onCerrado?: (id: string) => void;
+  /** Día del embudo, si esta fila está en una pestaña que manda seguimiento. */
+  dia?: 2 | 3;
 }) {
   const meta = ESTADO_META[lead.estado];
   const [abierta, setAbierta] = useState(false);
   const [tarea, setTarea] = useState(lead.tarea);
+  const [enviado, setEnviado] = useState(lead.enviadoHoy);
+  const [enviando, setEnviando] = useState(false);
+  const [falloEnvio, setFalloEnvio] = useState<string | null>(null);
+
+  function enviarSeguimiento() {
+    setEnviando(true);
+    setFalloEnvio(null);
+    fetch("/api/seguimiento/enviar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contactId: lead.id,
+        dia,
+        estado: lead.estado,
+        nombre: lead.nombre,
+        telefono: lead.telefono,
+      }),
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo mandar");
+        setEnviado(new Date().toISOString());
+      })
+      .catch((e) => setFalloEnvio(e.message))
+      .finally(() => setEnviando(false));
+  }
 
   const contexto = lead.acciones.length > 0 ? lead.acciones.join(" · ") : "Todavía no hizo nada";
   const vencida = tarea?.venceEn ? new Date(tarea.venceEn) < new Date() : false;
@@ -101,9 +138,28 @@ export function FilaSeguimiento({
               Sin próximo paso. <b className="font-semibold underline">Ponele una tarea.</b>
             </button>
           )}
+
+          {/* La ventana de Meta. Se muestra solo donde se puede mandar algo:
+              en el paso 2 el seguimiento es a mano y el dato sobra. */}
+          {dia && <EstadoVentana lead={lead} dia={dia} enviado={enviado} />}
+          {falloEnvio && (
+            <span className="block text-[11px] mt-1" style={{ color: ROJO }}>
+              {falloEnvio}
+            </span>
+          )}
         </span>
 
         <span className="flex items-center gap-1.5 shrink-0">
+          {dia && !enviado && lead.ventana.abierta && (
+            <button
+              onClick={enviarSeguimiento}
+              disabled={enviando}
+              className="rounded-full px-3 py-1 text-[11.5px] font-semibold text-white disabled:opacity-50"
+              style={{ background: dia === 2 ? VERDE_WA : AMBAR }}
+            >
+              {enviando ? "Mandando…" : dia === 2 ? "Enviar seguimiento" : "Enviar plantilla"}
+            </button>
+          )}
           <button
             onClick={() => setAbierta((v) => !v)}
             className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
@@ -141,5 +197,76 @@ export function FilaSeguimiento({
         />
       )}
     </>
+  );
+}
+
+/**
+ * Cuánto le queda de ventana, en una línea.
+ *
+ * Es el dato que decide si el mensaje sale gratis o cuesta una plantilla, y el
+ * agente lo tiene que ver antes de tocar el botón — no después, cuando Meta ya
+ * rechazó el envío en silencio.
+ */
+function EstadoVentana({
+  lead,
+  dia,
+  enviado,
+}: {
+  lead: LeadDeSeguimiento;
+  dia: 2 | 3;
+  enviado: string | null;
+}) {
+  const v = lead.ventana;
+
+  if (enviado) {
+    return (
+      <span
+        className="inline-block text-[10.5px] font-bold rounded-full px-2 py-[2px] mt-1.5"
+        style={{ background: VERDE_CLARO, color: VERDE }}
+      >
+        ✓ seguimiento enviado {new Date(enviado).toLocaleTimeString("es-CO", {
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "America/Bogota",
+        })}
+      </span>
+    );
+  }
+
+  if (v.horas === null) {
+    return (
+      <span className="block text-[11px] mt-1.5" style={{ color: GRIS }}>
+        Nunca escribió: no hay ventana abierta y Meta no deja mandar nada.
+      </span>
+    );
+  }
+
+  const horas = Math.floor(v.horas);
+  if (!v.abierta) {
+    return (
+      <span
+        className="inline-block text-[10.5px] font-bold rounded-full px-2 py-[2px] mt-1.5"
+        style={{ background: ROJO_CLARO, color: ROJO }}
+      >
+        ✕ ventana cerrada hace {horas - 24} h · {dia === 2 ? "va mañana con plantilla" : "hace falta plantilla"}
+      </span>
+    );
+  }
+
+  const faltan = Math.max(Math.ceil(24 - v.horas), 0);
+  const urge = v.porCerrarse;
+  return (
+    <span
+      className="inline-block text-[10.5px] font-bold rounded-full px-2 py-[2px] mt-1.5"
+      style={
+        urge
+          ? { background: ROJO_CLARO, color: ROJO }
+          : { background: AMBAR_CLARO, color: AMBAR }
+      }
+    >
+      {urge ? "⏰ " : ""}
+      hora {horas} · cierra en {faltan} h
+      {!urge && ` · se manda a la ${HORA_DE_ENVIO}`}
+    </span>
   );
 }

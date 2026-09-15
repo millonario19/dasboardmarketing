@@ -15,7 +15,8 @@ import {
 } from "./leadStates";
 import { notasDe, type Nota } from "./notas";
 import { confirmadosDe } from "./confirmados";
-import { tareasDe, cerrados, type Accion } from "./acciones";
+import { tareasDe, cerrados, enviadosHoy, type Accion } from "./acciones";
+import { ventanasDe, SIN_VENTANA, type Ventana } from "./ventana";
 import { soloDelAgente } from "./metrics";
 import { getPool } from "./db";
 
@@ -38,7 +39,7 @@ const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 
 // Hoy y los tres días anteriores. Más atrás el lead ya se enfrió y la lista se
 // vuelve un archivo en vez de una tarea.
-export const DIAS_DE_SEGUIMIENTO = 3;
+export const DIAS_DE_SEGUIMIENTO = 2;
 
 const CACHE_MS = 60_000;
 const cache = new Map<string, { en: number; datos: Seguimiento }>();
@@ -76,6 +77,14 @@ export type LeadDeSeguimiento = {
    * muere solo. Por eso la lista lo marca en rojo en vez de dejarlo pasar.
    */
   tarea: Accion | null;
+  /**
+   * Cuánto le queda de la ventana de 24 horas de Meta. De acá sale si el
+   * seguimiento del día sale gratis o hay que gastar una plantilla — y si se
+   * puede mandar algo, para empezar.
+   */
+  ventana: Ventana;
+  /** Si ya le salió el seguimiento del embudo hoy, a qué hora. */
+  enviadoHoy: string | null;
 };
 
 /**
@@ -205,6 +214,9 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
       via: "llego",
       nota,
       tarea: tareas.get(contacto.id) ?? null,
+      // Los confirmados no reciben automáticos: su ventana no se mira.
+      ventana: SIN_VENTANA,
+      enviadoHoy: null,
       confirmadoEn,
       dias: Math.max(
         0,
@@ -221,7 +233,10 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
 /** Lo que el agente elige cuando ya no hay nada más que hacer con el cliente. */
 export const CERRADO = "Cerrar seguimiento";
 
-const ETIQUETAS = ["Hoy", "Ayer", "Antier", "Hace 3 días", "Hace 4 días", "Hace 5 días"];
+// El embudo los cuenta desde que el lead entró: el día 1 es el día que llegó.
+// «Hoy / Ayer / Antier» decía lo mismo pero no dejaba hablar del día 2 con
+// marketing ni con los flujos, que se llaman igual.
+const ETIQUETAS = ["Día 1", "Día 2", "Día 3", "Día 4", "Día 5", "Día 6"];
 
 /**
  * Lo que el cliente prometió, todavía sin cumplir.
@@ -322,10 +337,12 @@ export async function computeSeguimiento(
   }
 
   const idsUtiles = utiles.map((u) => u.contacto.id);
-  const [notas, tareasPorDia, cerradosPorDia] = await Promise.all([
+  const [notas, tareasPorDia, cerradosPorDia, ventanas, enviados] = await Promise.all([
     notasDe(idsUtiles),
     tareasDe(idsUtiles),
     cerrados(idsUtiles),
+    ventanasDe(idsUtiles),
+    enviadosHoy(idsUtiles),
   ]);
 
   for (const { contacto, agente, estado } of utiles) {
@@ -344,21 +361,28 @@ export async function computeSeguimiento(
       via: viaDeLead(contacto, estado),
       nota: notas.get(contacto.id) ?? null,
       tarea: tareasPorDia.get(contacto.id) ?? null,
+      ventana: ventanas.get(contacto.id) ?? SIN_VENTANA,
+      enviadoHoy: enviados.get(contacto.id) ?? null,
     });
     porDia.set(dia, lista);
   }
 
-  // Caliente primero: es donde está la plata más cerca.
+  // Caliente primero: es donde está la plata más cerca. Y dentro de cada
+  // temperatura, la ventana que se cierra antes — esa se pierde si nadie la
+  // toca hoy, y con ella el envío gratis.
   const orden: Record<EstadoLead, number> = { caliente: 0, tibio: 1, frio: 2 };
   const salida: DiaDeSeguimiento[] = [];
   for (let i = 0; i <= dias; i++) {
     const fecha = diaBogota(new Date(arrancaHoy - i * 864e5 + 3600e3).toISOString());
     const leads = (porDia.get(fecha) ?? []).sort(
-      (a, b) => orden[a.estado] - orden[b.estado] || b.creado.localeCompare(a.creado)
+      (a, b) =>
+        orden[a.estado] - orden[b.estado] ||
+        (a.ventana.cierraEn ?? "9").localeCompare(b.ventana.cierraEn ?? "9") ||
+        b.creado.localeCompare(a.creado)
     );
     const porEstado = { frio: 0, tibio: 0, caliente: 0 } as Record<EstadoLead, number>;
     for (const l of leads) porEstado[l.estado] += 1;
-    salida.push({ fecha, etiqueta: ETIQUETAS[i] ?? `Hace ${i} días`, leads, porEstado });
+    salida.push({ fecha, etiqueta: ETIQUETAS[i] ?? `Día ${i + 1}`, leads, porEstado });
   }
 
   const [enBusiness, promesas] = await Promise.all([

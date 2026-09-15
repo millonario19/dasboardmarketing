@@ -1,5 +1,5 @@
 import { getPool } from "./db";
-import { TIPO_CIERRE, type TipoAccion } from "./tiposAccion";
+import { TIPO_CIERRE, TIPOS_DEL_EMBUDO, type TipoAccion } from "./tiposAccion";
 
 /**
  * Todo lo que el agente hace con un cliente, una fila por vez.
@@ -272,6 +272,56 @@ export async function tareasDe(contactIds: string[]): Promise<Map<string, Accion
     for (const f of rows) salida.set(f.contact_id, aAccion(f));
   } catch {
     /* sin base, la fila se muestra sin tarea */
+  }
+  return salida;
+}
+
+/**
+ * ¿Ya le salió un seguimiento del embudo hoy?
+ *
+ * El tope de uno por día lo lleva el dashboard porque GHL no puede: un flujo no
+ * sabe cuántas veces se disparó hoy sobre el mismo contacto. Y dos mensajes el
+ * mismo día es justo lo que hace que a un número lo bloqueen.
+ */
+export async function enviadoHoy(contactId: string): Promise<boolean> {
+  try {
+    await asegurarTabla();
+    const local = new Date(Date.now() - BOGOTA_OFFSET_MS);
+    const arranca = new Date(
+      Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) + BOGOTA_OFFSET_MS
+    ).toISOString();
+    const { rows } = await getPool().query<{ n: string }>(
+      `select count(*) as n from acciones
+        where contact_id = $1 and hecha_en >= $2 and tipo = any($3::text[])`,
+      [contactId, arranca, TIPOS_DEL_EMBUDO]
+    );
+    return Number(rows[0]?.n ?? 0) > 0;
+  } catch {
+    // Sin base no se puede saber. Dejar pasar es peor que no dejar: preferimos
+    // no mandar nada a mandar el segundo del día.
+    return true;
+  }
+}
+
+/** Cuáles de estos ya recibieron el seguimiento de hoy. */
+export async function enviadosHoy(contactIds: string[]): Promise<Map<string, string>> {
+  const salida = new Map<string, string>();
+  if (contactIds.length === 0) return salida;
+  try {
+    await asegurarTabla();
+    const local = new Date(Date.now() - BOGOTA_OFFSET_MS);
+    const arranca = new Date(
+      Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) + BOGOTA_OFFSET_MS
+    ).toISOString();
+    const { rows } = await getPool().query<{ contact_id: string; hecha_en: Date }>(
+      `select distinct on (contact_id) contact_id, hecha_en from acciones
+        where contact_id = any($1::text[]) and hecha_en >= $2 and tipo = any($3::text[])
+        order by contact_id, hecha_en desc`,
+      [contactIds, arranca, TIPOS_DEL_EMBUDO]
+    );
+    for (const f of rows) salida.set(f.contact_id, f.hecha_en.toISOString());
+  } catch {
+    /* sin base, la fila se muestra sin marca */
   }
   return salida;
 }
