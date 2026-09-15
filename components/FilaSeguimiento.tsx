@@ -30,11 +30,21 @@ const AMBAR = "#B5701F";
 const AMBAR_CLARO = "#FDF3E6";
 const VERDE_CLARO = "#EEF7F2";
 const GRIS = "#9A998F";
+const GRIS_2 = "#5E5C56";
 
 // La hora de la ventana a la que sale el seguimiento. El número vive también
 // en lib/ventana; acá va suelto porque ese módulo habla con GHL y traerlo al
 // navegador arrastra medio servidor al paquete.
 const HORA_DE_ENVIO = 20;
+
+// El diagnóstico del lead, en dos palabras. Va junto a las acciones: la
+// temperatura dice cuánto interés hay, esto dice por dónde se trabó.
+const VIA_CORTA: Record<string, string> = {
+  llego: "llegó al Business",
+  "clic-sin-llegar": "hizo clic y no llegó",
+  "tibio-sin-bajar": "no bajó",
+  "no-responde": "no responde",
+};
 
 function cuando(iso: string): string {
   const d = new Date(iso);
@@ -91,6 +101,7 @@ export function FilaSeguimiento({
       .finally(() => setEnviando(false));
   }
 
+  const via = VIA_CORTA[lead.via];
   const contexto = lead.acciones.length > 0 ? lead.acciones.join(" · ") : "Todavía no hizo nada";
   const vencida = tarea?.venceEn ? new Date(tarea.venceEn) < new Date() : false;
 
@@ -102,6 +113,12 @@ export function FilaSeguimiento({
         <span className="min-w-0 flex-1">
           <span className="block text-[13.5px] font-semibold leading-tight">{lead.nombre}</span>
           <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
+            {via && (
+              <b className="font-semibold" style={{ color: meta.color }}>
+                {via}
+              </b>
+            )}
+            {via && " · "}
             {contexto}
           </span>
           {/* En la lista de «en mi WhatsApp Business» acá va desde cuándo lo
@@ -114,11 +131,8 @@ export function FilaSeguimiento({
 
           {tarea ? (
             <span
-              className="block text-[12.5px] mt-1.5 px-2.5 py-1.5 rounded-lg"
-              style={{
-                borderLeft: `3px solid ${vencida ? ROJO : AZUL}`,
-                background: vencida ? ROJO_CLARO : CELESTE,
-              }}
+              className="block text-[11.5px] mt-1.5 pl-2"
+              style={{ borderLeft: `2px solid ${vencida ? ROJO : AZUL}`, color: vencida ? ROJO : GRIS_2 }}
             >
               {vencida && "⏰ "}
               <b className="font-semibold">{metaTipo(tarea.tipo).tarea}</b>
@@ -132,10 +146,10 @@ export function FilaSeguimiento({
           ) : (
             <button
               onClick={() => setAbierta(true)}
-              className="block text-[12.5px] mt-1.5 px-2.5 py-1.5 rounded-lg text-left w-full"
-              style={{ borderLeft: `3px solid ${ROJO}`, background: ROJO_CLARO, color: ROJO }}
+              className="block text-[11.5px] mt-1.5 text-left"
+              style={{ color: ROJO }}
             >
-              Sin próximo paso. <b className="font-semibold underline">Ponele una tarea.</b>
+              Sin próximo paso · <b className="font-semibold underline">ponele una tarea</b>
             </button>
           )}
 
@@ -154,15 +168,16 @@ export function FilaSeguimiento({
             <button
               onClick={enviarSeguimiento}
               disabled={enviando}
-              className="rounded-full px-3 py-1 text-[11.5px] font-semibold text-white disabled:opacity-50"
-              style={{ background: dia === 2 ? VERDE_WA : AMBAR }}
+              title={`Pone la etiqueta seg-d${dia}-${lead.estado === "frio" ? "frio" : lead.estado} y el flujo manda el mensaje`}
+              className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold disabled:opacity-40 hover:opacity-70 whitespace-nowrap"
+              style={{ border: `1px solid ${meta.color}`, color: meta.color, background: "transparent" }}
             >
-              {enviando ? "Mandando…" : dia === 2 ? "Enviar seguimiento" : "Enviar plantilla"}
+              {enviando ? "Mandando…" : dia === 2 ? "↗ Enviar" : "↗ Plantilla"}
             </button>
           )}
           <button
             onClick={() => setAbierta((v) => !v)}
-            className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+            className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold"
             style={{ background: CELESTE, color: AZUL }}
           >
             {abierta ? "Cerrar" : "Ver"}

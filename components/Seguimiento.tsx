@@ -23,9 +23,16 @@ const VIA_TITULO: Record<Via, string> = {
   "no-responde": "No responde",
 };
 
-// El orden es el del día: primero la plata comprometida, al final el que no
-// contesta.
-const VIAS: Via[] = ["llego", "clic-sin-llegar", "tibio-sin-bajar", "no-responde"];
+/**
+ * Las tres temperaturas, en el orden en que se trabaja el día: primero donde
+ * está la plata más cerca. Cada una tiene su etiqueta y su flujo en GHL, y por
+ * eso la lista se agrupa por acá y no por vía.
+ */
+const TEMPERATURAS = [
+  { id: "caliente" as const, titulo: "Calientes", tag: "caliente", color: "#C0392B", fondo: "#FDF2F0" },
+  { id: "tibio" as const, titulo: "Tibios", tag: "tibio", color: "#B5701F", fondo: "#FDF3E6" },
+  { id: "frio" as const, titulo: "Fríos", tag: "frio", color: "#2A78D6", fondo: "#EEF3FA" },
+];
 const VIA_COLOR: Record<Via, string> = {
   llego: "#157F52",
   "clic-sin-llegar": "#C0392B",
@@ -372,19 +379,38 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
         </p>
       )}
 
-      {/* Agrupado por vía, no por temperatura: la temperatura dice cuánto
-          interés hay, la vía dice qué hay que hacer. */}
-      {VIAS.map((via) => {
-        const suyos = (actual?.leads ?? []).filter((l) => l.via === via);
+      {/* Agrupado por TEMPERATURA, que es lo que elige la etiqueta y por lo
+          tanto el flujo que se dispara. Antes agrupaba por vía —hizo clic, no
+          responde— y eso contaba otra historia: buena para entender al lead,
+          inútil para saber qué mensaje le toca. La vía no se pierde: sigue en
+          la fila, debajo del nombre. */}
+      {TEMPERATURAS.map((t) => {
+        const suyos = (actual?.leads ?? []).filter((l) => l.estado === t.id);
         if (suyos.length === 0) return null;
         return (
-          <div key={via}>
-            <p
-              className="px-4 sm:px-5 py-1.5 text-[10px] font-bold uppercase tracking-[.14em] border-t border-gridline"
-              style={{ background: `${VIA_COLOR[via]}14`, color: VIA_COLOR[via] }}
+          <div key={t.id}>
+            <div
+              className="flex items-center gap-2 px-4 sm:px-5 py-[7px] border-t border-gridline"
+              style={{ background: t.fondo }}
             >
-              {VIA_TITULO[via]} · {suyos.length}
-            </p>
+              <span className="w-[6px] h-[6px] rounded-full shrink-0" style={{ background: t.color }} />
+              <span className="text-[10px] font-bold uppercase tracking-[.16em]" style={{ color: t.color }}>
+                {t.titulo}
+              </span>
+              <span className="text-[11px] tabular-nums font-bold" style={{ color: t.color, opacity: 0.55 }}>
+                {suyos.length}
+              </span>
+              {/* Qué flujo se dispara desde acá. Es el único lugar donde el
+                  agente ata lo que ve con lo que armó marketing en GHL. */}
+              {diaDelEmbudo && (
+                <span
+                  className="ml-auto text-[10.5px] hidden sm:inline"
+                  style={{ color: t.color, opacity: 0.5 }}
+                >
+                  seg-d{diaDelEmbudo}-{t.tag}
+                </span>
+              )}
+            </div>
             {suyos.map((l) => (
               <FilaSeguimiento key={l.id} lead={l} dia={diaDelEmbudo} />
             ))}
