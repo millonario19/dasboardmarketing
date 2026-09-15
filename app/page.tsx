@@ -20,6 +20,10 @@ export default function DashboardPage() {
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
   // Lo informa el módulo de conversaciones cuando termina de cargar.
   const [sinResponder, setSinResponder] = useState<number | null>(null);
+  // El día que el agente está mirando en el paso 2. El paso 3 lo sigue: la
+  // pregunta «¿llegó a tu WhatsApp?» tiene que ser del mismo día que la
+  // temperatura que la produjo.
+  const [diaMirado, setDiaMirado] = useState<string | null>(null);
   const sesion = useSesion();
   const esAdmin = sesion?.rol === "admin";
 
@@ -149,7 +153,7 @@ export default function DashboardPage() {
               color: "#C0392B",
             }}
           >
-            <PanelEstados datos={data.panel} propio={!esAdmin} />
+            <PanelEstados datos={data.panel} propio={!esAdmin} onDia={setDiaMirado} />
           </PasoSistema>
 
           {/* El paso 3 es del agente: la dirección no puede saber si el cliente
@@ -158,10 +162,14 @@ export default function DashboardPage() {
             <PasoSistema
               numero={3}
               titulo="Ya está en mi Business"
-              detalle="Hasta que respondas, el paso 2 puede estar mal"
+              detalle={
+                diaMirado
+                  ? "Los clics del día que estás mirando en el paso 2"
+                  : "Hasta que respondas, el paso 2 puede estar mal"
+              }
               abiertoPorDefecto
             >
-              <ConfirmarBajadas dentroDePaso />
+              <ConfirmarBajadas dentroDePaso dia={diaMirado} />
             </PasoSistema>
           )}
 

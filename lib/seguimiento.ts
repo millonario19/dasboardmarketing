@@ -380,14 +380,12 @@ export async function computeSeguimiento(
     const yaConfirmado = confirmacionDeBajada(contacto) === "si";
     if (!yaConfirmado) utiles.push({ contacto, agente: agent, estado });
 
-    // El clic está registrado y nadie dijo si del otro lado apareció alguien.
-    // Al aviso de entrada solo van los de hoy: los tres pasos hablan del día, y
-    // una semana de preguntas acumuladas se vuelve un muro que nadie contesta.
-    // Los más viejos no se pierden — se preguntan en su fila del seguimiento,
-    // en el día que les toca.
+    // Los clics con su fecha. El recorte por día lo hace la pantalla, que es la
+    // que sabe qué día está mirando el agente: si eligió el 14 en el paso 2, el
+    // paso 3 tiene que hablar del 14 y no de hoy.
     const hizoClic = (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BUSINESS);
     const clic = clics.get(contacto.id) ?? null;
-    if (hizoClic && clic && new Date(clic).getTime() >= arrancaHoy) {
+    if (hizoClic && clic) {
       porConfirmar.push({
         id: contacto.id,
         nombre: contactDisplayName(contacto),

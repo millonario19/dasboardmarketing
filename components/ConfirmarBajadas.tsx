@@ -147,7 +147,21 @@ function Pregunta({
   );
 }
 
-export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: boolean }) {
+/** El día de Bogotá en formato YYYY-MM-DD. */
+function diaBogota(iso?: string): string {
+  return new Date((iso ? new Date(iso).getTime() : Date.now()) - 5 * 3600e3)
+    .toISOString()
+    .slice(0, 10);
+}
+
+export function ConfirmarBajadas({
+  dentroDePaso = false,
+  dia,
+}: {
+  dentroDePaso?: boolean;
+  /** Día a mirar, en Bogotá. Sin esto, hoy. */
+  dia?: string | null;
+}) {
   const [gente, setGente] = useState<PorConfirmar[] | null>(null);
   const [aviso, setAviso] = useState(false);
   // Plegado por defecto cuando va suelto: cinco preguntas abiertas ocupan media
@@ -168,7 +182,13 @@ export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: bool
         setGente(d.porConfirmar);
         // Sin pendientes no sale nada. Nunca. Los ya contestados se quedan en
         // la lista para verlos, pero no vuelven a interrumpir.
-        if (d.porConfirmar.every((p) => p.confirmado !== null)) return;
+        const hoy = diaBogota();
+        if (
+          d.porConfirmar
+            .filter((p) => p.clicEn && diaBogota(p.clicEn) === hoy)
+            .every((p) => p.confirmado !== null)
+        )
+          return;
         if (avisosDados() < AVISOS_POR_SESION) {
           setAviso(true);
           anotarAviso();
@@ -179,7 +199,7 @@ export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: bool
 
   // El segundo aviso de la sesión: solo si quedaron pendientes sin responder.
   useEffect(() => {
-    if (!gente || gente.every((p) => p.confirmado !== null)) return;
+    if (!gente || delDia.every((p) => p.confirmado !== null)) return;
     if (avisosDados() >= AVISOS_POR_SESION) return;
     const t = setTimeout(() => {
       setAviso(true);
@@ -188,26 +208,32 @@ export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: bool
     return () => clearTimeout(t);
   }, [gente]);
 
+  // Solo los clics del día que se está mirando. El servidor manda toda la
+  // ventana porque no sabe qué día eligió el agente.
+  const delDia = (gente ?? []).filter((p) => p.clicEn && diaBogota(p.clicEn) === (dia ?? diaBogota()));
+
   // Suelto y sin pendientes no sale nada, nunca. Pero dentro del paso 3 hay
   // que decirlo: si no, el agente abre el paso, no ve nada y cree que está roto.
-  if (!gente || gente.length === 0) {
+  if (!gente || delDia.length === 0) {
     if (!dentroDePaso) return null;
     return (
       <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
         <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
           {gente === null
             ? "Buscando quién tocó tu WhatsApp…"
-            : "Nadie tocó tu WhatsApp hoy. Los clics de días anteriores se preguntan en Seguimiento, en la fila del día que les toca."}
+            : dia
+              ? `Nadie tocó tu WhatsApp el ${new Date(`${dia}T12:00:00-05:00`).toLocaleDateString("es-CO", { day: "numeric", month: "long", timeZone: "America/Bogota" })}.`
+              : "Nadie tocó tu WhatsApp hoy. Los clics de días anteriores se preguntan en Seguimiento, en la fila del día que les toca."}
         </p>
       </section>
     );
   }
 
-  const pendientes = gente.filter((p) => p.confirmado === null);
-  const bajaron = gente.filter((p) => p.confirmado === "si").length;
+  const pendientes = delDia.filter((p) => p.confirmado === null);
+  const bajaron = delDia.filter((p) => p.confirmado === "si").length;
 
   const bloque = (compacto: boolean) =>
-    gente.map((p) => <Pregunta key={p.id} persona={p} onResponder={marcar} compacto={compacto} />);
+    delDia.map((p) => <Pregunta key={p.id} persona={p} onResponder={marcar} compacto={compacto} />);
 
   return (
     <>

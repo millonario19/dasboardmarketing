@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useCallback, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { ESTADOS, ESTADO_META, type EstadoLead } from "@/lib/leadStates";
 import { ConfirmarBajada, guardarConfirmacion } from "@/components/ConfirmarBajada";
 import { FilaDePaso, PASOS_DEL_ESTADO } from "@/components/IconosEmbudo";
@@ -38,7 +38,19 @@ type Dia = {
 // Cuando el tablero está filtrado a un agente, todo lo que se compara sale de
 // sus propios leads. Decirle "lo habitual de la oficina" a un número que es su
 // propio histórico sería mentirle sobre contra qué se está midiendo.
-export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?: boolean }) {
+export function PanelEstados({
+  datos,
+  propio = false,
+  onDia,
+}: {
+  datos: Datos;
+  propio?: boolean;
+  /**
+   * Qué día está mirando el agente, para que el paso 3 hable del mismo.
+   * Null cuando mira «hoy» o «este mes» y no un día puntual.
+   */
+  onDia?: (fecha: string | null) => void;
+}) {
   const [ventana, setVentana] = useState<"hoy" | "mes">("hoy");
   const [fecha, setFecha] = useState(ayerBogota);
   const [dia, setDia] = useState<Dia | null>(null);
@@ -143,6 +155,12 @@ export function PanelEstados({ datos, propio = false }: { datos: Datos; propio?:
         : prev
     );
   }, []);
+
+  // El paso 3 sigue el mismo día que este panel: si el agente consultó el 14,
+  // la pregunta «¿llegó a tu WhatsApp?» tiene que ser sobre los clics del 14.
+  useEffect(() => {
+    onDia?.(dia?.fecha ?? null);
+  }, [dia, onDia]);
 
   const conteos = dia ? dia.conteos : datos[ventana];
   const total = ESTADOS.reduce((s, e) => s + conteos[e], 0);
