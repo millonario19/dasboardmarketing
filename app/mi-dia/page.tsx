@@ -105,8 +105,9 @@ export default function MiDiaPage() {
         {/* El rótulo de la sección. Las dos pantallas tienen un paso 1, un 2 y
             un 3, y sin esto el agente no sabe de cuáles está leyendo. */}
         <div className="flex items-center gap-3 mb-3">
+          <span className="flex-1 h-px" style={{ background: "var(--gridline)" }} />
           <h2
-            className="text-[12px] sm:text-[13px] font-bold uppercase tracking-[.2em] whitespace-nowrap"
+            className="text-[12px] sm:text-[13px] font-bold uppercase tracking-[.2em] text-center"
             style={{ color: "#17457F" }}
           >
             Seguimiento mis leads
