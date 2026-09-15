@@ -186,7 +186,17 @@ export function FichaCliente({
                 <span className="min-w-0">
                   <span className="block text-[13px] leading-snug">
                     <b className="font-semibold">{pendiente ? m.tarea : m.hecho}</b>
-                    {a.detalle && <> — {a.detalle}</>}
+                    {/* El texto del mensaje va entre comillas y en su propio
+                        renglón: en una ruta de tres días lo que importa es qué
+                        se dijo, no que hubo un evento. */}
+                    {a.detalle &&
+                      (TIPOS_DEL_EMBUDO.includes(a.tipo) ? (
+                        <span className="block mt-0.5" style={{ color: GRIS_2 }}>
+                          «{a.detalle}»
+                        </span>
+                      ) : (
+                        <> — {a.detalle}</>
+                      ))}
                     {a.cerradaEn && !a.hechaEn && (
                       <span style={{ color: GRIS }}> · quedó cumplida</span>
                     )}
