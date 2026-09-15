@@ -37,9 +37,18 @@ import { getPool } from "./db";
 
 const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
 
-// Hoy y los tres días anteriores. Más atrás el lead ya se enfrió y la lista se
-// vuelve un archivo en vez de una tarea.
-export const DIAS_DE_SEGUIMIENTO = 2;
+/**
+ * Los días del embudo, contados desde que el lead entró por la pauta.
+ *
+ * Día 1 es el día que llegó. Los días 4, 5 y 6 no se muestran a propósito: a
+ * esa altura el lead ya recibió tres toques y otro más seguido es la forma más
+ * rápida de que te bloqueen. Vuelve el día 7, y ahí el trabajo es llamarlo, no
+ * escribirle.
+ */
+export const DIAS_DEL_EMBUDO = [1, 2, 3, 7] as const;
+
+/** Hasta dónde hay que mirar hacia atrás para armar todos los días. */
+const DIAS_ATRAS = 6;
 
 const CACHE_MS = 60_000;
 const cache = new Map<string, { en: number; datos: Seguimiento }>();
@@ -135,6 +144,11 @@ export type DiaDeSeguimiento = {
 
 export type Seguimiento = {
   dias: DiaDeSeguimiento[];
+  /**
+   * Cuántos quedaron en los días 4, 5 y 6, que no se muestran. No es un número
+   * decorativo: sin él, el agente que buscaba a alguien cree que se perdió.
+   */
+  ocultos: number;
   /** Los que ya están en el WhatsApp Business del agente. */
   enBusiness: LeadEnBusiness[];
   /** Lo primero del día: el sistema sabe que hicieron clic, no si llegaron. */
@@ -233,10 +247,6 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
 /** Lo que el agente elige cuando ya no hay nada más que hacer con el cliente. */
 export const CERRADO = "Cerrar seguimiento";
 
-// El embudo los cuenta desde que el lead entró: el día 1 es el día que llegó.
-// «Hoy / Ayer / Antier» decía lo mismo pero no dejaba hablar del día 2 con
-// marketing ni con los flujos, que se llaman igual.
-const ETIQUETAS = ["Día 1", "Día 2", "Día 3", "Día 4", "Día 5", "Día 6"];
 
 /**
  * Lo que el cliente prometió, todavía sin cumplir.
@@ -286,7 +296,7 @@ async function promesasPendientes(usuario: string | null): Promise<Promesa[]> {
 export async function computeSeguimiento(
   soloAgente: string | null | undefined,
   usuario: string | null,
-  dias = DIAS_DE_SEGUIMIENTO
+  dias = DIAS_ATRAS
 ): Promise<Seguimiento> {
   const ahora = Date.now();
   const llave = `${soloAgente ?? "todos"}|${usuario ?? "-"}|${dias}`;
@@ -372,8 +382,14 @@ export async function computeSeguimiento(
   // toca hoy, y con ella el envío gratis.
   const orden: Record<EstadoLead, number> = { caliente: 0, tibio: 1, frio: 2 };
   const salida: DiaDeSeguimiento[] = [];
-  for (let i = 0; i <= dias; i++) {
+  let ocultos = 0;
+  for (let n = 1; n <= dias + 1; n++) {
+    const i = n - 1; // día 1 es hoy: cero días atrás
     const fecha = diaBogota(new Date(arrancaHoy - i * 864e5 + 3600e3).toISOString());
+    if (!(DIAS_DEL_EMBUDO as readonly number[]).includes(n)) {
+      ocultos += (porDia.get(fecha) ?? []).length;
+      continue;
+    }
     const leads = (porDia.get(fecha) ?? []).sort(
       (a, b) =>
         orden[a.estado] - orden[b.estado] ||
@@ -382,7 +398,7 @@ export async function computeSeguimiento(
     );
     const porEstado = { frio: 0, tibio: 0, caliente: 0 } as Record<EstadoLead, number>;
     for (const l of leads) porEstado[l.estado] += 1;
-    salida.push({ fecha, etiqueta: ETIQUETAS[i] ?? `Día ${i + 1}`, leads, porEstado });
+    salida.push({ fecha, etiqueta: `Día ${n}`, leads, porEstado });
   }
 
   const [enBusiness, promesas] = await Promise.all([
@@ -392,6 +408,7 @@ export async function computeSeguimiento(
 
   const datos: Seguimiento = {
     dias: salida,
+    ocultos,
     enBusiness,
     porConfirmar,
     promesas,

@@ -45,6 +45,7 @@ const AZUL = "#17457F";
 const CELESTE = "#EAF1FA";
 const ROJO = "#C0392B";
 const VERDE = "#157F52";
+const VERDE_CLARO = "#EEF7F2";
 const GRIS_2 = "#5E5C56";
 const AMBAR = "#B5701F";
 const GRIS = "#9A998F";
@@ -125,6 +126,8 @@ function Agenda({ promesas }: { promesas: Promesa[] }) {
  * queda es que alguien lo trabaje. Por eso va primera, antes de las pestañas
  * por día, y por eso no se cae a los tres días como el resto.
  */
+const DIAS_DEL_EMBUDO = [1, 2, 3, 7];
+
 function EnMiBusiness({
   leads,
   onCerrado,
@@ -132,6 +135,24 @@ function EnMiBusiness({
   leads: LeadEnBusiness[];
   onCerrado: (id: string) => void;
 }) {
+  const [dia, setDia] = useState(1);
+
+  // El mismo embudo que el paso 3, pero el reloj arranca el día que el agente
+  // confirmó que lo tiene, no el día que el lead entró por la pauta. Antes esto
+  // era una lista suelta: al frío le dábamos tres días con estructura y al que
+  // ya estaba en el WhatsApp —el que más cerca está de la plata— una lista.
+  const porDia = new Map<number, LeadEnBusiness[]>();
+  let ocultos = 0;
+  for (const l of leads) {
+    const n = l.dias + 1; // dias 0 = lo confirmó hoy = día 1
+    if (!DIAS_DEL_EMBUDO.includes(n)) {
+      ocultos += 1;
+      continue;
+    }
+    porDia.set(n, [...(porDia.get(n) ?? []), l]);
+  }
+  const suyos = porDia.get(dia) ?? [];
+
   return (
     <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
       <div
@@ -156,19 +177,49 @@ function EnMiBusiness({
           WhatsApp Business, aparece acá y no se va hasta que deposite o vos lo cierres.
         </p>
       ) : (
-        leads.map((l) => (
-          <FilaSeguimiento key={l.id} lead={l} pie={desdeCuando(l.dias)} onCerrado={onCerrado} />
-        ))
+        <>
+          <div className="flex gap-1.5 px-4 sm:px-5 py-2 border-b border-gridline flex-wrap items-center">
+            {DIAS_DEL_EMBUDO.map((n) => (
+              <button
+                key={n}
+                onClick={() => setDia(n)}
+                className="rounded-full px-3 py-1 text-[12px] font-semibold"
+                style={n === dia ? { background: VERDE, color: "#fff" } : { background: VERDE_CLARO, color: VERDE }}
+              >
+                Día {n}
+                <b className="ml-1.5 tabular-nums font-bold opacity-70">{(porDia.get(n) ?? []).length}</b>
+              </button>
+            ))}
+            {ocultos > 0 && (
+              <span className="text-[11px] ml-auto" style={{ color: GRIS }}>
+                {ocultos} en días 4–6 · vuelven el día 7
+              </span>
+            )}
+          </div>
+
+          {suyos.length === 0 ? (
+            <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
+              {dia === 7
+                ? "Nadie cumple siete días hoy."
+                : `Nadie confirmado en el día ${dia}.`}
+            </p>
+          ) : (
+            suyos.map((l) => (
+              <FilaSeguimiento key={l.id} lead={l} pie={queToca(dia)} onCerrado={onCerrado} />
+            ))
+          )}
+        </>
       )}
     </section>
   );
 }
 
-/** El reloj del seguimiento: cuenta desde que se confirmó, no desde que entró. */
-function desdeCuando(dias: number): string {
-  if (dias <= 0) return "llegó hoy a tu WhatsApp";
-  if (dias === 1) return "día 1 · desde ayer";
-  return `día ${dias} · hace ${dias} días`;
+/** Qué toca hacer hoy con este cliente, según por qué día del embudo va. */
+function queToca(dia: number): string {
+  if (dia === 1) return "Día 1 · llegó hoy a tu WhatsApp — saludalo y arrancá";
+  if (dia === 2) return "Día 2 · mandale el material y preguntá si le quedó claro";
+  if (dia === 3) return "Día 3 · último empujón antes de que se enfríe";
+  return "Día 7 · llamalo. A esta altura escribir ya no alcanza";
 }
 
 /**
@@ -229,7 +280,11 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
   const actual: DiaDeSeguimiento | undefined = datos?.dias[dia];
   // El día 1 no manda seguimiento: lo cubren los flujos de bienvenida que ya
   // existen. Los que mandan son el 2 y el 3.
-  const diaDelEmbudo: 2 | 3 | undefined = dia === 1 ? 2 : dia === 2 ? 3 : undefined;
+  // El día 1 no manda nada: lo cubren los flujos de bienvenida. El día 7
+  // tampoco: a esa altura el trabajo es llamar, no escribir.
+  const etiquetaActual = datos?.dias[dia]?.etiqueta;
+  const diaDelEmbudo: 2 | 3 | undefined =
+    etiquetaActual === "Día 2" ? 2 : etiquetaActual === "Día 3" ? 3 : undefined;
 
   if (parte === "agenda") {
     return datos ? <Agenda promesas={datos.promesas} /> : null;
@@ -278,7 +333,7 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
       {/* Pestañas por día: obligan a cerrar uno antes de pasar al siguiente,
           que es como se trabaja una lista de seguimiento. */}
       {datos && (
-        <div className="flex gap-1.5 px-4 sm:px-5 py-2 border-b border-gridline flex-wrap">
+        <div className="flex gap-1.5 px-4 sm:px-5 py-2 border-b border-gridline flex-wrap items-center">
           {datos.dias.map((d, i) => (
             <button
               key={d.fecha}
@@ -293,6 +348,13 @@ export function Seguimiento({ parte = "dias" }: { parte?: ParteSeguimiento }) {
               <b className="ml-1.5 tabular-nums font-bold opacity-70">{d.leads.length}</b>
             </button>
           ))}
+          {/* Sin este aviso, el agente que busca a alguien de hace cuatro días
+              cree que el sistema lo perdió. */}
+          {datos.ocultos > 0 && (
+            <span className="text-[11px] ml-auto" style={{ color: GRIS }}>
+              {datos.ocultos} en días 4–6 · vuelven el día 7
+            </span>
+          )}
         </div>
       )}
 
