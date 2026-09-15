@@ -129,13 +129,13 @@ function Pregunta({
   );
 }
 
-export function ConfirmarBajadas() {
+export function ConfirmarBajadas({ dentroDePaso = false }: { dentroDePaso?: boolean }) {
   const [gente, setGente] = useState<PorConfirmar[] | null>(null);
   const [aviso, setAviso] = useState(false);
-  // Plegado por defecto: cinco preguntas abiertas ocupan media pantalla y
-  // empujan hacia abajo el trabajo del día. Una línea que llama y se abre de
-  // un toque ocupa lo que ocupa una notificación.
-  const [abierto, setAbierto] = useState(false);
+  // Plegado por defecto cuando va suelto: cinco preguntas abiertas ocupan media
+  // pantalla. Pero dentro del paso 3 el encabezado del paso ya es el plegable,
+  // y dos acordeones anidados obligaban a tres clics para llegar al dato.
+  const [abierto, setAbierto] = useState(dentroDePaso);
 
   const quitar = useCallback((id: string) => {
     setGente((prev) => (prev ? prev.filter((p) => p.id !== id) : prev));
@@ -167,7 +167,20 @@ export function ConfirmarBajadas() {
     return () => clearTimeout(t);
   }, [gente]);
 
-  if (!gente || gente.length === 0) return null;
+  // Suelto y sin pendientes no sale nada, nunca. Pero dentro del paso 3 hay
+  // que decirlo: si no, el agente abre el paso, no ve nada y cree que está roto.
+  if (!gente || gente.length === 0) {
+    if (!dentroDePaso) return null;
+    return (
+      <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
+        <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
+          {gente === null
+            ? "Buscando quién tocó tu WhatsApp…"
+            : "Nadie tocó tu WhatsApp hoy. Los clics de días anteriores se preguntan en Seguimiento, en la fila del día que les toca."}
+        </p>
+      </section>
+    );
+  }
 
   const bloque = (compacto: boolean) =>
     gente.map((p) => <Pregunta key={p.id} persona={p} onResponder={quitar} compacto={compacto} />);
@@ -176,9 +189,12 @@ export function ConfirmarBajadas() {
     <>
       <section className="rounded-[22px] overflow-hidden bg-surface border border-gridline mb-5">
         <button
-          onClick={() => setAbierto((v) => !v)}
+          onClick={() => !dentroDePaso && setAbierto((v) => !v)}
           aria-expanded={abierto}
-          className="w-full flex items-center gap-2.5 flex-wrap px-4 sm:px-5 py-3 text-left hover:opacity-95"
+          disabled={dentroDePaso}
+          className={`w-full flex items-center gap-2.5 flex-wrap px-4 sm:px-5 py-3 text-left ${
+            dentroDePaso ? "cursor-default" : "hover:opacity-95"
+          }`}
           style={{ background: ROJO, color: "#fff" }}
         >
           <span
@@ -190,10 +206,14 @@ export function ConfirmarBajadas() {
           <span className="text-[14px] font-semibold tracking-[-0.02em]">
             {gente.length === 1 ? "cliente tocó" : "clientes tocaron"} tu WhatsApp y no sabés si llegaron
           </span>
-          <span className="ml-auto flex items-center gap-2 text-[12.5px]" style={{ color: "rgba(255,255,255,.72)" }}>
-            {abierto ? "Ocultar" : "Revisar ahora · 30 seg"}
-            <span className="text-[10px]">{abierto ? "▲" : "▼"}</span>
-          </span>
+          {/* Dentro del paso no hay nada que plegar: el encabezado del paso ya
+              lo hace, y dos acordeones anidados son tres clics para un dato. */}
+          {!dentroDePaso && (
+            <span className="ml-auto flex items-center gap-2 text-[12.5px]" style={{ color: "rgba(255,255,255,.72)" }}>
+              {abierto ? "Ocultar" : "Revisar ahora · 30 seg"}
+              <span className="text-[10px]">{abierto ? "▲" : "▼"}</span>
+            </span>
+          )}
         </button>
 
         {abierto && (

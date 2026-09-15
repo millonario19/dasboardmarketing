@@ -391,11 +391,22 @@ export async function computeSeguimiento(
   }
 
   const idsUtiles = utiles.map((u) => u.contacto.id);
+
+  // La ventana solo se calcula para los días que mandan seguimiento —el 2 y el
+  // 3—. Averiguarla cuesta abrir la conversación de cada lead, una llamada por
+  // cabeza, y hacerlo para los siete días dejaba la pantalla en segundos por un
+  // dato que en el día 1, el 7 y los ocultos no se usa para nada.
+  const diaDe = (iso: string) =>
+    Math.round((arrancaHoy - inicioDeDiaBogota(new Date(iso).getTime())) / 864e5) + 1;
+  const idsConVentana = utiles
+    .filter((u) => [2, 3].includes(diaDe(u.contacto.dateAdded)))
+    .map((u) => u.contacto.id);
+
   const [notas, tareasPorDia, cerradosPorDia, ventanas, enviados] = await Promise.all([
     notasDe(idsUtiles),
     tareasDe(idsUtiles),
     cerrados(idsUtiles),
-    ventanasDe(idsUtiles),
+    ventanasDe(idsConVentana),
     enviadosHoy(idsUtiles),
   ]);
 

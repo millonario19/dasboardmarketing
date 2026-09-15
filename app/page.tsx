@@ -161,7 +161,7 @@ export default function DashboardPage() {
               detalle="Hasta que respondas, el paso 2 puede estar mal"
               abiertoPorDefecto
             >
-              <ConfirmarBajadas />
+              <ConfirmarBajadas dentroDePaso />
             </PasoSistema>
           )}
 
