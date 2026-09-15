@@ -218,35 +218,31 @@ export default function MiDiaPage() {
         {/* Los tres pasos del seguimiento, el mismo orden que en Dirección.
             Primero lo que vos programaste, después los que ya tenés en el
             WhatsApp, y al final los que todavía no bajaron. */}
+        {/* Arriba y sin número: no es un paso del embudo, es la lista de hoy.
+            Los pasos son los mismos que en Dirección y siguen su numeración —
+            «Paso 2» tiene que significar lo mismo en las dos pantallas. */}
+        <TareasDeHoy onResumen={setPorHacer} />
+
         <PasoSistema
-          numero={1}
-          titulo="Hoy tenés que llamar"
-          detalle="Lo que vos mismo programaste, más lo que se te pasó"
+          numero={4}
+          titulo="En mi WhatsApp Business"
+          detalle="Los que confirmaste en el paso 3 · acá el sistema ya no ve nada, solo vos"
           abiertoPorDefecto
           resumen={
             porHacer === null
               ? null
               : porHacer > 0
-                ? { texto: `${porHacer} por hacer`, fondo: "#FBE9E7", color: "#C0392B" }
+                ? { texto: `${porHacer} por hacer hoy`, fondo: "#FBE9E7", color: "#C0392B" }
                 : { texto: "al día", fondo: "#E4F1EA", color: "#157F52" }
           }
-        >
-          <TareasDeHoy onResumen={setPorHacer} />
-        </PasoSistema>
-
-        <PasoSistema
-          numero={2}
-          titulo="En mi WhatsApp Business"
-          detalle="Los que confirmaste · acá el sistema ya no ve nada, solo vos"
-          abiertoPorDefecto
         >
           <Seguimiento parte="business" />
         </PasoSistema>
 
         <PasoSistema
-          numero={3}
+          numero={5}
           titulo="Todavía no bajaron"
-          detalle="Tibios y fríos de los últimos días"
+          detalle="El embudo de tres días, y el rescate del día 7"
         >
           <Seguimiento parte="dias" />
         </PasoSistema>
