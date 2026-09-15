@@ -323,18 +323,36 @@ export function FilaSeguimiento({
             >
               {enviando ? "Mandando…" : "Mandar por WhatsApp"}
             </button>
-            <label className="flex items-center gap-1.5 text-[11.5px]" style={{ color: GRIS_2 }}>
-              <input
-                type="checkbox"
-                checked={guardarComoDefecto}
-                onChange={(e) => setGuardarComoDefecto(e.target.checked)}
-              />
-              guardarlo para los {lead.estado === "frio" ? "fríos" : `${lead.estado}s`} del día {dia}
-            </label>
             <span className="text-[11px]" style={{ color: GRIS }}>
-              sale por tu WhatsApp de la oficina y queda en la conversación
+              sale por el WhatsApp de la oficina y queda guardado en la conversación
             </span>
           </div>
+
+          {/* La casilla iba al lado del botón y parecía una condición para
+              mandar. No lo es: cambia lo que va a aparecer escrito la próxima
+              vez, no lo que sale ahora. */}
+          <label
+            className="flex items-start gap-2 text-[11.5px] mt-2 pt-2 border-t border-gridline"
+            style={{ color: GRIS_2 }}
+          >
+            <input
+              type="checkbox"
+              className="mt-[3px]"
+              checked={guardarComoDefecto}
+              onChange={(e) => setGuardarComoDefecto(e.target.checked)}
+            />
+            <span>
+              Dejar este texto para los próximos{" "}
+              <b style={{ color: meta.color }}>
+                {lead.estado === "frio" ? "fríos" : `${lead.estado}s`} del día {dia}
+              </b>
+              .{" "}
+              <span style={{ color: GRIS }}>
+                No cambia el mensaje que estás por mandar: cambia el que va a venir escrito la
+                próxima vez.
+              </span>
+            </span>
+          </label>
         </div>
       )}
 
