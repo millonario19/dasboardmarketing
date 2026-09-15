@@ -386,11 +386,25 @@ export function FilaSeguimiento({
         {/* La temperatura, donde antes estaba el teléfono: es lo que decide qué
             mensaje le toca, y en una lista larga se busca con el ojo. */}
         {dia && (
-          <span
-            className="text-[10px] font-bold uppercase tracking-[.12em] rounded-full px-2.5 py-1 shrink-0 hidden sm:inline"
-            style={{ background: `${meta.color}1A`, color: meta.color }}
-          >
-            {lead.estado === "frio" ? "Frío" : lead.estado === "tibio" ? "Tibio" : "Caliente"}
+          <span className="flex items-center gap-1.5 shrink-0">
+            <span
+              className="text-[10px] font-bold uppercase tracking-[.12em] rounded-full px-2.5 py-1 hidden sm:inline"
+              style={{ background: `${meta.color}1A`, color: meta.color }}
+            >
+              {lead.estado === "frio" ? "Frío" : lead.estado === "tibio" ? "Tibio" : "Caliente"}
+            </span>
+            {/* Un lead de Instagram o Messenger no trae número: la red social
+                da el usuario y nada más. Se escribe igual, pero llamarlo no se
+                puede, y eso el agente lo tiene que ver antes de buscarlo. */}
+            {!lead.telefono && (
+              <span
+                className="text-[10px] font-semibold rounded-full px-2.5 py-1 whitespace-nowrap hidden sm:inline"
+                style={{ background: "#F1F0EB", color: GRIS_2 }}
+                title="Llegó por una red social: no hay número para llamarlo"
+              >
+                sin teléfono
+              </span>
+            )}
           </span>
         )}
 
@@ -416,14 +430,6 @@ export function FilaSeguimiento({
               <IconoWhatsApp />
               {redactando ? "Cancelar" : `Ver la plantilla`}
             </button>
-          )}
-          {dia && !enviado && lead.ventana.abierta && !sePuedeEscribir && (
-            <span
-              className="text-[11px] font-semibold rounded-full px-2.5 py-1 whitespace-nowrap"
-              style={{ background: "#F1F0EB", color: GRIS_2 }}
-            >
-              sin teléfono
-            </span>
           )}
           {dia && !enviado && lead.ventana.abierta && sePuedeEscribir && (
             <button
