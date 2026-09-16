@@ -12,6 +12,8 @@ export type GhlContact = {
   lastName?: string;
   phone?: string | null;
   email?: string | null;
+  /** Por dónde entró: «whatsapp» (anuncio de clic a WhatsApp), «facebook», «instagram». */
+  attributionSource?: { medium?: string | null; sessionSource?: string | null } | null;
   searchAfter?: [number, string];
 };
 
@@ -155,6 +157,32 @@ export async function actualizarNombreContacto(
   });
   if (!res.ok) {
     throw new Error(`GHL no aceptó el nombre (${res.status}): ${(await res.text()).slice(0, 200)}`);
+  }
+}
+
+/**
+ * Ponerle el teléfono a un contacto que llegó sin él.
+ *
+ * Los leads de anuncios de clic a WhatsApp y los de Messenger entran sin
+ * número: Meta no lo entrega, ni en el contacto ni en la conversación. La
+ * única forma de tenerlo es que el cliente lo escriba, y cuando lo escribe hay
+ * que poder guardarlo o se pierde en el chat.
+ *
+ * Se guarda en GHL y no solo en el tablero para que sirva en los dos lados:
+ * el que llama desde acá y el que abre la ficha en el CRM.
+ */
+export async function actualizarTelefonoContacto(
+  contactId: string,
+  telefono: string
+): Promise<void> {
+  const res = await fetchWithRetry(`${GHL_BASE_URL}/contacts/${encodeURIComponent(contactId)}`, {
+    method: "PUT",
+    headers: ghlHeaders(),
+    body: JSON.stringify({ phone: telefono }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`GHL no aceptó el número (${res.status}): ${(await res.text()).slice(0, 200)}`);
   }
 }
 

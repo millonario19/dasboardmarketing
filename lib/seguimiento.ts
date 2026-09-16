@@ -133,6 +133,15 @@ export type LeadDeSeguimiento = {
   enviadoHoy: string | null;
   /** La ficha del contacto en GHL, para ir a ver la conversación de verdad. */
   crmUrl: string;
+  /**
+   * Por dónde entró, según la atribución de Meta.
+   *
+   * Sirve para explicar el hueco cuando no hay teléfono: los de Messenger e
+   * Instagram nunca traen número, y los de anuncio de clic a WhatsApp llegan
+   * con una identidad tapada (`CO.1553…`) en vez del celular. Decirlo en la
+   * fila evita que el agente crea que el tablero se lo perdió.
+   */
+  medio: string | null;
 };
 
 /**
@@ -363,6 +372,7 @@ async function enMiBusiness(soloAgente: string | null | undefined): Promise<Lead
       ventana: SIN_VENTANA,
       enviadoHoy: null,
       crmUrl: fichaEnCrm(contacto.id),
+      medio: contacto.attributionSource?.medium ?? null,
       confirmadoEn,
       dias: Math.max(
         0,
@@ -558,6 +568,7 @@ async function construirSeguimiento(
       ventana: ventanas.get(contacto.id) ?? SIN_VENTANA,
       enviadoHoy: enviados.get(contacto.id) ?? null,
       crmUrl: fichaEnCrm(contacto.id),
+      medio: contacto.attributionSource?.medium ?? null,
     });
     porDia.set(dia, lista);
   }
@@ -610,6 +621,7 @@ async function construirSeguimiento(
     ventana: ventanas.get(contacto.id) ?? SIN_VENTANA,
     enviadoHoy: enviados.get(contacto.id) ?? null,
     crmUrl: fichaEnCrm(contacto.id),
+    medio: contacto.attributionSource?.medium ?? null,
   });
 
   const ordenTemp: Record<EstadoLead, number> = { caliente: 0, tibio: 1, frio: 2 };

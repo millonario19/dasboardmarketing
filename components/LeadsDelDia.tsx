@@ -52,6 +52,24 @@ function bonito(tel: string | null): string {
     : tel;
 }
 
+/**
+ * Por qué este lead llegó sin número.
+ *
+ * Lo verifiqué contra GHL sobre los doce sin teléfono de la semana: los de
+ * Messenger e Instagram nunca traen celular, y los de anuncio de clic a
+ * WhatsApp llegan firmados con una identidad tapada de Meta —«CO.287658…»— en
+ * lugar del número. No está ni en el contacto ni en la conversación, así que
+ * no es que el tablero se lo haya perdido: no existe de este lado.
+ *
+ * Decirlo con todas las letras es la diferencia entre un agente que cree que
+ * el panel falla y uno que sabe que tiene que pedirlo en el chat.
+ */
+const SIN_NUMERO: Record<string, string> = {
+  whatsapp: "Entró por anuncio de WhatsApp · Meta tapa su número",
+  facebook: "Entró por Messenger · no trae número",
+  instagram: "Entró por Instagram · no trae número",
+};
+
 function Fila({
   lead,
   modo,
@@ -64,6 +82,30 @@ function Fila({
   const [copiado, setCopiado] = useState(false);
   const [bajando, setBajando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // El número que el cliente le pase por chat, para que no se quede ahí.
+  const [telefono, setTelefono] = useState(lead.telefono);
+  const [pidiendo, setPidiendo] = useState(false);
+  const [escrito, setEscrito] = useState("");
+  const [guardando, setGuardando] = useState(false);
+
+  function guardarTelefono() {
+    setGuardando(true);
+    setError(null);
+    fetch("/api/contacts/telefono", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactId: lead.id, telefono: escrito, nombre: lead.nombre }),
+    })
+      .then(async (r) => {
+        const j = await r.json();
+        if (!r.ok) throw new Error(j.error ?? "No se pudo guardar");
+        setTelefono(j.telefono);
+        setPidiendo(false);
+        setEscrito("");
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setGuardando(false));
+  }
 
   /**
    * Bajar es un solo gesto: copia y marca.
@@ -73,7 +115,7 @@ function Fila({
    * lead aparezca mañana en el paso 2.
    */
   function bajar() {
-    const ficha = `${lead.nombre}\n${bonito(lead.telefono)}`;
+    const ficha = `${lead.nombre}\n${bonito(telefono)}`;
     navigator.clipboard?.writeText(ficha).catch(() => undefined);
     setCopiado(true);
     setBajando(true);
@@ -81,7 +123,7 @@ function Fila({
     fetch("/api/contacts/bajar-manual", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ contactId: lead.id, nombre: lead.nombre, telefono: lead.telefono }),
+      body: JSON.stringify({ contactId: lead.id, nombre: lead.nombre, telefono }),
     })
       .then(async (r) => {
         if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo marcar");
@@ -95,9 +137,52 @@ function Fila({
     <article className="flex gap-3 items-start px-4 sm:px-5 py-2.5 border-t border-gridline">
       <span className="min-w-0 flex-1">
         <span className="block text-[13.5px] font-semibold leading-tight">{lead.nombre}</span>
-        <span className="block text-[12px] tabular-nums mt-0.5" style={{ color: GRIS_2 }}>
-          {lead.telefono ? bonito(lead.telefono) : "sin teléfono"}
-        </span>
+        {telefono ? (
+          <span className="block text-[12px] tabular-nums mt-0.5" style={{ color: GRIS_2 }}>
+            {bonito(telefono)}
+          </span>
+        ) : pidiendo ? (
+          <span className="flex items-center gap-1.5 mt-1">
+            <input
+              autoFocus
+              inputMode="tel"
+              value={escrito}
+              onChange={(e) => setEscrito(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && escrito.trim() && guardarTelefono()}
+              placeholder="3213456789"
+              className="w-[130px] rounded-lg px-2 py-1 text-[12.5px] tabular-nums bg-page border border-gridline"
+            />
+            <button
+              onClick={guardarTelefono}
+              disabled={guardando || !escrito.trim()}
+              className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+              style={{ background: VERDE }}
+            >
+              {guardando ? "…" : "Guardar"}
+            </button>
+            <button
+              onClick={() => { setPidiendo(false); setError(null); }}
+              className="text-[11px]"
+              style={{ color: GRIS }}
+            >
+              Cancelar
+            </button>
+          </span>
+        ) : (
+          <span className="flex items-center gap-2 flex-wrap mt-0.5">
+            <span className="text-[11.5px]" style={{ color: GRIS_2 }}>
+              {(lead.medio && SIN_NUMERO[lead.medio]) ?? "Llegó sin número"}
+            </span>
+            <button
+              onClick={() => setPidiendo(true)}
+              title="Cuando te pase el número por el chat, guardalo acá y queda para llamarlo"
+              className="rounded-full px-2 py-[2px] text-[11px] font-semibold"
+              style={{ background: CELESTE, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
+            >
+              + Agregar número
+            </button>
+          </span>
+        )}
         <span className="block text-[11px] mt-0.5" style={{ color: GRIS }}>
           entró {hora(lead.creado)} ·{" "}
           {lead.acciones.length > 0 ? lead.acciones.join(" · ") : "Solicitó información"}
@@ -125,17 +210,17 @@ function Fila({
         ) : modo === "bajar" ? (
           <button
             onClick={bajar}
-            disabled={bajando || !lead.telefono}
-            title={lead.telefono ? "Copia el nombre y el número, y lo marca como bajado" : "Este lead no tiene teléfono"}
+            disabled={bajando || !telefono}
+            title={telefono ? "Copia el nombre y el número, y lo marca como bajado" : "Guardá primero su número"}
             className="rounded-full px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40 hover:opacity-90 whitespace-nowrap"
             style={{ background: VERDE_WA }}
           >
             {bajando ? "Bajando…" : "Bajar manualmente"}
           </button>
         ) : (
-          <BotonWhatsApp telefono={lead.telefono} nombre={lead.nombre} tamano={28} />
+          <BotonWhatsApp telefono={telefono} nombre={lead.nombre} tamano={28} />
         )}
-        <BotonLlamar telefono={lead.telefono} nombre={lead.nombre} contactId={lead.id} tamano={28} />
+        <BotonLlamar telefono={telefono} nombre={lead.nombre} contactId={lead.id} tamano={28} />
         <a
           href={lead.crmUrl}
           target="_blank"
