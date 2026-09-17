@@ -7,10 +7,14 @@ export const config = {
   matcher: ["/((?!login|api/login|api/cron|_next/static|_next/image|favicon.ico).*)"],
 };
 
-// Rutas que solo puede abrir la dirección. La administración de usuarios es la
-// única: el resto de las pantallas las ve todo el mundo, pero filtradas a sus
-// propios leads del lado del servidor.
-const SOLO_DIRECCION = ["/admin", "/api/usuarios"];
+// Rutas que solo puede abrir el admin: mover gente entre oficinas y dar de
+// alta usuarios es de la organización, no de una oficina.
+const SOLO_ADMIN = ["/admin", "/api/usuarios"];
+
+// Rutas de dirección: el admin y los directores. El director manda en su
+// oficina, y el recorte a su gente lo hace cada consulta del lado del
+// servidor —acá solo se decide quién puede abrir la puerta.
+const SOLO_DIRECCION = ["/equipo", "/api/oficinas"];
 
 export async function middleware(req: NextRequest) {
   const sesion = await verificarSesion(req.cookies.get(SESSION_COOKIE)?.value);
@@ -20,10 +24,18 @@ export async function middleware(req: NextRequest) {
   }
 
   const ruta = req.nextUrl.pathname;
-  if (sesion.rol !== "admin" && SOLO_DIRECCION.some((p) => ruta === p || ruta.startsWith(`${p}/`))) {
-    return ruta.startsWith("/api/")
-      ? NextResponse.json({ error: "Solo la dirección puede hacer esto" }, { status: 403 })
+  const cubre = (rutas: string[]) =>
+    rutas.some((p) => ruta === p || ruta.startsWith(`${p}/`));
+  const rebotar = (mensaje: string) =>
+    ruta.startsWith("/api/")
+      ? NextResponse.json({ error: mensaje }, { status: 403 })
       : NextResponse.redirect(new URL("/", req.url));
+
+  if (sesion.rol !== "admin" && cubre(SOLO_ADMIN)) {
+    return rebotar("Solo el admin puede hacer esto");
+  }
+  if (sesion.rol !== "admin" && sesion.rol !== "director" && cubre(SOLO_DIRECCION)) {
+    return rebotar("Solo la dirección puede ver esto");
   }
 
   return NextResponse.next();

@@ -385,7 +385,18 @@ function ensureRow(counts: Map<string, MutableRow>, agent: string, agentId: stri
 //   Regla 3 — FTD: tag ftd-efectuado + tag del link propio, por fecha REAL
 //             del depósito (dateUpdated) — el depósito casi siempre pasa
 //             días después del registro, así que no sirve filtrar por Creada.
-export async function computeAgentProduction(soloAgente?: string | null): Promise<AgentProduction> {
+/**
+ * La producción por agente.
+ *
+ * `soloAgente` recorta a una persona —es lo que ve un agente de sí mismo—.
+ * `soloEstos` recorta a un equipo: son los `agent_id` de una oficina, y es lo
+ * que impide que un director de Apex vea a la gente de Prime. Vacío o sin
+ * pasar significa la red entera, que es lo que ve el admin.
+ */
+export async function computeAgentProduction(
+  soloAgente?: string | null,
+  soloEstos?: string[] | null
+): Promise<AgentProduction> {
   const now = Date.now();
   const today = bogotaRange(now, "day");
   const month = bogotaRange(now, "month");
@@ -441,15 +452,36 @@ export async function computeAgentProduction(soloAgente?: string | null): Promis
     if (t >= todayFromMs && t < todayToMs) row.ftdHoy += 1;
   }
 
-  const rows = [...counts.values()].sort((a, b) => b.leadsHoy - a.leadsHoy || b.ftdMes - a.ftdMes);
+  // El recorte por oficina va acá y no en cada búsqueda: GHL no sabe de
+  // oficinas —eso vive en nuestra base— así que se trae todo y se filtra por
+  // los agentes que son de esta. Las sumas de abajo salen de `rows`, así que
+  // recortar acá también corrige los totales.
+  const permitidos = soloEstos && soloEstos.length > 0 ? new Set(soloEstos) : null;
+  const rows = [...counts.values()]
+    .filter((r) => !permitidos || (r.agentId !== null && permitidos.has(r.agentId)))
+    .sort((a, b) => b.leadsHoy - a.leadsHoy || b.ftdMes - a.ftdMes);
 
   // Los nombres ya se resolvieron arriba al atribuir cada contacto, así que el
   // panel los reusa en vez de volver a pegarle a /users de GHL.
   const nombrePorAgente = new Map<string, string>();
   for (const r of rows) if (r.agentId) nombrePorAgente.set(r.agentId, r.agent);
 
+  // El panel de temperaturas también es de la oficina, no de la red: si se le
+  // pasaran todos los contactos, un director de Prime vería calientes de Apex
+  // en su propio tablero. `assignedTo` es de donde sale el agentId, así que
+  // alcanza para recortar sin volver a atribuir contacto por contacto.
+  const deLaOficina = <T extends { assignedTo?: string | null }>(cs: T[]): T[] =>
+    permitidos ? cs.filter((c) => c.assignedTo && permitidos.has(c.assignedTo)) : cs;
+
   const panel: PanelEstados = {
-    ...calcularPanel(leadContacts, registroContacts, nombrePorAgente, now, todayFromMs, todayToMs),
+    ...calcularPanel(
+      deLaOficina(leadContacts),
+      deLaOficina(registroContacts),
+      nombrePorAgente,
+      now,
+      todayFromMs,
+      todayToMs
+    ),
     rango: { hoy: today, mes: month },
   };
 
