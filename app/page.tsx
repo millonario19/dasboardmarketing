@@ -173,40 +173,40 @@ export default function DashboardPage() {
             <PanelEstados datos={data.panel} propio={!esAdmin} onDia={setDiaMirado} />
           </PasoSistema>
 
-          {/* El paso 3 es del agente: la dirección no puede saber si el cliente
-              llegó al WhatsApp de otro. */}
+          {/* Los pasos 3 y 4 eran uno solo mal partido: los dos contestan la
+              misma pregunta —¿este lead ya está en mi WhatsApp?— por los dos
+              caminos que existen. El cliente toca el botón y el agente
+              confirma si llegó, o el agente se lo lleva él. Separados obligaban
+              a recorrer dos listas del mismo día para saber lo mismo.
+
+              Es del agente, no de la dirección: nadie más puede saber si el
+              cliente apareció en el WhatsApp de otro. */}
           {!esAdmin && (
             <PasoSistema
               numero={3}
-              titulo="Ya está en mi Business"
+              titulo="Ya está en mi WhatsApp Business"
               detalle={
                 diaMirado
-                  ? "Los clics del día que estás mirando en el paso 2"
-                  : "Hasta que respondas, el paso 2 puede estar mal"
+                  ? "Del día que elegiste arriba · los que tocaron el botón y los que te llevás vos"
+                  : "Los que tocaron el botón y los que te llevás vos · hasta que respondas, el paso 2 puede estar mal"
               }
               abiertoPorDefecto
             >
               <ConfirmarBajadas dentroDePaso dia={diaMirado} />
+              {/* En un div y no suelto: el paso le quita el borde de arriba a
+                  las secciones que son hijas directas, y la segunda quedaría
+                  pegada a la primera sin nada que las separe. */}
+              <div className="mt-4 [&>section]:mb-0">
+                <LeadsDelDia modo="bajar" dia={diaMirado} />
+              </div>
             </PasoSistema>
           )}
 
-          {/* Los dos trabajos del día sobre los leads de hoy: llevárselos al
-              WhatsApp propio y llamarlos. Van acá y no en Mis leads porque
-              hablan de los que entraron hoy; Mis leads es el seguimiento de
-              los días que siguen. */}
+          {/* Llamar va acá y no en Mis leads porque habla de los que entraron
+              hoy; Mis leads es el seguimiento de los días que siguen. */}
           {!esAdmin && (
             <PasoSistema
               numero={4}
-              titulo="Bajar a mi WhatsApp Business manualmente"
-              detalle="Del día que elegiste arriba · vos te copiás el contacto y lo guardás en tu teléfono. No es el que baja solo por el CRM."
-            >
-              <LeadsDelDia modo="bajar" dia={diaMirado} />
-            </PasoSistema>
-          )}
-
-          {!esAdmin && (
-            <PasoSistema
-              numero={5}
               titulo="Llamar inmediatamente a mis leads nuevos"
               detalle="Hay mayor conversión si llamás de inmediato · lo que programés aparece mañana en Mis leads"
             >
