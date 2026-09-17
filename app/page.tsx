@@ -184,11 +184,11 @@ export default function DashboardPage() {
           {!esAdmin && (
             <PasoSistema
               numero={3}
-              titulo="Ya está en mi WhatsApp Business"
+              titulo="WhatsApp Business"
               detalle={
                 diaMirado
-                  ? "Del día que eligió arriba · los que tocaron el botón y los que se lleva usted"
-                  : "Los que tocaron el botón y los que se lleva usted · hasta que responda, el paso 2 puede estar mal"
+                  ? "Bajar manual o bajar por LeadConnector · del día que eligió arriba"
+                  : "Bajar manual o bajar por LeadConnector"
               }
               abiertoPorDefecto
             >
