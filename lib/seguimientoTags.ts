@@ -12,7 +12,13 @@ import type { EstadoLead } from "./leadStates";
  * a disparar sobre ese contacto nunca más.
  */
 
-export type DiaDelEmbudo = 2 | 3;
+/**
+ * El día 1 se sumó después. No tiene flujo ni plantilla —la ventana de Meta
+ * está abierta, el cliente acaba de escribir— así que el mensaje sale derecho
+ * desde el panel. La etiqueta se mantiene igual para que el hilo y el tope de
+ * uno por día cuenten los tres días con la misma regla.
+ */
+export type DiaDelEmbudo = 1 | 2 | 3;
 
 export function etiquetaDeSeguimiento(dia: DiaDelEmbudo, estado: EstadoLead): string {
   const temp = estado === "caliente" ? "caliente" : estado === "tibio" ? "tibio" : "frio";

@@ -43,8 +43,18 @@ export async function POST(req: NextRequest) {
   }
 
   const { contactId, dia, texto, plantilla } = body;
-  if (!contactId || (dia !== 2 && dia !== 3)) {
+  if (!contactId || (dia !== 1 && dia !== 2 && dia !== 3)) {
     return NextResponse.json({ error: "Faltan contactId o día" }, { status: 400 });
+  }
+  // El día 1 no tiene plantilla y no la necesita: el cliente escribió hoy, así
+  // que la ventana de Meta está abierta y el texto sale derecho. Si alguna vez
+  // llegara acá pidiendo plantilla sería un error de programación, no una
+  // decisión del agente.
+  if (dia === 1 && plantilla) {
+    return NextResponse.json(
+      { error: "El día 1 no manda plantillas: la ventana está abierta." },
+      { status: 400 }
+    );
   }
   if (!plantilla && !texto?.trim()) {
     return NextResponse.json({ error: "Falta el texto del mensaje" }, { status: 400 });
@@ -104,7 +114,7 @@ export async function POST(req: NextRequest) {
       telefono: body.telefono ?? null,
       usuario: sesion.usuario,
     },
-    dia === 2 ? "seg-d2" : "seg-d3",
+    dia === 1 ? "seg-d1" : dia === 2 ? "seg-d2" : "seg-d3",
     etiqueta ? `Plantilla del día ${dia} (${etiqueta})` : texto!.trim()
   ).catch(() => undefined);
 

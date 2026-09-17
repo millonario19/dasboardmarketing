@@ -18,6 +18,7 @@ export type TipoAccion =
   | "audio"
   | "me-escribio"
   | "sesion"
+  | "seg-d1"
   | "seg-d2"
   | "seg-d3"
   | "cerrar";
@@ -44,6 +45,7 @@ export const TIPOS: MetaTipo[] = [
   // Los dos del embudo. No se eligen a mano: los escribe el sistema cuando el
   // agente toca «Enviar seguimiento», para que el envío quede en el mismo hilo
   // que la llamada y el video y no en una tabla aparte.
+  { id: "seg-d1", hecho: "Le escribí el mismo día que entró", tarea: "Escribirle hoy", icono: "→", color: "verde" },
   { id: "seg-d2", hecho: "Le mandé el seguimiento del día 2", tarea: "Seguimiento día 2", icono: "→", color: "verde" },
   { id: "seg-d3", hecho: "Le mandé el seguimiento del día 3", tarea: "Seguimiento día 3", icono: "→", color: "ambar" },
   { id: "cerrar", hecho: "Cerré el seguimiento", tarea: "Cerrar seguimiento", icono: "✓", color: "gris" },
@@ -66,7 +68,7 @@ export function metaTipo(id: string): MetaTipo {
 export const esTipo = (x: unknown): x is TipoAccion => PORID.has(x as TipoAccion);
 
 /** Los que manda el sistema por el embudo, no el agente desde la ficha. */
-export const TIPOS_DEL_EMBUDO: TipoAccion[] = ["seg-d2", "seg-d3"];
+export const TIPOS_DEL_EMBUDO: TipoAccion[] = ["seg-d1", "seg-d2", "seg-d3"];
 
 /** Cerrar es el único que saca al cliente de las listas en vez de agregarle trabajo. */
 export const TIPO_CIERRE: TipoAccion = "cerrar";

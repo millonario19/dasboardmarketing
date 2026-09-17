@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar, BotonCrm, ReporteLlamada } from "@/components/Llamada";
-import { pedirSeguimiento } from "@/components/Seguimiento";
+import { pedirSeguimiento, olvidarSeguimiento } from "@/components/Seguimiento";
+import { EnviarWhatsApp } from "@/components/EnviarWhatsApp";
 import type { LeadDeSeguimiento } from "@/lib/seguimiento";
 
 /**
@@ -201,8 +202,9 @@ function Fila({
             convierte la lista en un seguimiento: sin esto la llamada se hace y
             no queda nada de lo que el cliente dijo. */}
         {modo === "llamar" && (
-          <span className="block mt-1.5 empty:hidden">
+          <span className="flex flex-wrap items-center gap-2 mt-1.5 empty:hidden">
             <ReporteLlamada contactId={lead.id} />
+            <EnviarWhatsApp lead={lead} dia={1} onEnviado={olvidarSeguimiento} />
           </span>
         )}
       </span>

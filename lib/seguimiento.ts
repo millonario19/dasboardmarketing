@@ -543,9 +543,16 @@ async function construirSeguimiento(
   // dato que en el día 1, el 7 y los ocultos no se usa para nada.
   const diaDe = (iso: string) =>
     Math.round((arrancaHoy - inicioDeDiaBogota(new Date(iso).getTime())) / 864e5) + 1;
-  const idsConVentana = utiles
-    .filter((u) => [2, 3].includes(diaDe(u.contacto.dateAdded)))
-    .map((u) => u.contacto.id);
+  // Los de hoy también: desde que se les puede escribir desde el panel hay que
+  // saber por dónde habla cada uno —WhatsApp, Instagram, Messenger— o el botón
+  // manda al agente a un error de GHL en vez de a la conversación. Son pocos,
+  // los del día, y las conversaciones ahora se abren de a seis.
+  const idsConVentana = [
+    ...new Set([
+      ...utiles.filter((u) => [2, 3].includes(diaDe(u.contacto.dateAdded))).map((u) => u.contacto.id),
+      ...crudosDeHoy.map((u) => u.contacto.id),
+    ]),
+  ];
 
   const [notas, tareasPorDia, cerradosPorDia, ventanas, enviados] = await Promise.all([
     notasDe(idsUtiles),

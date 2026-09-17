@@ -23,6 +23,17 @@ export type Mensaje = {
 
 /** Lo que se manda si nadie escribió nada todavía. */
 export const POR_DEFECTO: Record<string, string> = {
+  // Día 1: el cliente escribió hoy. Es el mensaje que más convierte de los
+  // tres, porque llega mientras todavía se acuerda del anuncio.
+  "d1-caliente":
+    "Hola {nombre}, soy tu asesor de Oficina Prime 👋 Vi que querés arrancar. " +
+    "Contame, ¿ya operaste antes o sería tu primera vez?",
+  "d1-tibio":
+    "Hola {nombre}, gracias por escribirnos 🙌 Te cuento en dos minutos cómo funciona la beca. " +
+    "¿Te llamo ahora o preferís por acá?",
+  "d1-frio":
+    "Hola {nombre}, recibí tu solicitud de información sobre la beca de trading 👋 " +
+    "¿Qué te gustaría saber primero?",
   "d2-caliente":
     "Hola {nombre}, te quedó el paso a medias 🙌 Diste clic para escribirme pero no me llegó tu mensaje. " +
     "Escribime por acá y lo resolvemos ya.",
