@@ -221,6 +221,14 @@ export type Seguimiento = {
    * fríos, tibios y calientes, incluidos los que ya se bajaron.
    */
   hoy: LeadDeSeguimiento[];
+  /**
+   * Lo mismo pero de cada día, por fecha de Bogotá («2026-09-12»).
+   *
+   * El agente elige un día arriba, en el paso 2, y los pasos de abajo tienen
+   * que hablar de ESE día. Antes los pasos 4 y 5 estaban clavados en hoy:
+   * consultaba el 12 y le seguían saliendo los leads del 16.
+   */
+  porDia: Record<string, LeadDeSeguimiento[]>;
   /** Lo primero del día: el sistema sabe que hicieron clic, no si llegaron. */
   porConfirmar: PorConfirmar[];
   promesas: Promesa[];
@@ -475,6 +483,7 @@ async function construirSeguimiento(
   const ahora = Date.now();
 
   const arrancaHoy = inicioDeDiaBogota(ahora);
+  const hoyBogota = diaBogota(new Date(ahora).toISOString());
   // La ventana incluye hoy: el seguimiento del día en curso es el primero que
   // se mira, no el último.
   const desde = new Date(arrancaHoy - dias * 864e5).toISOString();
@@ -496,7 +505,10 @@ async function construirSeguimiento(
 
   const clics = await clicsDeBusiness((contactos as GhlContact[]).map((c) => c.id));
 
-  const crudosDeHoy: { contacto: GhlContact; agente: string; estado: EstadoLead }[] = [];
+  // Todos los leads de la ventana, sin filtrar, agrupados por el día que
+  // entraron. La lista de llamadas los quiere completos —confirmados
+  // incluidos— y el agente tiene que poder mirar el 12 igual que mira hoy.
+  const crudosPorDia = new Map<string, { contacto: GhlContact; agente: string; estado: EstadoLead }[]>();
 
   for (const contacto of contactos as GhlContact[]) {
     // Los que ya depositaron salen: el seguimiento es de lo que falta cerrar.
@@ -510,10 +522,8 @@ async function construirSeguimiento(
       confirmacionDeBajada(contacto) === "si" ||
       (contacto.tags ?? []).some((t) => t.toLowerCase() === TAG_BAJADA_MANUAL);
     if (!yaConfirmado) utiles.push({ contacto, agente: agent, estado });
-    // La lista de llamadas del día los quiere a todos, confirmados incluidos.
-    if (diaBogota(contacto.dateAdded) === diaBogota(new Date(arrancaHoy + 3600e3).toISOString())) {
-      crudosDeHoy.push({ contacto, agente: agent, estado });
-    }
+    const suDia = diaBogota(contacto.dateAdded);
+    crudosPorDia.set(suDia, [...(crudosPorDia.get(suDia) ?? []), { contacto, agente: agent, estado }]);
 
     // Los clics con su fecha. El recorte por día lo hace la pantalla, que es la
     // que sabe qué día está mirando el agente: si eligió el 14 en el paso 2, el
@@ -533,8 +543,10 @@ async function construirSeguimiento(
     }
   }
 
+  const todosLosCrudos = () => [...crudosPorDia.values()].flat();
+
   const idsUtiles = [
-    ...new Set([...utiles.map((u) => u.contacto.id), ...crudosDeHoy.map((u) => u.contacto.id)]),
+    ...new Set([...utiles.map((u) => u.contacto.id), ...todosLosCrudos().map((u) => u.contacto.id)]),
   ];
 
   // La ventana solo se calcula para los días que mandan seguimiento —el 2 y el
@@ -550,7 +562,7 @@ async function construirSeguimiento(
   const idsConVentana = [
     ...new Set([
       ...utiles.filter((u) => [2, 3].includes(diaDe(u.contacto.dateAdded))).map((u) => u.contacto.id),
-      ...crudosDeHoy.map((u) => u.contacto.id),
+      ...(crudosPorDia.get(hoyBogota) ?? []).map((u) => u.contacto.id),
     ]),
   ];
 
@@ -644,11 +656,15 @@ async function construirSeguimiento(
   });
 
   const ordenTemp: Record<EstadoLead, number> = { caliente: 0, tibio: 1, frio: 2 };
-  const hoy = crudosDeHoy
-    .map((u) => armar(u.contacto, u.agente, u.estado))
-    .sort(
-      (a, b) => ordenTemp[a.estado] - ordenTemp[b.estado] || a.creado.localeCompare(b.creado)
-    );
+  const leadsPorDia: Record<string, LeadDeSeguimiento[]> = {};
+  for (const [fecha, suyos] of crudosPorDia) {
+    leadsPorDia[fecha] = suyos
+      .map((u) => armar(u.contacto, u.agente, u.estado))
+      .sort(
+        (a, b) => ordenTemp[a.estado] - ordenTemp[b.estado] || a.creado.localeCompare(b.creado)
+      );
+  }
+  const hoy = leadsPorDia[hoyBogota] ?? [];
 
   const [enBusiness, promesas, flujos] = await Promise.all([
     enMiBusiness(soloAgente),
@@ -659,6 +675,7 @@ async function construirSeguimiento(
   const datos: Seguimiento = {
     dias: salida,
     hoy,
+    porDia: leadsPorDia,
     ocultos,
     enBusiness,
     porConfirmar,

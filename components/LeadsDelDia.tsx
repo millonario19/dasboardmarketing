@@ -44,6 +44,20 @@ function hora(iso: string): string {
   });
 }
 
+/** El día de hoy en Bogotá, en el mismo formato que manda el paso 2. */
+function hoyBogota(): string {
+  return new Date(Date.now() - 5 * 3600e3).toISOString().slice(0, 10);
+}
+
+/** «12 de septiembre», para que el encabezado no muestre un 2026-09-12. */
+function nombreDeDia(fecha: string): string {
+  return new Date(`${fecha}T12:00:00-05:00`).toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "long",
+    timeZone: "America/Bogota",
+  });
+}
+
 /** Un número legible para copiar y pegar en el teléfono. */
 function bonito(tel: string | null): string {
   if (!tel) return "";
@@ -248,18 +262,33 @@ function Fila({
   );
 }
 
-export function LeadsDelDia({ modo }: { modo: "bajar" | "llamar" }) {
+export function LeadsDelDia({
+  modo,
+  dia,
+}: {
+  modo: "bajar" | "llamar";
+  /**
+   * El día que el agente eligió arriba, en el paso 2 («2026-09-12»).
+   *
+   * Sin esto la pantalla se contradecía sola: consultaba el 12 arriba y abajo
+   * le seguían saliendo los leads de hoy. Los cinco pasos son un solo día.
+   */
+  dia?: string | null;
+}) {
   const [leads, setLeads] = useState<LeadDeSeguimiento[] | null>(null);
   const [listos, setListos] = useState<string[]>([]);
 
   useEffect(() => {
+    setLeads(null);
     pedirSeguimiento()
-      // Todos los de hoy, no la pestaña del día 1: esa saca a los confirmados
+      // Todos los del día, no la pestaña del día 1: esa saca a los confirmados
       // —que están en su propia lista— y el confirmado es justo al que hay que
       // llamar. La lista de llamadas del día los quiere a todos.
-      .then((d) => setLeads(d.hoy))
+      .then((d) => setLeads(dia ? d.porDia[dia] ?? [] : d.hoy))
       .catch(() => setLeads([]));
-  }, []);
+  }, [dia]);
+
+  const esOtroDia = !!dia && dia !== hoyBogota();
 
   if (!leads) {
     return (
@@ -285,9 +314,11 @@ export function LeadsDelDia({ modo }: { modo: "bajar" | "llamar" }) {
             : "Llamar inmediatamente a mis leads nuevos"}
         </h2>
         <span className="text-[11.5px]" style={{ color: "rgba(255,255,255,.66)" }}>
-          {modo === "bajar"
-            ? "lo copiás vos · no es el que baja solo por el CRM"
-            : "mientras más rápido llamás, más convierten"}
+          {esOtroDia
+            ? `los que entraron el ${nombreDeDia(dia!)}`
+            : modo === "bajar"
+              ? "lo copiás vos · no es el que baja solo por el CRM"
+              : "mientras más rápido llamás, más convierten"}
         </span>
         <span
           className="ml-auto text-[12px] font-bold rounded-full px-2.5 py-0.5 tabular-nums"
@@ -300,8 +331,10 @@ export function LeadsDelDia({ modo }: { modo: "bajar" | "llamar" }) {
       {vivos.length === 0 ? (
         <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
           {leads.length === 0
-            ? "Todavía no entró ningún lead hoy."
-            : "Ya te llevaste a todos los de hoy. Están en el paso 3."}
+            ? esOtroDia
+              ? `No entró ningún lead el ${nombreDeDia(dia!)}.`
+              : "Todavía no entró ningún lead hoy."
+            : "Ya te llevaste a todos. Están en el paso 3."}
         </p>
       ) : (
         TEMPERATURAS.map((t) => {
