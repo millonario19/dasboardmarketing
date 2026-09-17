@@ -557,13 +557,17 @@ export function ReportarInline({
   }
 
   function guardar() {
-    if (!resultado) {
-      setError("Elegí qué pasó.");
+    // Reportar una llamada que el panel vio salir sin decir cómo salió no
+    // sirve de nada. Pero agendar sí: el cliente dijo «llamame el viernes» y
+    // no hubo llamada que reportar. Ahí el «¿qué pasó?» sobra.
+    if (!resultado && (pendiente || !cuando)) {
+      setError(pendiente ? "Elegí qué pasó." : "Elegí qué pasó, o poné la fecha.");
       return;
     }
     setGuardando(true);
     setError(null);
-    const proximaEn = vuelveALlamar(resultado) && cuando ? new Date(cuando).toISOString() : null;
+    const proximaEn =
+      (!resultado || vuelveALlamar(resultado)) && cuando ? new Date(cuando).toISOString() : null;
 
     const peticion = pendiente
       ? fetch(`/api/llamadas/${pendiente.id}`, {
@@ -575,9 +579,11 @@ export function ReportarInline({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            tipo: "llame",
-            resultado,
-            detalle: nota.trim() || metaResultado(resultado)?.texto || null,
+            // Sin resultado no hubo llamada: solo se agenda, y anotar una que
+            // no pasó ensuciaría el marcador del día.
+            tipo: resultado ? "llame" : undefined,
+            resultado: resultado || null,
+            detalle: nota.trim() || (resultado ? metaResultado(resultado)?.texto : null) || null,
             nombre,
             telefono,
             siguiente: proximaEn
@@ -644,7 +650,12 @@ export function ReportarInline({
         className="flex-1 min-w-[150px] rounded-lg border border-gridline bg-page px-2.5 py-1.5 text-[12.5px] outline-none focus:bg-surface"
       />
 
-      {vuelveALlamar(resultado || null) && (
+      {/* La fecha se ve desde el principio, con «mañana 9:00» puesta. Antes
+          esperaba a que eligieran un resultado y el agente abría el renglón,
+          no veía fecha por ningún lado y creía que no se podía agendar. Solo
+          desaparece cuando el resultado dice que no hay próxima llamada: «no
+          le interesa», «número equivocado». */}
+      {(!resultado || vuelveALlamar(resultado)) && (
         <label className="flex items-center gap-1.5 text-[11.5px]" style={{ color: GRIS_2 }}>
           volver a llamar
           <input
