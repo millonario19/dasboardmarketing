@@ -34,11 +34,25 @@ function iniciales(nombre: string): string {
   return ((partes[0]?.[0] ?? "") + (partes[1]?.[0] ?? "")).toUpperCase() || "··";
 }
 
+/**
+ * Las tres columnas de números.
+ *
+ * Centradas y del mismo ancho que su encabezado. Alineadas a la derecha, el
+ * «13» de una fila y el «107» de la de arriba no arrancaban en el mismo lugar
+ * y la columna se leía torcida; y el encabezado, que no tenía en cuenta el
+ * «abrir →» de la fila, quedaba corrido medio dedo a la derecha.
+ */
+const ANCHO = "w-[58px] sm:w-[76px]";
+const ANCHO_ABRIR = "w-[52px]";
+
 function Numero({ valor, verde }: { valor: number; verde?: boolean }) {
   return (
     <span
-      className="w-[54px] sm:w-[62px] shrink-0 text-right tabular-nums text-[14px] font-semibold"
-      style={{ color: valor === 0 ? GRIS : verde ? VERDE : undefined, fontWeight: valor === 0 ? 400 : 600 }}
+      className={`${ANCHO} shrink-0 text-center tabular-nums text-[15px]`}
+      style={{
+        color: valor === 0 ? GRIS : verde ? VERDE : undefined,
+        fontWeight: valor === 0 ? 400 : 700,
+      }}
     >
       {valor}
     </span>
@@ -47,17 +61,20 @@ function Numero({ valor, verde }: { valor: number; verde?: boolean }) {
 
 function Cabecera({ etiquetas }: { etiquetas: string[] }) {
   return (
-    <div className="flex items-center gap-3 px-4 sm:px-5 py-1.5 border-t border-gridline bg-page">
+    <div className="flex items-center gap-2 px-4 sm:px-5 py-2 border-t border-gridline bg-page">
       <span className="flex-1" />
       {etiquetas.map((e) => (
         <span
           key={e}
-          className="w-[54px] sm:w-[62px] shrink-0 text-right text-[9px] font-bold uppercase tracking-[.12em]"
-          style={{ color: GRIS }}
+          className={`${ANCHO} shrink-0 text-center text-[9.5px] font-bold uppercase tracking-[.1em]`}
+          style={{ color: GRIS_2 }}
         >
           {e}
         </span>
       ))}
+      {/* El mismo hueco que ocupa «abrir →» en cada fila, para que el
+          encabezado caiga sobre sus números y no al lado. */}
+      <span className={`${ANCHO_ABRIR} shrink-0 hidden sm:block`} />
     </div>
   );
 }
@@ -221,7 +238,7 @@ export function EquipoComercial() {
             <div key={r.agentId ?? r.agent}>
               <Link
                 href={`/equipo/${encodeURIComponent(r.agentId!)}`}
-                className="w-full flex items-center gap-3 px-4 sm:px-5 py-2.5 border-t border-gridline text-left hover:bg-page"
+                className="w-full flex items-center gap-2 px-4 sm:px-5 py-2.5 border-t border-gridline text-left hover:bg-page"
               >
                 <span
                   className="w-[22px] shrink-0 text-center text-[13px] font-bold tabular-nums"
@@ -235,7 +252,7 @@ export function EquipoComercial() {
                 >
                   {iniciales(r.agent)}
                 </span>
-                <span className="min-w-0 flex-1">
+                <span className="min-w-0 flex-1 pr-2">
                   <span className="block text-[13.5px] font-semibold leading-tight">{r.agent}</span>
                   <span className="block text-[11px]" style={{ color: GRIS }}>
                     {r.leadsHoy > 0 ? `${r.leadsHoy} leads hoy` : "sin leads hoy"}
@@ -245,7 +262,10 @@ export function EquipoComercial() {
                 <Numero valor={r.leadsMes} />
                 <Numero valor={r.registrosMes} />
                 <Numero valor={r.ftdMes} verde />
-                <span className="text-[11px] shrink-0 hidden sm:inline" style={{ color: AZUL }}>
+                <span
+                  className={`${ANCHO_ABRIR} shrink-0 text-right text-[11px] hidden sm:block`}
+                  style={{ color: AZUL }}
+                >
                   abrir →
                 </span>
               </Link>
