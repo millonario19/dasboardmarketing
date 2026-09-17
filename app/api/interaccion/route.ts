@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeInteraccion } from "@/lib/interaccion";
-import { alcanceDeAgente, sesionActual } from "@/lib/sesion";
+import { sesionActual } from "@/lib/sesion";
+import { alcanceMirando } from "@/lib/verComo";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   // El agente solo ve sus conversaciones; la dirección elige de quién.
-  const propio = await alcanceDeAgente();
+  const propio = (await alcanceMirando(req)).agentId;
   const pedido = req.nextUrl.searchParams.get("agente");
   const agente = propio ?? (pedido && pedido !== "todos" ? pedido : null);
 

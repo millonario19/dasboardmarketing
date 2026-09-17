@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AgentDetail } from "@/components/AgentDetail";
+import { PanelDeAgente } from "@/components/PanelDeAgente";
 import type { AgentProduction, AgentProductionRow } from "@/lib/metrics";
 import type { Oficina } from "@/lib/oficinas";
 
@@ -32,15 +32,6 @@ const MEDALLAS = ["🥇", "🥈", "🥉"];
 function iniciales(nombre: string): string {
   const partes = nombre.trim().split(/\s+/);
   return ((partes[0]?.[0] ?? "") + (partes[1]?.[0] ?? "")).toUpperCase() || "··";
-}
-
-const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
-
-/** El mes corrido, que es el período del que habla toda esta pantalla. */
-function rangoDelMes(): { from: string; to: string } {
-  const local = new Date(Date.now() - BOGOTA_OFFSET_MS);
-  const desde = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), 1) + BOGOTA_OFFSET_MS;
-  return { from: new Date(desde).toISOString(), to: new Date().toISOString() };
 }
 
 function Numero({ valor, verde }: { valor: number; verde?: boolean }) {
@@ -107,7 +98,6 @@ export function EquipoComercial() {
   const filas = [...(prod?.rows ?? [])]
     .filter((r) => r.agentId !== null)
     .sort((a, b) => b.ftdMes - a.ftdMes || b.registrosMes - a.registrosMes || b.leadsMes - a.leadsMes);
-  const rango = rangoDelMes();
 
   return (
     <>
@@ -231,13 +221,9 @@ export function EquipoComercial() {
                 <Numero valor={r.ftdMes} verde />
               </button>
 
-              {suyo && (
-                <div className="px-4 sm:px-5 pb-4 border-t border-gridline bg-page">
-                  <p className="text-[11.5px] py-2.5" style={{ color: GRIS_2 }}>
-                    Los leads de <b>{r.agent}</b> este mes. Es lo mismo que él ve en su pantalla:
-                    si acá sale vacío, es porque está vacío.
-                  </p>
-                  <AgentDetail agentId={r.agentId} from={rango.from} to={rango.to} />
+              {suyo && r.agentId && (
+                <div className="px-3 sm:px-4 py-3 border-t border-gridline bg-page">
+                  <PanelDeAgente agentId={r.agentId} nombre={r.agent} />
                 </div>
               )}
             </div>

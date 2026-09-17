@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeMiDia, computeMovimientosDeHoy } from "@/lib/miDia";
-import { alcanceDeAgente } from "@/lib/sesion";
+import { alcanceMirando } from "@/lib/verComo";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   // El agente no elige a quién mira: su sesión manda sobre el parámetro. El
   // selector de la pantalla solo existe para la dirección.
-  const propio = await alcanceDeAgente();
+  const propio = (await alcanceMirando(req)).agentId;
   const agente = propio ?? req.nextUrl.searchParams.get("agente");
 
   // Arranque rápido: solo los movimientos del día, que salen de Postgres.

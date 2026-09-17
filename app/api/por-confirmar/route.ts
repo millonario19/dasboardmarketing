@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { computeSeguimiento } from "@/lib/seguimiento";
-import { alcanceDeAgente, sesionActual } from "@/lib/sesion";
+import { sesionActual } from "@/lib/sesion";
+import { alcanceMirando } from "@/lib/verComo";
 
 export const dynamic = "force-dynamic";
 
@@ -11,14 +12,12 @@ export const dynamic = "force-dynamic";
  * rápido; por debajo comparte la misma consulta y la misma caché, así que no
  * le cuesta a GHL una llamada más.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const sesion = await sesionActual();
   if (!sesion) return NextResponse.json({ error: "Sin sesión" }, { status: 401 });
   try {
-    const datos = await computeSeguimiento(
-      await alcanceDeAgente(),
-      sesion.rol === "agente" ? sesion.usuario : null
-    );
+    const mirada = await alcanceMirando(req);
+    const datos = await computeSeguimiento(mirada.agentId, mirada.usuario);
     return NextResponse.json({ porConfirmar: datos.porConfirmar });
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : "Error al leer los pendientes";

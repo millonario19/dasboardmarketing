@@ -130,6 +130,22 @@ export async function buscarPorUsuario(usuario: string): Promise<(Usuario & { ha
   return { ...aUsuario(rows[0]), hash: rows[0].password_hash };
 }
 
+/**
+ * El login de un agente, a partir de su id de GHL.
+ *
+ * Los contactos se filtran por `agent_id` pero las tareas y las notas se
+ * guardan por `usuario`: son dos llaves para la misma persona. Cuando la
+ * dirección mira el día de alguien hacen falta las dos.
+ */
+export async function usuarioPorAgentId(agentId: string): Promise<Usuario | null> {
+  await asegurarTabla();
+  const { rows } = await getPool().query<Fila>(
+    `select ${COLUMNAS} from usuarios where agent_id = $1 and activo limit 1`,
+    [agentId]
+  );
+  return rows[0] ? aUsuario(rows[0]) : null;
+}
+
 export async function listarUsuarios(): Promise<Usuario[]> {
   await asegurarTabla();
   const { rows } = await getPool().query<Fila>(
