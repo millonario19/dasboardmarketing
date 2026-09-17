@@ -247,17 +247,25 @@ function Fila({
             telefono={telefono}
           />
         )}
-        <a
-          href={lead.crmUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          hidden={modo === "llamar" && !!telefono}
-          title="Abrir la ficha en el CRM"
-          className="inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11px] font-semibold whitespace-nowrap"
-          style={{ background: CELESTE, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
-        >
-          ↗ CRM
-        </a>
+        {/* Un solo botón al CRM. «✆ CRM» ya abre esta misma ficha —además de
+            dejar el «¿qué pasó?» esperando— así que en el módulo de llamadas
+            este sobraba y decían lo mismo. Queda para «bajar», donde el otro
+            no está.
+
+            Iba con `hidden`, que no escondía nada: el atributo del navegador
+            pierde contra el `display:inline-flex` de la clase. */}
+        {modo === "bajar" && (
+          <a
+            href={lead.crmUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Abrir la ficha en el CRM"
+            className="inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11px] font-semibold whitespace-nowrap"
+            style={{ background: CELESTE, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
+          >
+            ↗ CRM
+          </a>
+        )}
       </span>
 
       {modo === "llamar" && (
