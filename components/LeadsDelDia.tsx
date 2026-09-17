@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BotonWhatsApp } from "@/components/ContactoRapido";
-import { BotonLlamar, BotonCrm, ReporteLlamada, BotonAnotar } from "@/components/Llamada";
+import { BotonLlamar, BotonCrm, ReportarInline } from "@/components/Llamada";
 import { pedirSeguimiento, olvidarSeguimiento } from "@/components/Seguimiento";
 import { EnviarWhatsApp } from "@/components/EnviarWhatsApp";
 import type { LeadDeSeguimiento } from "@/lib/seguimiento";
@@ -217,8 +217,12 @@ function Fila({
             no queda nada de lo que el cliente dijo. */}
         {modo === "llamar" && (
           <span className="flex flex-wrap items-center gap-2 mt-1.5 empty:hidden">
-            <ReporteLlamada contactId={lead.id} />
-            <BotonAnotar contactId={lead.id} nombre={lead.nombre} telefono={telefono} />
+            <ReportarInline
+              contactId={lead.id}
+              nombre={lead.nombre}
+              telefono={telefono}
+              onListo={olvidarSeguimiento}
+            />
             <EnviarWhatsApp lead={lead} dia={1} onEnviado={olvidarSeguimiento} />
           </span>
         )}

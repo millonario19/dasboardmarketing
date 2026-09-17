@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { RESULTADOS, leerCuando, metaResultado, opcionCuando } from "@/lib/cuando";
+import { RESULTADOS, leerCuando, metaResultado, opcionCuando, vuelveALlamar } from "@/lib/cuando";
 
 const AZUL = "#17457F";
 const AZUL_CLARO = "#EAF1FA";
@@ -510,88 +510,173 @@ export function ReporteLlamada({ contactId }: { contactId: string }) {
 }
 
 /**
- * Anotar sin haber llamado desde el panel.
+ * Reportar en una línea, adentro de la fila.
  *
- * Porque no todo pasa por el botón. El cliente le escribe al WhatsApp
- * personal, o lo llama él, o el agente marcó desde el teléfono sin tocar nada
- * acá. En todos esos casos hay algo que el cliente dijo —«mañana pago», «esta
- * noche a las 8 cuando salga de trabajar»— y hasta ahora no había dónde
- * ponerlo: el «¿qué pasó?» solo aparecía después de una llamada registrada.
+ * Reemplaza a la hoja que se abría encima de todo. La hoja pedía lo mismo pero
+ * tapaba la pantalla, y el agente que está bajando por su lista de veinte
+ * llamadas no quiere abrir y cerrar una ventana veinte veces: quiere que la
+ * fila se agrande, escribir y seguir.
  *
- * Guarda en el mismo hilo y programa la misma tarea. Para el tablero es lo
- * mismo que un reporte de llamada; para el agente es poder anotar cuando la
- * vida no pasó por el botón.
+ * Es un solo renglón: qué pasó, la observación, cuándo vuelve a llamar. Si la
+ * llamada salió desde el panel —del celular o del CRM— se reporta contra ella
+ * y queda con su hora y su grabación. Si no salió de acá —el cliente llamó él,
+ * o escribió al WhatsApp personal— se guarda igual como registro del día. Para
+ * el agente es el mismo renglón; la diferencia la resuelve el panel.
  */
-export function BotonAnotar({
+export function ReportarInline({
   contactId,
   nombre,
   telefono,
+  onListo,
 }: {
   contactId: string;
   nombre?: string | null;
   telefono?: string | null;
+  onListo?: () => void;
 }) {
   const pendiente = usePendiente(contactId);
   const [abierto, setAbierto] = useState(false);
-  const [guardado, setGuardado] = useState<string | null>(null);
+  const [resultado, setResultado] = useState("");
+  const [nota, setNota] = useState("");
+  const [cuando, setCuando] = useState(() => {
+    const d = new Date(Date.now() + 864e5);
+    d.setHours(9, 0, 0, 0);
+    return paraElCampo(d);
+  });
+  const [guardando, setGuardando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [listo, setListo] = useState<string | null>(null);
 
-  const guardar = useCallback(
-    async (datos: { resultado: string | null; nota: string; proximaEn: string | null }) => {
-      const r = await fetch(`/api/acciones/${encodeURIComponent(contactId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // Sin resultado no hubo llamada que registrar: es solo una cita a
-          // futuro, y anotar una llamada que no pasó ensucia el marcador.
-          tipo: datos.resultado ? "llame" : undefined,
-          detalle: datos.nota || (datos.resultado ? metaResultado(datos.resultado)?.texto : null) || null,
-          resultado: datos.resultado,
-          nombre,
-          telefono,
-          siguiente: datos.proximaEn
-            ? { tipo: "llame", cuando: datos.proximaEn, detalle: datos.nota || null }
-            : null,
-        }),
-      });
-      if (!r.ok) return (await r.json()).error ?? "No se pudo guardar";
-      setGuardado(datos.proximaEn);
-      return null;
-    },
-    [contactId, nombre, telefono]
-  );
+  // Al elegir el resultado se corre la fecha sola: «no contestó» son tres
+  // horas, «va a depositar» es mañana a las 8. De ahí se corrige escribiendo.
+  function elegir(id: string) {
+    setResultado(id);
+    const meta = metaResultado(id);
+    const iso = meta && meta.cuando !== "nunca" ? opcionCuando(meta.cuando)?.calcular() : null;
+    if (iso) setCuando(paraElCampo(new Date(iso)));
+  }
 
-  // Con una llamada sin reportar manda el aviso ámbar, que es más urgente:
-  // dos botones que abren la misma hoja confunden.
-  if (pendiente) return null;
+  function guardar() {
+    if (!resultado) {
+      setError("Elegí qué pasó.");
+      return;
+    }
+    setGuardando(true);
+    setError(null);
+    const proximaEn = vuelveALlamar(resultado) && cuando ? new Date(cuando).toISOString() : null;
 
-  if (guardado !== null) {
+    const peticion = pendiente
+      ? fetch(`/api/llamadas/${pendiente.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ resultado, nota, proximaEn }),
+        })
+      : fetch(`/api/acciones/${encodeURIComponent(contactId)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipo: "llame",
+            resultado,
+            detalle: nota.trim() || metaResultado(resultado)?.texto || null,
+            nombre,
+            telefono,
+            siguiente: proximaEn
+              ? { tipo: "llame", cuando: proximaEn, detalle: nota.trim() || null }
+              : null,
+          }),
+        });
+
+    peticion
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo guardar");
+        if (pendiente) sacarDeCache(contactId);
+        setListo(proximaEn);
+        setAbierto(false);
+        onListo?.();
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setGuardando(false));
+  }
+
+  if (listo !== null) {
     return (
       <span className="text-[11.5px] font-semibold" style={{ color: VERDE }}>
-        ✓ anotado · {guardado ? `lo buscás ${leerCuando(guardado)}` : "sin próxima"}
+        ✓ guardado{listo ? ` · lo llamás ${leerCuando(listo)}` : ""}
       </span>
     );
   }
 
-  return (
-    <>
+  if (!abierto) {
+    return (
       <button
         onClick={() => setAbierto(true)}
-        title="Anotar qué te dijo y dejar agendada la próxima llamada"
-        className="rounded-full px-2.5 py-[5px] text-[11.5px] font-semibold whitespace-nowrap"
-        style={{ background: AZUL_CLARO, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
+        className="rounded-full px-2.5 py-[5px] text-[11.5px] font-bold whitespace-nowrap"
+        style={
+          pendiente
+            ? { background: AMBAR, color: "#fff" }
+            : { background: AZUL_CLARO, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }
+        }
       >
-        ✎ Anotar o agendar
+        {pendiente ? `📞 ${hora(pendiente.llamadaEn)} — ¿qué pasó?` : "✎ Reportar"}
+      </button>
+    );
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-2 w-full">
+      <select
+        value={resultado}
+        onChange={(e) => elegir(e.target.value)}
+        className="rounded-lg border border-gridline bg-surface px-2 py-1.5 text-[12.5px] outline-none"
+      >
+        <option value="">¿Qué pasó?</option>
+        {RESULTADOS.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.texto}
+          </option>
+        ))}
+      </select>
+
+      <input
+        value={nota}
+        onChange={(e) => setNota(e.target.value)}
+        placeholder="Observación"
+        className="flex-1 min-w-[150px] rounded-lg border border-gridline bg-page px-2.5 py-1.5 text-[12.5px] outline-none focus:bg-surface"
+      />
+
+      {vuelveALlamar(resultado || null) && (
+        <label className="flex items-center gap-1.5 text-[11.5px]" style={{ color: GRIS_2 }}>
+          volver a llamar
+          <input
+            type="datetime-local"
+            value={cuando}
+            onChange={(e) => setCuando(e.target.value)}
+            className="rounded-lg border border-gridline bg-surface px-2 py-1.5 text-[12.5px] outline-none"
+          />
+        </label>
+      )}
+
+      <button
+        onClick={guardar}
+        disabled={guardando}
+        className="rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-white disabled:opacity-50"
+        style={{ background: VERDE }}
+      >
+        {guardando ? "Guardando…" : "Guardar"}
+      </button>
+      <button
+        onClick={() => setAbierto(false)}
+        className="text-[11.5px]"
+        style={{ color: GRIS_2 }}
+      >
+        Cerrar
       </button>
 
-      {abierto && (
-        <HojaQuePaso
-          titulo={nombre || "Ese lead"}
-          subtitulo="Anotá qué te dijo, o solo dejá la llamada agendada"
-          exigeResultado={false}
-          guardar={guardar}
-          cerrar={() => setAbierto(false)}
-        />
+      {error && (
+        <span className="text-[11.5px] w-full" style={{ color: ROJO }}>
+          {error}
+        </span>
       )}
-    </>
+    </span>
   );
 }

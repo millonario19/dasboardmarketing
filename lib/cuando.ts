@@ -77,6 +77,7 @@ export type MetaResultado = {
   efectiva?: boolean;
 };
 
+
 export const RESULTADOS: MetaResultado[] = [
   { id: "registro", texto: "Se registró", cuando: "manana-8", tono: "bueno", efectiva: true },
   { id: "deposita", texto: "Va a depositar", cuando: "manana-8", tono: "bueno", efectiva: true },
@@ -89,6 +90,10 @@ export const RESULTADOS: MetaResultado[] = [
 
 export const metaResultado = (id: string): MetaResultado | undefined =>
   RESULTADOS.find((r) => r.id === id);
+
+/** Si después de esto hay que volver a llamar, o el cliente ya se cerró. */
+export const vuelveALlamar = (id: string | null): boolean =>
+  !!id && metaResultado(id)?.cuando !== "nunca";
 
 export const esResultado = (x: unknown): x is string =>
   typeof x === "string" && RESULTADOS.some((r) => r.id === x);
