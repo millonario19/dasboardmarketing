@@ -555,14 +555,17 @@ async function construirSeguimiento(
   // dato que en el día 1, el 7 y los ocultos no se usa para nada.
   const diaDe = (iso: string) =>
     Math.round((arrancaHoy - inicioDeDiaBogota(new Date(iso).getTime())) / 864e5) + 1;
-  // Los de hoy también: desde que se les puede escribir desde el panel hay que
-  // saber por dónde habla cada uno —WhatsApp, Instagram, Messenger— o el botón
-  // manda al agente a un error de GHL en vez de a la conversación. Son pocos,
-  // los del día, y las conversaciones ahora se abren de a seis.
+  // Todos los de la ventana, no solo los de hoy: el agente puede estar mirando
+  // el 14 y ahí también necesita saber por dónde habla cada uno —WhatsApp,
+  // Instagram, Messenger— y si la ventana de Meta sigue abierta. Sin eso el
+  // botón de escribir no se dibuja y parece que faltara.
+  //
+  // El costo lo pone el tope de `ventanasDe`: abre como mucho cuarenta
+  // conversaciones, las más recientes, de a seis a la vez.
   const idsConVentana = [
     ...new Set([
       ...utiles.filter((u) => [2, 3].includes(diaDe(u.contacto.dateAdded))).map((u) => u.contacto.id),
-      ...(crudosPorDia.get(hoyBogota) ?? []).map((u) => u.contacto.id),
+      ...todosLosCrudos().map((u) => u.contacto.id),
     ]),
   ];
 
