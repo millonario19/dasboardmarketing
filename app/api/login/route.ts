@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, createSessionToken, pantallaInicial, type Sesion } from "@/lib/auth";
 import { buscarPorUsuario, claveCoincide, normalizarUsuario, textoCoincide } from "@/lib/usuarios";
+import { listarOficinas } from "@/lib/oficinas";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Faltan usuario y contraseña" }, { status: 400 });
   }
 
+  // Acá se crean las oficinas y se ordena Prime la primera vez. Va en el login
+  // porque es la puerta de entrada de todos y porque la sesión necesita saber
+  // de qué oficina es cada quien. Si la base está caída no se bloquea el
+  // ingreso del admin, que es la llave maestra.
+  await listarOficinas().catch(() => undefined);
+
   let sesion: Sesion | null = null;
 
   if (usuario === ADMIN_USUARIO()) {
     const clave = ADMIN_CLAVE();
     if (!clave || !textoCoincide(password, clave)) return rechazo();
-    sesion = { usuario, nombre: "Dirección", rol: "admin", agentId: null };
+    // El admin no es de ninguna oficina: son suyas las cuatro.
+    sesion = { usuario, nombre: "Alejandro Facundo", rol: "admin", agentId: null, oficinaId: null };
   } else {
     let fila;
     try {
@@ -57,7 +65,11 @@ export async function POST(req: NextRequest) {
       usuario: fila.usuario,
       nombre: fila.nombre,
       rol: fila.rol,
+      // El director conserva su agentId porque también vende —Diana lleva 12
+      // leads este mes— y algún día va a querer su propio Mi día. Lo que
+      // cambia no es el id sino el alcance, y eso lo decide el rol.
       agentId: fila.rol === "admin" ? null : fila.agentId,
+      oficinaId: fila.oficinaId,
     };
   }
 

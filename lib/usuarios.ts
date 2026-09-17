@@ -15,6 +15,8 @@ export type Usuario = {
   nombre: string;
   agentId: string;
   rol: Rol;
+  /** A qué oficina pertenece. Vacío solo en el admin, que no es de ninguna. */
+  oficinaId: number | null;
   // No devolvemos el hash nunca; solo si la persona tiene contraseña propia o
   // sigue usando la común del equipo.
   clavePropia: boolean;
@@ -27,6 +29,7 @@ type Fila = {
   nombre: string;
   agent_id: string;
   rol: Rol;
+  oficina_id: number | null;
   password_hash: string | null;
   activo: boolean;
 };
@@ -38,6 +41,7 @@ function aUsuario(f: Fila): Usuario {
     nombre: f.nombre,
     agentId: f.agent_id,
     rol: f.rol,
+    oficinaId: f.oficina_id,
     clavePropia: f.password_hash !== null,
     activo: f.activo,
   };
@@ -58,13 +62,26 @@ function asegurarTabla(): Promise<void> {
            usuario       text        not null unique,
            nombre        text        not null,
            agent_id      text        not null,
-           rol           text        not null default 'agente' check (rol in ('admin', 'agente')),
+           rol           text        not null default 'agente',
            password_hash text,
            activo        boolean     not null default true,
            creado_en     timestamptz not null default now()
          )`
       )
       .then(() => getPool().query(`create index if not exists usuarios_agent_id_idx on usuarios (agent_id)`))
+      // La columna y el rol nuevo llegaron después de la tabla: en las bases
+      // que ya existen hay que agregarlos aparte. El `check` se reescribe
+      // entero porque el viejo solo admitía admin y agente, y un director no
+      // habría podido guardarse.
+      .then(() => getPool().query(`alter table usuarios add column if not exists oficina_id integer`))
+      .then(() => getPool().query(`alter table usuarios drop constraint if exists usuarios_rol_check`))
+      .then(() =>
+        getPool().query(
+          `alter table usuarios add constraint usuarios_rol_check
+             check (rol in ('admin', 'director', 'agente'))`
+        )
+      )
+      .then(() => getPool().query(`create index if not exists usuarios_oficina_idx on usuarios (oficina_id)`))
       .then(() => undefined)
       .catch((e) => {
         // Si falló, que el próximo intento lo vuelva a probar en vez de
@@ -76,7 +93,7 @@ function asegurarTabla(): Promise<void> {
   return tablaLista;
 }
 
-const COLUMNAS = "id, usuario, nombre, agent_id, rol, password_hash, activo";
+const COLUMNAS = "id, usuario, nombre, agent_id, rol, oficina_id, password_hash, activo";
 
 export function normalizarUsuario(texto: string): string {
   return texto.trim().toLowerCase();
@@ -126,22 +143,37 @@ export async function crearUsuario(datos: {
   nombre: string;
   agentId: string;
   rol: Rol;
+  oficinaId?: number | null;
   clave?: string | null;
 }): Promise<Usuario> {
   await asegurarTabla();
   const hash = datos.clave ? await hashearClave(datos.clave) : null;
   const { rows } = await getPool().query<Fila>(
-    `insert into usuarios (usuario, nombre, agent_id, rol, password_hash)
-     values ($1, $2, $3, $4, $5)
+    `insert into usuarios (usuario, nombre, agent_id, rol, oficina_id, password_hash)
+     values ($1, $2, $3, $4, $5, $6)
      returning ${COLUMNAS}`,
-    [normalizarUsuario(datos.usuario), datos.nombre.trim(), datos.agentId, datos.rol, hash]
+    [
+      normalizarUsuario(datos.usuario),
+      datos.nombre.trim(),
+      datos.agentId,
+      datos.rol,
+      datos.oficinaId ?? null,
+      hash,
+    ]
   );
   return aUsuario(rows[0]);
 }
 
 export async function actualizarUsuario(
   id: number,
-  cambios: { nombre?: string; agentId?: string; rol?: Rol; activo?: boolean; clave?: string | null }
+  cambios: {
+    nombre?: string;
+    agentId?: string;
+    rol?: Rol;
+    oficinaId?: number | null;
+    activo?: boolean;
+    clave?: string | null;
+  }
 ): Promise<Usuario | null> {
   await asegurarTabla();
   const sets: string[] = [];
@@ -154,6 +186,7 @@ export async function actualizarUsuario(
   if (cambios.nombre !== undefined) agregar("nombre", cambios.nombre.trim());
   if (cambios.agentId !== undefined) agregar("agent_id", cambios.agentId);
   if (cambios.rol !== undefined) agregar("rol", cambios.rol);
+  if (cambios.oficinaId !== undefined) agregar("oficina_id", cambios.oficinaId);
   if (cambios.activo !== undefined) agregar("activo", cambios.activo);
   // clave === null borra la contraseña propia y devuelve a la persona a la
   // contraseña común; undefined es "no tocar".

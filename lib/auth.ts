@@ -1,6 +1,16 @@
 export const SESSION_COOKIE = "op_session";
 
-export type Rol = "admin" | "agente";
+/**
+ * Tres niveles, no dos.
+ *
+ *   admin    — Alejandro: ve las cuatro oficinas
+ *   director — Diana, Julián y los demás: ven su oficina y nada más
+ *   agente   — ve sus propios leads
+ *
+ * El director es el que faltaba, y por eso el alcance era binario: o veías lo
+ * tuyo o lo veías todo. Con cuatro oficinas eso deja de servir.
+ */
+export type Rol = "admin" | "director" | "agente";
 
 export type Sesion = {
   usuario: string;
@@ -8,6 +18,10 @@ export type Sesion = {
   rol: Rol;
   // userId de GHL. En el admin va null: no está atado a ningún agente y ve todo.
   agentId: string | null;
+  // A qué oficina pertenece. En el admin va null: no es de ninguna, son suyas
+  // las cuatro. Viaja en la cookie para que el middleware pueda decidir sin
+  // consultar la base, que en Edge no existe.
+  oficinaId: number | null;
 };
 
 const DURACION_MS = 1000 * 60 * 60 * 24 * 7; // 7 días
@@ -80,12 +94,16 @@ export async function verificarSesion(token: string | undefined): Promise<Sesion
   try {
     const payload = JSON.parse(deBase64Url(datos));
     if (typeof payload.exp !== "number" || Date.now() > payload.exp) return null;
-    if (payload.rol !== "admin" && payload.rol !== "agente") return null;
+    if (payload.rol !== "admin" && payload.rol !== "director" && payload.rol !== "agente") {
+      return null;
+    }
     return {
       usuario: String(payload.usuario ?? ""),
       nombre: String(payload.nombre ?? payload.usuario ?? ""),
       rol: payload.rol,
       agentId: payload.agentId ?? null,
+      // Las sesiones abiertas antes de que existieran las oficinas no lo traen.
+      oficinaId: typeof payload.oficinaId === "number" ? payload.oficinaId : null,
     };
   } catch {
     return null;
