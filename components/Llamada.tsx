@@ -623,7 +623,7 @@ export function ReportarInline({
             : { background: AZUL_CLARO, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }
         }
       >
-        {pendiente ? `📞 ${hora(pendiente.llamadaEn)} — ¿qué pasó?` : "✎ Reportar"}
+        {pendiente ? `📞 ${hora(pendiente.llamadaEn)} — ¿qué pasó?` : "✎ Programar"}
       </button>
     );
   }
