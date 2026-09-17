@@ -378,7 +378,7 @@ function HojaQuePaso({
 
           <div>
             <p className="text-[9.5px] font-bold uppercase tracking-[.15em] mb-2" style={{ color: GRIS_2 }}>
-              ¿Cuándo lo llamás?
+              ¿Cuándo lo llama?
             </p>
             <input
               type="datetime-local"
@@ -432,10 +432,10 @@ function HojaQuePaso({
               <b style={{ color: "var(--foreground)" }}>{metaResultado(resultado)?.texto}</b>
             )}
             {sinProxima ? (
-              <>{resultado ? " · " : ""}no lo llamás más</>
+              <>{resultado ? " · " : ""}no lo llama más</>
             ) : (
               <>
-                {resultado ? " · " : ""}lo llamás{" "}
+                {resultado ? " · " : ""}lo llama{" "}
                 <b style={{ color: "var(--foreground)" }}>{leerCuando(proximaEn())}</b>
               </>
             )}
@@ -561,7 +561,7 @@ export function ReportarInline({
     // sirve de nada. Pero agendar sí: el cliente dijo «llamame el viernes» y
     // no hubo llamada que reportar. Ahí el «¿qué pasó?» sobra.
     if (!resultado && (pendiente || !cuando)) {
-      setError(pendiente ? "Elegí qué pasó." : "Elegí qué pasó, o poné la fecha.");
+      setError(pendiente ? "Elija qué pasó." : "Elija qué pasó, o ponga la fecha.");
       return;
     }
     setGuardando(true);
@@ -607,7 +607,7 @@ export function ReportarInline({
   if (listo !== null) {
     return (
       <span className="text-[11.5px] font-semibold" style={{ color: VERDE }}>
-        ✓ guardado{listo ? ` · lo llamás ${leerCuando(listo)}` : ""}
+        ✓ guardado{listo ? ` · lo llama ${leerCuando(listo)}` : ""}
       </span>
     );
   }

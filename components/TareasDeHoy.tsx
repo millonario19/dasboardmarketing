@@ -148,7 +148,7 @@ export function TareasDeHoy({ onResumen }: { onResumen?: (pendientes: number) =>
       >
         <h2 className="text-[15px] font-semibold tracking-[-0.02em]">Leads programados</h2>
         <span className="text-[12px]" style={{ color: "rgba(255,255,255,.7)" }}>
-          las llamadas que vos mismo agendaste
+          las llamadas que usted mismo agendó
         </span>
         <button
           onClick={cargar}
@@ -168,10 +168,10 @@ export function TareasDeHoy({ onResumen }: { onResumen?: (pendientes: number) =>
 
       {datos && datos.vencidas.length === 0 && datos.hoy.length === 0 && (
         <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
-          No tenés nada programado para hoy.{" "}
+          No tiene nada programado para hoy.{" "}
           {datos.masAdelante > 0
             ? `Tenés ${datos.masAdelante} para más adelante.`
-            : "Cuando cierres una ficha, dejá puesto qué sigue y aparece acá el día que toca."}
+            : "Cuando cierre una ficha, deje puesto qué sigue y aparece acá el día que toca."}
         </p>
       )}
 

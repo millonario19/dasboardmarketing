@@ -76,7 +76,7 @@ function siguientePaso(lead: LeadItem, bloque: string): string {
   if (bloque === "rescate") return "Retomar — nunca bajó a WhatsApp";
   if (lead.estado === "caliente") return "Falta el registro";
   if (lead.estado === "tibio") return "Falta bajarlo a WhatsApp";
-  return lead.dias === 0 ? "Escribile, es nuevo" : "Nunca respondió — escribile";
+  return lead.dias === 0 ? "Escríbale, es nuevo" : "Nunca respondió — escríbale";
 }
 
 function PildoraTemperatura({ estado }: { estado: EstadoLead }) {

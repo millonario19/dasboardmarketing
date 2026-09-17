@@ -256,7 +256,7 @@ export function ConfirmarBajadas({
           <span className="text-[14px] font-semibold tracking-[-0.02em]">
             {pendientes.length > 0 ? (
               <>
-                {pendientes.length === 1 ? "cliente tocó" : "clientes tocaron"} tu WhatsApp y no sabés si
+                {pendientes.length === 1 ? "cliente tocó" : "clientes tocaron"} tu WhatsApp y no sabe si
                 llegaron
               </>
             ) : (
@@ -300,7 +300,7 @@ export function ConfirmarBajadas({
               <div className="text-[16px] font-semibold">Antes de empezar</div>
               <div className="text-[12.5px] mt-0.5" style={{ color: "rgba(255,255,255,.68)" }}>
                 {gente.length} {gente.length === 1 ? "cliente tocó" : "clientes tocaron"} tu botón de
-                WhatsApp. Solo vos sabés si llegaron.
+                WhatsApp. Solo usted sabe si llegaron.
               </div>
             </div>
             {bloque(true)}

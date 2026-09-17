@@ -99,7 +99,7 @@ export function FichaCliente({
 
   function guardar() {
     if (!tipo && !sigue) {
-      setError("Elegí qué hiciste, o qué sigue.");
+      setError("Elija qué hizo, o qué sigue.");
       return;
     }
     setGuardando(true);
@@ -207,7 +207,7 @@ export function FichaCliente({
                   <span className="block text-[10.5px] tabular-nums mt-px" style={{ color: vencida ? ROJO : GRIS }}>
                     {vencida && "⏰ era "}
                     {cuando(a.hechaEn ?? a.venceEn ?? a.creadaEn)}
-                    {pendiente && " · lo programaste vos"}
+                    {pendiente && " · lo programó usted"}
                   </span>
                   {/* La grabación de la llamada, si el CRM la guardó. Es lo
                       único del historial que no depende de que alguien la

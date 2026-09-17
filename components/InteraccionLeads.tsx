@@ -861,7 +861,7 @@ export function InteraccionLeads({
           <p className="px-5 sm:px-7 py-3 text-[12px] border-t border-gridline" style={{ color: GRIS }}>
             {datos?.recortado && "Se revisaron las primeras 60 conversaciones del día. "}
             {(datos?.noLeidas ?? 0) > 0 &&
-              `${datos!.noLeidas} conversaciones no se pudieron leer (GHL limitó las consultas). Probá Actualizar en un minuto.`}
+              `${datos!.noLeidas} conversaciones no se pudieron leer (GHL limitó las consultas). Intente Actualizar en un minuto.`}
           </p>
         )}
       </div>

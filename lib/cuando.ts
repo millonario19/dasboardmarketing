@@ -100,7 +100,7 @@ export const esResultado = (x: unknown): x is string =>
 
 /** «mañana 8:00 a. m.», «hoy 7:10 p. m.» — para confirmar antes de guardar. */
 export function leerCuando(iso: string | null): string {
-  if (!iso) return "no lo llamás más";
+  if (!iso) return "no lo llama más";
   const cuando = new Date(iso);
   const dia = (ms: number) =>
     new Date(ms - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);

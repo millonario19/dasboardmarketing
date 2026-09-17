@@ -100,7 +100,7 @@ export default function MiDiaPage() {
         <Seguimiento parte="agenda" />
 
         {/* Los tres pasos del seguimiento, el mismo orden que en Dirección.
-            Primero lo que vos programaste, después los que ya tenés en el
+            Primero lo que usted programó, después los que ya tiene en el
             WhatsApp, y al final los que todavía no bajaron. */}
         {/* El rótulo de la sección. Las dos pantallas tienen un paso 1, un 2 y
             un 3, y sin esto el agente no sabe de cuáles está leyendo. */}
@@ -118,7 +118,7 @@ export default function MiDiaPage() {
         <PasoSistema
           numero={1}
           titulo="Llamadas para hoy"
-          detalle="Pendientes de FTD, día 2 y día 3, y lo que vos agendaste"
+          detalle="Pendientes de FTD, día 2 y día 3, y lo que usted agendó"
           abiertoPorDefecto
           resumen={
             porHacer === null
@@ -137,7 +137,7 @@ export default function MiDiaPage() {
         <PasoSistema
           numero={2}
           titulo="En mi WhatsApp Business"
-          detalle="Calientes que ya bajaron y confirmaste · acá el sistema no ve nada, solo vos"
+          detalle="Calientes que ya bajaron y confirmaste · acá el sistema no ve nada, solo usted"
           abiertoPorDefecto
         >
           <Seguimiento parte="business" />

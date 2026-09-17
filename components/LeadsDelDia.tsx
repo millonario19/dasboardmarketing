@@ -190,7 +190,7 @@ function Fila({
             </span>
             <button
               onClick={() => setPidiendo(true)}
-              title="Cuando te pase el número por el chat, guardalo acá y queda para llamarlo"
+              title="Cuando le pase el número por el chat, guárdelo acá y queda para llamarlo"
               className="rounded-full px-2 py-[2px] text-[11px] font-semibold"
               style={{ background: CELESTE, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
             >
@@ -204,7 +204,7 @@ function Fila({
         </span>
         {copiado && !error && (
           <span className="block text-[11px] font-semibold mt-1" style={{ color: VERDE }}>
-            ✓ copiado — pegalo en tu WhatsApp
+            ✓ copiado — péguelo en su WhatsApp
           </span>
         )}
         {error && (
@@ -223,13 +223,13 @@ function Fila({
             className="rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap"
             style={{ background: "#EEF7F2", color: VERDE }}
           >
-            ✓ ya lo tenés
+            ✓ ya lo tiene
           </span>
         ) : modo === "bajar" ? (
           <button
             onClick={bajar}
             disabled={bajando || !telefono}
-            title={telefono ? "Copia el nombre y el número, y lo marca como bajado" : "Guardá primero su número"}
+            title={telefono ? "Copia el nombre y el número, y lo marca como bajado" : "Guarde primero su número"}
             className="rounded-full px-3 py-1.5 text-[12px] font-semibold text-white disabled:opacity-40 hover:opacity-90 whitespace-nowrap"
             style={{ background: VERDE_WA }}
           >
@@ -338,8 +338,8 @@ export function LeadsDelDia({
           {esOtroDia
             ? `los que entraron el ${nombreDeDia(dia!)}`
             : modo === "bajar"
-              ? "lo copiás vos · no es el que baja solo por el CRM"
-              : "mientras más rápido llamás, más convierten"}
+              ? "lo copia usted · no es el que baja solo por el CRM"
+              : "mientras más rápido llame, más convierten"}
         </span>
         <span
           className="ml-auto text-[12px] font-bold rounded-full px-2.5 py-0.5 tabular-nums"

@@ -26,31 +26,31 @@ export const POR_DEFECTO: Record<string, string> = {
   // Día 1: el cliente escribió hoy. Es el mensaje que más convierte de los
   // tres, porque llega mientras todavía se acuerda del anuncio.
   "d1-caliente":
-    "Hola {nombre}, soy tu asesor de Oficina Prime 👋 Vi que querés arrancar. " +
-    "Contame, ¿ya operaste antes o sería tu primera vez?",
+    "Hola {nombre}, soy tu asesor de Oficina Prime 👋 Vi que quieres arrancar. " +
+    "Cuéntame, ¿ya operaste antes o sería tu primera vez?",
   "d1-tibio":
     "Hola {nombre}, gracias por escribirnos 🙌 Te cuento en dos minutos cómo funciona la beca. " +
-    "¿Te llamo ahora o preferís por acá?",
+    "¿Te llamo ahora o prefieres por acá?",
   "d1-frio":
     "Hola {nombre}, recibí tu solicitud de información sobre la beca de trading 👋 " +
     "¿Qué te gustaría saber primero?",
   "d2-caliente":
     "Hola {nombre}, te quedó el paso a medias 🙌 Diste clic para escribirme pero no me llegó tu mensaje. " +
-    "Escribime por acá y lo resolvemos ya.",
+    "Escríbeme por acá y lo resolvemos ya.",
   "d2-tibio":
-    "Hola {nombre}, vi que entraste al canal 👋 Si querés que te explique cómo arranca la beca sin vueltas, " +
-    "respondeme por acá y te cuento.",
+    "Hola {nombre}, vi que entraste al canal 👋 Si quieres que te explique cómo arranca la beca sin vueltas, " +
+    "respóndeme por acá y te cuento.",
   "d2-frio":
-    "Hola {nombre}, ayer pediste información sobre la beca de trading. ¿Seguís interesado? " +
-    "Respondeme por acá y te cuento sin compromiso.",
+    "Hola {nombre}, ayer pediste información sobre la beca de trading. ¿Sigues interesado? " +
+    "Respóndeme por acá y te cuento sin compromiso.",
   "d3-caliente":
     "{nombre}, te marco hoy para cerrar esto en cinco minutos 📞 ¿A qué hora te queda bien?",
   "d3-tibio":
     "{nombre}, el jueves hay sesión abierta donde se ve la operativa en vivo, sin costo. " +
-    "Respondeme «sí» y te anoto.",
+    "Respóndeme «sí» y te anoto.",
   "d3-frio":
     "Hola {nombre}, última vez que te escribo por acá 🙂 El jueves hay sesión abierta de la beca, sin costo. " +
-    "Si te interesa respondeme «sí» y te anoto.",
+    "Si te interesa respóndeme «sí» y te anoto.",
 };
 
 let tablaLista: Promise<void> | undefined;

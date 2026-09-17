@@ -309,7 +309,7 @@ function Reloj({
         fontWeight="700"
         fill={simulando ? AZUL : logrado > 0 ? VERDE : TINTA_3}
       >
-        {simulando ? `si llegás a ${plata(logrado)}` : `llevás ${plata(logrado)}`}
+        {simulando ? `si llega a ${plata(logrado)}` : `lleva ${plata(logrado)}`}
       </text>
         </>
       )}
@@ -611,7 +611,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           className="text-[14px] font-bold"
           style={{ color: simulando ? AZUL : pago > 0 ? VERDE : TINTA_3 }}
         >
-          {simulando ? `si llegás a ${plata(mostrado)}` : `llevás ${plata(pago)}`}
+          {simulando ? `si llega a ${plata(mostrado)}` : `lleva ${plata(pago)}`}
         </p>
         <p className="text-[13px] leading-snug mt-3" style={{ color: TINTA }}>
           Un sueño necesita un plan <b className="font-bold">para despertarlo.</b>
@@ -670,7 +670,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             className="text-[12.5px] font-bold uppercase tracking-[.14em] underline"
             style={{ color: AZUL }}
           >
-            Poné tu meta
+            Ponga su meta
           </button>
         </div>
       ) : (

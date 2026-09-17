@@ -37,7 +37,7 @@ export default function LoginPage() {
       router.push(data.destino ?? "/");
       router.refresh();
     } catch {
-      setError("No se pudo conectar. Probá de nuevo.");
+      setError("No se pudo conectar. Intente de nuevo.");
     } finally {
       setEntrando(false);
     }

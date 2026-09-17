@@ -472,8 +472,8 @@ export function FilaSeguimiento({
             </p>
           ) : (
             <p className="text-[11.5px] mb-1.5" style={{ color: GRIS_2 }}>
-              Escribile a <b>{lead.nombre}</b> por <b>{canalNombre ?? "WhatsApp"}</b>, que es por
-              donde te habla. Está escrito para vos — cambialo a tu gusto antes de mandarlo.
+              Escríbale a <b>{lead.nombre}</b> por <b>{canalNombre ?? "WhatsApp"}</b>, que es por
+              donde te habla. Está escrito para usted — cámbielo a su gusto antes de mandarlo.
             </p>
           )}
 

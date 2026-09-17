@@ -66,7 +66,7 @@ function Fila({ lead, onListo }: { lead: LeadDeSeguimiento; onListo: (id: string
 
   function guardar() {
     if (!resultado) {
-      setError("Elegí qué pasó en la llamada.");
+      setError("Elija qué pasó en la llamada.");
       return;
     }
     setGuardando(true);

@@ -265,7 +265,7 @@ function EnMiBusiness({
       >
         <h2 className="text-[15px] font-semibold tracking-[-0.02em]">En mi WhatsApp Business</h2>
         <span className="text-[12px]" style={{ color: "rgba(255,255,255,.72)" }}>
-          confirmados por vos · acá arranca el seguimiento
+          confirmados por usted · acá arranca el seguimiento
         </span>
         <span
           className="ml-auto text-[12px] font-bold rounded-full px-2.5 py-0.5 tabular-nums"
@@ -278,7 +278,7 @@ function EnMiBusiness({
       {leads.length === 0 ? (
         <p className="px-4 sm:px-5 py-4 text-[13px]" style={{ color: GRIS }}>
           Todavía no confirmaste a nadie. Cuando en el paso 3 digas que un cliente ya está en tu
-          WhatsApp Business, aparece acá y no se va hasta que deposite o vos lo cierres.
+          WhatsApp Business, aparece acá y no se va hasta que deposite o usted lo cierre.
         </p>
       ) : (
         <>
@@ -318,10 +318,10 @@ function EnMiBusiness({
 
 /** Qué toca hacer hoy con este cliente, según por qué día del embudo va. */
 function queToca(dia: number): string {
-  if (dia === 1) return "Día 1 · llegó hoy a tu WhatsApp — saludalo y arrancá";
-  if (dia === 2) return "Día 2 · mandale el material y preguntá si le quedó claro";
+  if (dia === 1) return "Día 1 · llegó hoy a su WhatsApp — salúdelo y arranque";
+  if (dia === 2) return "Día 2 · mándele el material y pregunte si le quedó claro";
   if (dia === 3) return "Día 3 · último empujón antes de que se enfríe";
-  return "Día 7 · llamalo. A esta altura escribir ya no alcanza";
+  return "Día 7 · llámelo. A esta altura escribir ya no alcanza";
 }
 
 /**

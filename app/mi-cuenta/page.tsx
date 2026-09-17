@@ -125,7 +125,7 @@ export default function MiCuentaPage() {
 
           <p className="text-[12px] text-ink-secondary leading-relaxed">
             Si la olvidás, la dirección te pone una nueva desde la pantalla de Usuarios. Nadie puede
-            ver la que tenés puesta, ni siquiera la dirección: en la base queda guardada de una forma
+            ver la que tiene puesta, ni siquiera la dirección: en la base queda guardada de una forma
             que no se puede revertir.
           </p>
         </form>

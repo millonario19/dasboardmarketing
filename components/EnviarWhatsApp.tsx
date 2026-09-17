@@ -200,7 +200,7 @@ export function EnviarWhatsApp({
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
         rows={4}
-        placeholder="Escribile…"
+        placeholder="Escríbale…"
         className="w-full rounded-lg border border-gridline bg-surface px-3 py-2 text-[13px] outline-none resize-y"
       />
 

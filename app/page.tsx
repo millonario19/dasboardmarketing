@@ -187,8 +187,8 @@ export default function DashboardPage() {
               titulo="Ya está en mi WhatsApp Business"
               detalle={
                 diaMirado
-                  ? "Del día que elegiste arriba · los que tocaron el botón y los que te llevás vos"
-                  : "Los que tocaron el botón y los que te llevás vos · hasta que respondas, el paso 2 puede estar mal"
+                  ? "Del día que eligió arriba · los que tocaron el botón y los que se lleva usted"
+                  : "Los que tocaron el botón y los que se lleva usted · hasta que responda, el paso 2 puede estar mal"
               }
               abiertoPorDefecto
             >
@@ -208,7 +208,7 @@ export default function DashboardPage() {
             <PasoSistema
               numero={4}
               titulo="Llamar inmediatamente a mis leads nuevos"
-              detalle="Hay mayor conversión si llamás de inmediato · lo que programés aparece mañana en Mis leads"
+              detalle="Hay mayor conversión si llama de inmediato · lo que programe aparece mañana en Mis leads"
             >
               <LeadsDelDia modo="llamar" dia={diaMirado} />
             </PasoSistema>
