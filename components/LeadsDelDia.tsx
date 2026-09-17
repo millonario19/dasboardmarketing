@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BotonWhatsApp } from "@/components/ContactoRapido";
-import { BotonLlamar } from "@/components/Llamada";
+import { BotonLlamar, BotonCrm, ReporteLlamada } from "@/components/Llamada";
 import { pedirSeguimiento } from "@/components/Seguimiento";
 import type { LeadDeSeguimiento } from "@/lib/seguimiento";
 
@@ -197,6 +197,14 @@ function Fila({
             {error}
           </span>
         )}
+        {/* Al volver de la llamada, acá lo espera la pregunta. Es lo que
+            convierte la lista en un seguimiento: sin esto la llamada se hace y
+            no queda nada de lo que el cliente dijo. */}
+        {modo === "llamar" && (
+          <span className="block mt-1.5 empty:hidden">
+            <ReporteLlamada contactId={lead.id} />
+          </span>
+        )}
       </span>
 
       <span className="flex items-center gap-1.5 shrink-0">
@@ -221,11 +229,13 @@ function Fila({
           <BotonWhatsApp telefono={telefono} nombre={lead.nombre} tamano={28} />
         )}
         <BotonLlamar telefono={telefono} nombre={lead.nombre} contactId={lead.id} tamano={28} />
+        {modo === "llamar" && <BotonCrm crmUrl={lead.crmUrl} nombre={lead.nombre} />}
         <a
           href={lead.crmUrl}
           target="_blank"
           rel="noopener noreferrer"
-          title="Abrir en el CRM para llamar desde el número de la oficina"
+          hidden={modo === "llamar" && !!telefono}
+          title="Abrir la ficha en el CRM"
           className="inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11px] font-semibold whitespace-nowrap"
           style={{ background: CELESTE, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
         >

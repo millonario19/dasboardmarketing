@@ -1,4 +1,5 @@
 import { getPool } from "./db";
+import { esResultado } from "./cuando";
 
 /**
  * Las llamadas que hace el agente, y qué pasó en ellas.
@@ -14,7 +15,12 @@ import { getPool } from "./db";
  * único dato de todo el tablero que crea trabajo para mañana.
  */
 
-export type Resultado = "registro" | "deposita" | "volver" | "no-interesa";
+/**
+ * Los resultados los define lib/cuando: ahí cada uno trae puesto cuándo se
+ * vuelve a llamar, que es lo que el agente elige de verdad. Acá solo se
+ * guardan.
+ */
+export type Resultado = string;
 
 export type Llamada = {
   id: number;
@@ -30,8 +36,7 @@ export type Llamada = {
   reportadoEn: string | null;
 };
 
-const RESULTADOS: Resultado[] = ["registro", "deposita", "volver", "no-interesa"];
-export const esResultado = (x: unknown): x is Resultado => RESULTADOS.includes(x as Resultado);
+export { esResultado };
 
 let tablaLista: Promise<void> | undefined;
 

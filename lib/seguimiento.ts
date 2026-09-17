@@ -413,6 +413,18 @@ async function promesasPendientes(usuario: string | null): Promise<Promesa[]> {
         where promesa_en is not null
           and reportado_en is not null
           and promesa_en >= now() - interval '15 days'
+          -- Desde que reportar una llamada crea la tarea en «acciones», la
+          -- promesa ya se ve en «Leads programados». Mostrarla acá también la
+          -- ponía dos veces en la misma pantalla. Las viejas —las que se
+          -- prometieron antes de ese cambio y no tienen tarea— siguen
+          -- saliendo: nadie pierde lo que ya había prometido.
+          and not exists (
+            select 1 from acciones a
+             where a.contact_id = llamadas.contact_id
+               and a.vence_en is not null
+               and a.hecha_en is null
+               and a.cerrada_en is null
+          )
           ${usuario ? "and usuario = $1" : ""}
         order by promesa_en`,
       usuario ? [usuario] : []

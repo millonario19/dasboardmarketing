@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CUANDO, RESULTADOS, leerCuando, metaResultado, opcionCuando } from "@/lib/cuando";
 
 const AZUL = "#17457F";
 const AZUL_CLARO = "#EAF1FA";
@@ -140,61 +141,103 @@ export function BotonLlamar({
   );
 }
 
-const RESULTADOS = [
-  { id: "registro", texto: "Se registró", fecha: false },
-  { id: "deposita", texto: "Va a depositar", fecha: true },
-  { id: "volver", texto: "Lo piensa, volver a llamar", fecha: true },
-  { id: "no-interesa", texto: "No le interesa", fecha: false },
-] as const;
+/**
+ * Llamar por el número de la oficina, desde LeadConnector.
+ *
+ * Son dos llamadas distintas y conviene que se vean distintas. Esta sale del
+ * número de Estados Unidos: queda grabada, con su hora y su duración, y el
+ * tablero la lee sola. La del celular del agente contesta más —el cliente ve
+ * un número colombiano— pero no deja rastro en ningún lado, y por eso esa es
+ * la que hay que anotar a mano.
+ *
+ * Abre la ficha en el CRM, que en el celular la toma la app de LeadConnector y
+ * marca desde ahí.
+ */
+export function BotonCrm({ crmUrl, nombre }: { crmUrl?: string | null; nombre?: string }) {
+  if (!crmUrl) return null;
+  return (
+    <a
+      href={crmUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`Llamar a ${nombre ?? "este lead"} por el número de la oficina · queda grabada`}
+      className="inline-flex items-center gap-1 rounded-full px-2.5 py-[5px] text-[11.5px] font-bold whitespace-nowrap text-white hover:opacity-90"
+      style={{ background: AZUL }}
+    >
+      ✆ CRM
+    </a>
+  );
+}
+
 
 /**
- * El aviso de «llamaste, ¿qué pasó?» y su formulario.
+ * Colgaste: ¿qué pasó?
  *
- * Aparece al lado del lead, después de la llamada y no durante: en el momento
- * del clic el agente está por hablar por teléfono, no es momento de un
- * formulario.
+ * Es una sola pregunta, no un formulario. El agente acaba de colgar y tiene
+ * otro número esperando; si esto le cuesta más de tres toques, deja de
+ * llenarlo a la tercera llamada y el sistema se queda ciego.
  *
- * Son toques, no escritura. La nota es opcional a propósito: si fuera
- * obligatoria escribirían «ok» y el campo dejaría de servir.
+ * El truco está en que el resultado ya elige el «cuándo». Toca «no contestó» y
+ * queda marcado «en 3 horas», que es lo que iba a poner igual. Toca «va a
+ * depositar» y queda «mañana 8:00». Si el cliente dijo otra cosa —«llamame en
+ * tres horas cuando salga del trabajo»— lo corrige con un toque. Casi nunca
+ * tiene que corregir.
+ *
+ * Y la observación va arriba de los botones del final, siempre visible: es el
+ * dato que mañana le dice con qué arrancar, y escondida detrás de un «agregar
+ * nota» no la escribe nadie.
  */
 export function ReporteLlamada({ contactId }: { contactId: string }) {
   const pendiente = usePendiente(contactId);
   const [abierto, setAbierto] = useState(false);
-  const [contesto, setContesto] = useState<boolean | null>(null);
   const [resultado, setResultado] = useState<string | null>(null);
-  const [cuando, setCuando] = useState("");
+  const [cuando, setCuando] = useState<string | null>(null);
+  const [fechaSuelta, setFechaSuelta] = useState("");
   const [nota, setNota] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const enviar = useCallback(
-    (datos: { contesto: boolean; resultado?: string | null; promesaEn?: string | null; nota?: string }) => {
-      if (!pendiente) return;
-      setGuardando(true);
-      setError(null);
-      fetch(`/api/llamadas/${pendiente.id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(datos),
+  // Elegir el resultado deja puesto el cuándo. El agente solo lo toca si el
+  // cliente dijo una hora distinta.
+  const elegirResultado = useCallback((id: string) => {
+    setResultado(id);
+    setCuando(metaResultado(id)?.cuando ?? null);
+  }, []);
+
+  const proximaEn = (): string | null => {
+    if (!cuando || cuando === "nunca") return null;
+    if (cuando === "otro") return fechaSuelta ? new Date(fechaSuelta).toISOString() : null;
+    return opcionCuando(cuando)?.calcular() ?? null;
+  };
+
+  const guardar = useCallback(() => {
+    if (!pendiente || !resultado) return;
+    setGuardando(true);
+    setError(null);
+    fetch(`/api/llamadas/${pendiente.id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resultado, nota, proximaEn: proximaEn() }),
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo guardar");
+        sacarDeCache(contactId);
+        setAbierto(false);
+        setResultado(null);
+        setCuando(null);
+        setNota("");
+        setFechaSuelta("");
       })
-        .then(async (r) => {
-          if (!r.ok) throw new Error((await r.json()).error ?? "No se pudo guardar");
-          sacarDeCache(contactId);
-          setAbierto(false);
-          setContesto(null);
-          setResultado(null);
-          setCuando("");
-          setNota("");
-        })
-        .catch((e) => setError(e.message))
-        .finally(() => setGuardando(false));
-    },
-    [contactId, pendiente]
-  );
+      .catch((e) => setError(e.message))
+      .finally(() => setGuardando(false));
+    // proximaEn se calcula al vuelo con lo que hay en pantalla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contactId, pendiente, resultado, cuando, fechaSuelta, nota]);
 
   if (!pendiente) return null;
 
-  const pideFecha = RESULTADOS.find((r) => r.id === resultado)?.fecha ?? false;
+  const listo = resultado !== null && (cuando !== "otro" || fechaSuelta !== "");
+  const lee = proximaEn();
 
   return (
     <>
@@ -213,90 +256,122 @@ export function ReporteLlamada({ contactId }: { contactId: string }) {
           onClick={() => !guardando && setAbierto(false)}
         >
           <div
-            className="bg-surface w-full sm:max-w-[420px] rounded-t-[22px] sm:rounded-[22px] overflow-hidden"
+            className="bg-surface w-full sm:max-w-[440px] rounded-t-[22px] sm:rounded-[22px] overflow-hidden max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-5 py-4" style={{ background: AZUL_CLARO }}>
-              <div className="text-[15px] font-semibold">{pendiente.nombre || "Ese lead"}</div>
+            <div className="px-5 pt-4 pb-3.5" style={{ background: AZUL_CLARO }}>
+              <div className="text-[16px] font-semibold tracking-[-0.02em]">
+                {pendiente.nombre || "Ese lead"}
+              </div>
               <div className="text-[12.5px]" style={{ color: GRIS_2 }}>
-                Llamaste a las {hora(pendiente.llamadaEn)}
+                Lo llamaste a las {hora(pendiente.llamadaEn)}
               </div>
             </div>
 
             <div className="px-5 py-4 flex flex-col gap-4">
               <div>
-                <p className="text-[12.5px] font-semibold mb-2">¿Contestó?</p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setContesto(true)}
-                    className="flex-1 rounded-xl py-2.5 text-[13.5px] font-bold"
-                    style={
-                      contesto === true
-                        ? { background: VERDE, color: "#fff" }
-                        : { background: "var(--page)", color: GRIS_2, border: "1px solid var(--gridline)" }
-                    }
-                  >
-                    Sí
-                  </button>
-                  <button
-                    onClick={() => enviar({ contesto: false, nota })}
-                    disabled={guardando}
-                    className="flex-1 rounded-xl py-2.5 text-[13.5px] font-bold disabled:opacity-50"
-                    style={{ background: "var(--page)", color: GRIS_2, border: "1px solid var(--gridline)" }}
-                  >
-                    No contestó
-                  </button>
+                <p className="text-[9.5px] font-bold uppercase tracking-[.15em] mb-2" style={{ color: GRIS_2 }}>
+                  ¿Qué pasó?
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {RESULTADOS.map((r) => {
+                    const puesto = resultado === r.id;
+                    const fondo =
+                      r.tono === "bueno" ? VERDE : r.tono === "malo" ? "#C0392B" : AZUL;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => elegirResultado(r.id)}
+                        aria-pressed={puesto}
+                        className="rounded-full px-3 py-[7px] text-[12.5px] font-semibold"
+                        style={
+                          puesto
+                            ? { background: fondo, color: "#fff" }
+                            : { background: "var(--page)", border: "1px solid var(--gridline)" }
+                        }
+                      >
+                        {r.texto}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {contesto === true && (
-                <>
-                  <div>
-                    <p className="text-[12.5px] font-semibold mb-2">¿En qué quedaron?</p>
-                    <div className="flex flex-col gap-1.5">
-                      {RESULTADOS.map((r) => (
-                        <button
-                          key={r.id}
-                          onClick={() => setResultado(r.id)}
-                          className="text-left rounded-xl px-3 py-2.5 text-[13.5px]"
-                          style={
-                            resultado === r.id
-                              ? { background: AZUL, color: "#fff", fontWeight: 700 }
-                              : { background: "var(--page)", border: "1px solid var(--gridline)" }
-                          }
-                        >
-                          {r.texto}
-                        </button>
-                      ))}
-                    </div>
+              <div>
+                <p className="text-[9.5px] font-bold uppercase tracking-[.15em] mb-1.5" style={{ color: GRIS_2 }}>
+                  Qué te dijo
+                </p>
+                <textarea
+                  value={nota}
+                  onChange={(e) => setNota(e.target.value)}
+                  rows={2}
+                  placeholder="Mañana en la mañana deposito, llamame a las 8"
+                  className="w-full rounded-xl border border-gridline bg-page px-3 py-2.5 text-[13px] outline-none resize-none"
+                />
+                <p className="text-[11px] mt-1" style={{ color: GRIS_2 }}>
+                  Esto te va a salir mañana debajo del nombre, para saber con qué arrancar.
+                </p>
+              </div>
+
+              {resultado && (
+                <div>
+                  <p className="text-[9.5px] font-bold uppercase tracking-[.15em] mb-2" style={{ color: GRIS_2 }}>
+                    ¿Cuándo lo volvés a llamar?
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CUANDO.map((c) => (
+                      <button
+                        key={c.id}
+                        onClick={() => setCuando(c.id)}
+                        aria-pressed={cuando === c.id}
+                        className="rounded-full px-3 py-[7px] text-[12.5px] font-semibold"
+                        style={
+                          cuando === c.id
+                            ? { background: AZUL, color: "#fff" }
+                            : { background: "var(--page)", border: "1px solid var(--gridline)" }
+                        }
+                      >
+                        {c.texto}
+                      </button>
+                    ))}
                   </div>
-
-                  {pideFecha && (
-                    <div>
-                      <p className="text-[12.5px] font-semibold mb-1.5">¿Cuándo?</p>
-                      <input
-                        type="datetime-local"
-                        value={cuando}
-                        onChange={(e) => setCuando(e.target.value)}
-                        className="w-full rounded-xl border border-gridline bg-page px-3 py-2.5 text-[13.5px] outline-none"
-                      />
-                      <p className="text-[11px] mt-1" style={{ color: GRIS_2 }}>
-                        Esto es lo que te va a recordar mañana.
-                      </p>
-                    </div>
+                  {cuando === "otro" && (
+                    <input
+                      type="datetime-local"
+                      value={fechaSuelta}
+                      onChange={(e) => setFechaSuelta(e.target.value)}
+                      className="mt-2 w-full rounded-xl border border-gridline bg-page px-3 py-2.5 text-[13px] outline-none"
+                    />
                   )}
-
-                  <textarea
-                    value={nota}
-                    onChange={(e) => setNota(e.target.value)}
-                    rows={2}
-                    placeholder="Nota (opcional)"
-                    className="w-full rounded-xl border border-gridline bg-page px-3 py-2.5 text-[13.5px] outline-none resize-none"
-                  />
-                </>
+                </div>
               )}
 
-              {error && <p className="text-[12.5px] text-series2">{error}</p>}
+              {error && (
+                <p className="text-[12.5px]" style={{ color: "#C0392B" }}>
+                  {error}
+                </p>
+              )}
+
+              {/* Lo que va a quedar, escrito como se lee. Es la última mirada
+                  antes de guardar y evita el reporte puesto en el día que no
+                  era. */}
+              {resultado && (
+                <p
+                  className="text-[12.5px] border-t border-gridline pt-3"
+                  style={{ color: GRIS_2 }}
+                >
+                  Queda:{" "}
+                  <b style={{ color: "var(--foreground)" }}>{metaResultado(resultado)?.texto}</b>
+                  {cuando === "nunca" ? (
+                    <> · no lo llamás más</>
+                  ) : (
+                    <>
+                      {" "}
+                      · lo llamás <b style={{ color: "var(--foreground)" }}>{leerCuando(lee)}</b>
+                    </>
+                  )}
+                </p>
+              )}
 
               <div className="flex gap-2">
                 <button
@@ -307,23 +382,14 @@ export function ReporteLlamada({ contactId }: { contactId: string }) {
                 >
                   Ahora no
                 </button>
-                {contesto === true && (
-                  <button
-                    onClick={() =>
-                      enviar({
-                        contesto: true,
-                        resultado,
-                        promesaEn: pideFecha && cuando ? new Date(cuando).toISOString() : null,
-                        nota,
-                      })
-                    }
-                    disabled={guardando || !resultado}
-                    className="flex-1 rounded-full px-4 py-2.5 text-[13px] font-bold text-white disabled:opacity-50"
-                    style={{ background: AZUL }}
-                  >
-                    {guardando ? "Guardando…" : "Guardar"}
-                  </button>
-                )}
+                <button
+                  onClick={guardar}
+                  disabled={guardando || !listo}
+                  className="flex-1 rounded-full px-4 py-2.5 text-[13px] font-bold text-white disabled:opacity-40"
+                  style={{ background: VERDE }}
+                >
+                  {guardando ? "Guardando…" : "Guardar y seguir"}
+                </button>
               </div>
             </div>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { BotonLlamar } from "@/components/Llamada";
+import { BotonLlamar, ReporteLlamada } from "@/components/Llamada";
 import { FichaCliente } from "@/components/FichaCliente";
 import { metaTipo } from "@/lib/tiposAccion";
 import type { Accion, ResumenDelDia } from "@/lib/acciones";
@@ -74,11 +74,17 @@ function Fila({ tarea, onHecha }: { tarea: Accion; onHecha: () => void }) {
               {hora(tarea.venceEn!)}
             </b>
           </span>
+          {/* Lo que el cliente dijo la última vez. Es con lo que arranca la
+              llamada de hoy: sin esa frase el agente marca sin saber quién es
+              y tiene que preguntar de nuevo. */}
           {tarea.detalle && (
             <span className="block text-[11.5px] mt-0.5" style={{ color: GRIS }}>
               «{tarea.detalle}»
             </span>
           )}
+          <span className="block mt-1.5 empty:hidden">
+            <ReporteLlamada contactId={tarea.contactId} />
+          </span>
         </span>
 
         <span className="flex items-center gap-1.5 shrink-0">

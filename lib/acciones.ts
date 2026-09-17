@@ -425,8 +425,8 @@ export type ResumenDelDia = {
  *
  * Solo de llamadas: el paso 1 es el módulo del teléfono y mezclarle mensajes y
  * videos lo volvía un resumen de todo que no decía nada de lo único que se
- * hace ahí. «Efectivas» son las que terminaron en registro — no las que
- * contestaron, porque contestar y colgar no es un resultado.
+ * hace ahí. «Efectivas» son las que terminaron en registro o en promesa de depósito —
+ * no las que contestaron, porque contestar y colgar no es un resultado.
  */
 export async function resumenDeHoy(usuario: string | null): Promise<ResumenDelDia> {
   const vacio = { llamadas: 0, noContesto: 0, reprogramadas: 0, efectivas: 0, vencidas: 0 };
@@ -448,7 +448,7 @@ export async function resumenDeHoy(usuario: string | null): Promise<ResumenDelDi
       `select
          count(*) filter (where tipo = 'llame') as llamadas,
          count(*) filter (where tipo = 'llame' and resultado = 'no-contesto') as no_contesto,
-         count(*) filter (where tipo = 'llame' and resultado = 'registro') as efectivas
+         count(*) filter (where tipo = 'llame' and resultado in ('registro','deposita')) as efectivas
        from acciones
        where hecha_en >= $1 ${filtro}`,
       args
