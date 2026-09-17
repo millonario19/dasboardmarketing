@@ -1,15 +1,15 @@
 /**
- * Cuándo lo vuelvo a llamar, en toques.
+ * Cuándo lo vuelvo a llamar.
  *
- * Es la pieza central del CRM de llamadas. El agente cuelga y el cliente le
- * acaba de decir algo muy concreto —«mañana en la mañana deposito, llamame a
- * las 8», «llamame en tres horas cuando salga del trabajo»—, y ese dato tiene
- * que quedar guardado antes de que marque el siguiente número. Un selector de
- * fecha y hora ahí es un trámite: son cinco toques, se hace en el celular, y
- * después de la décima llamada nadie lo llena.
+ * Es la pieza central del CRM de llamadas: el cliente dice algo muy concreto
+ * —«mañana en la mañana deposito», «el viernes cuando cobre»— y eso tiene que
+ * quedar guardado antes de que el agente marque el siguiente número.
  *
- * Así que las respuestas del cliente ya están puestas como botones. «En 3
- * horas» es un toque. Y la fecha exacta sigue estando, para el caso raro.
+ * Esto arrancó siendo siete botones de horas fijas. El agente los usó y dijo
+ * que no: obligaban a que su caso cayera en uno de los siete, y los casos
+ * reales no caen. Así que en pantalla manda el campo de fecha y hora, y lo que
+ * queda de acá son los cálculos que lo mueven solo —elegir «no contestó»
+ * adelanta tres horas— y los tres atajos de una línea.
  *
  * Vive aparte de lib/acciones porque de acá lee el navegador: ese módulo
  * importa Postgres y traérselo al cliente arrastra el driver entero.

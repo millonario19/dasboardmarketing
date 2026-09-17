@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CUANDO, RESULTADOS, leerCuando, metaResultado, opcionCuando } from "@/lib/cuando";
+import { RESULTADOS, leerCuando, metaResultado, opcionCuando } from "@/lib/cuando";
 
 const AZUL = "#17457F";
 const AZUL_CLARO = "#EAF1FA";
@@ -79,6 +79,26 @@ function hora(iso: string): string {
     minute: "2-digit",
     timeZone: "America/Bogota",
   });
+}
+
+/** Lo que entiende un <input type="datetime-local">: «2026-09-18T09:00». */
+function paraElCampo(d: Date): string {
+  const dd = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${dd(d.getMonth() + 1)}-${dd(d.getDate())}T${dd(d.getHours())}:${dd(
+    d.getMinutes()
+  )}`;
+}
+
+/** Correr el campo desde ahora, para los atajos de una sola línea. */
+function desdeAhora(horas: number): string {
+  return paraElCampo(new Date(Date.now() + horas * 3600e3));
+}
+
+/** Un día adelante a una hora redonda. */
+function aLasDe(diasAdelante: number, hora: number): string {
+  const d = new Date(Date.now() + diasAdelante * 864e5);
+  d.setHours(hora, 0, 0, 0);
+  return paraElCampo(d);
 }
 
 function IconoTelefono({ tamano }: { tamano: number }) {
@@ -240,51 +260,48 @@ function HojaQuePaso({
   cerrar: () => void;
 }) {
   const [resultado, setResultado] = useState<string | null>(null);
-  const [cuando, setCuando] = useState<string | null>(null);
-  const [fechaSuelta, setFechaSuelta] = useState("");
+  // El campo arranca en mañana a las 9, no en blanco: en el celular un campo
+  // de fecha vacío obliga a poner año, mes, día y hora a mano.
+  const [fechaSuelta, setFechaSuelta] = useState(() => {
+    const manana = new Date(Date.now() + 864e5);
+    manana.setHours(9, 0, 0, 0);
+    return paraElCampo(manana);
+  });
+  const [sinProxima, setSinProxima] = useState(false);
   const [nota, setNota] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Elegir el resultado deja puesto el cuándo. El agente solo lo toca si el
-  // cliente dijo una hora distinta.
-  const elegirResultado = (id: string) => {
-    setResultado(id);
-    setCuando(metaResultado(id)?.cuando ?? null);
-  };
-
   /**
-   * «Otro día» no se abre en blanco.
+   * Elegir el resultado mueve el campo de la fecha, no lo reemplaza.
    *
-   * Un datetime-local vacío en el celular obliga a poner año, mes, día y hora
-   * a mano. Arrancando en mañana a las 9 casi siempre es mover una cosa.
+   * Los botones de horas fijas se fueron: obligaban a que el caso del agente
+   * cayera en uno de los siete que había, y los casos reales no caen —«el
+   * viernes cuando cobre», «el martes a las 6:30»—. Lo que sobrevive de esa
+   * idea es el atajo bueno: tocar «no contestó» adelanta el campo tres horas
+   * solo, y si el cliente dijo otra cosa se corrige ahí mismo.
    */
-  const elegirCuando = (id: string) => {
-    setCuando(id);
-    if (id === "otro" && !fechaSuelta) {
-      const manana = new Date(Date.now() + 864e5);
-      manana.setHours(9, 0, 0, 0);
-      const dosDigitos = (n: number) => String(n).padStart(2, "0");
-      setFechaSuelta(
-        `${manana.getFullYear()}-${dosDigitos(manana.getMonth() + 1)}-${dosDigitos(
-          manana.getDate()
-        )}T09:00`
-      );
+  const elegirResultadoConFecha = (id: string) => {
+    setResultado(id);
+    const meta = metaResultado(id);
+    if (!meta) return;
+    if (meta.cuando === "nunca") {
+      setSinProxima(true);
+      return;
     }
+    setSinProxima(false);
+    const iso = opcionCuando(meta.cuando)?.calcular();
+    if (iso) setFechaSuelta(paraElCampo(new Date(iso)));
   };
 
-  const proximaEn = (): string | null => {
-    if (!cuando || cuando === "nunca") return null;
-    if (cuando === "otro") return fechaSuelta ? new Date(fechaSuelta).toISOString() : null;
-    return opcionCuando(cuando)?.calcular() ?? null;
-  };
+  const proximaEn = (): string | null =>
+    sinProxima || !fechaSuelta ? null : new Date(fechaSuelta).toISOString();
 
-  const fechaLista = cuando !== null && cuando !== "otro" ? true : fechaSuelta !== "";
   // Con resultado se puede guardar sin fecha («no le interesa»). Sin resultado
   // —cuando solo se está agendando— hace falta la fecha, que es todo el punto.
   const listo = exigeResultado
-    ? resultado !== null && fechaLista
-    : (resultado !== null && fechaLista) || (cuando !== null && cuando !== "nunca" && fechaLista);
+    ? resultado !== null && (sinProxima || fechaSuelta !== "")
+    : (resultado !== null && (sinProxima || fechaSuelta !== "")) || fechaSuelta !== "";
 
   function enviar() {
     if (exigeResultado && !resultado) return;
@@ -327,7 +344,7 @@ function HojaQuePaso({
                 return (
                   <button
                     key={r.id}
-                    onClick={() => elegirResultado(r.id)}
+                    onClick={() => elegirResultadoConFecha(r.id)}
                     aria-pressed={puesto}
                     className="rounded-full px-3 py-[7px] text-[12.5px] font-semibold"
                     style={
@@ -361,38 +378,44 @@ function HojaQuePaso({
 
           <div>
             <p className="text-[9.5px] font-bold uppercase tracking-[.15em] mb-2" style={{ color: GRIS_2 }}>
-              ¿Cuándo lo volvés a buscar?
+              ¿Cuándo lo llamás?
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {CUANDO.map((c) => (
+            <input
+              type="datetime-local"
+              value={fechaSuelta}
+              disabled={sinProxima}
+              onChange={(e) => setFechaSuelta(e.target.value)}
+              className="w-full rounded-xl border border-gridline bg-page px-3 py-2.5 text-[14px] outline-none disabled:opacity-40"
+            />
+            {/* Atajos, no reemplazos: escriben en el campo de arriba y se
+                pueden corregir. Los botones de horas fijas obligaban a que el
+                caso cayera en uno de siete y los casos reales no caen. */}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+              {[
+                { t: "en 3 horas", v: () => desdeAhora(3) },
+                { t: "mañana 8:00", v: () => aLasDe(1, 8) },
+                { t: "mañana 2:00 p. m.", v: () => aLasDe(1, 14) },
+              ].map((a) => (
                 <button
-                  key={c.id}
-                  onClick={() => elegirCuando(c.id)}
-                  aria-pressed={cuando === c.id}
-                  className="rounded-full px-3 py-[7px] text-[12.5px] font-semibold"
-                  style={
-                    cuando === c.id
-                      ? { background: AZUL, color: "#fff" }
-                      : { background: "var(--page)", border: "1px solid var(--gridline)" }
-                  }
+                  key={a.t}
+                  onClick={() => {
+                    setSinProxima(false);
+                    setFechaSuelta(a.v());
+                  }}
+                  className="text-[11.5px] underline underline-offset-2 hover:opacity-70"
+                  style={{ color: AZUL }}
                 >
-                  {c.texto}
+                  {a.t}
                 </button>
               ))}
+              <button
+                onClick={() => setSinProxima((v) => !v)}
+                className="text-[11.5px] underline underline-offset-2 hover:opacity-70 ml-auto"
+                style={{ color: sinProxima ? ROJO : GRIS_2 }}
+              >
+                {sinProxima ? "↩ sí lo llamo" : "no lo llamo más"}
+              </button>
             </div>
-            {cuando === "otro" && (
-              <>
-                <input
-                  type="datetime-local"
-                  value={fechaSuelta}
-                  onChange={(e) => setFechaSuelta(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-gridline bg-page px-3 py-2.5 text-[13px] outline-none"
-                />
-                <p className="text-[11px] mt-1" style={{ color: GRIS_2 }}>
-                  Elegí el día y la hora exacta. Ese día te sale de primero.
-                </p>
-              </>
-            )}
           </div>
 
           {error && (
@@ -403,22 +426,20 @@ function HojaQuePaso({
 
           {/* Lo que va a quedar, escrito como se lee. Es la última mirada antes
               de guardar y evita la tarea puesta en el día que no era. */}
-          {(resultado || cuando) && (
-            <p className="text-[12.5px] border-t border-gridline pt-3" style={{ color: GRIS_2 }}>
-              Queda:{" "}
-              {resultado && (
-                <b style={{ color: "var(--foreground)" }}>{metaResultado(resultado)?.texto}</b>
-              )}
-              {cuando === "nunca" ? (
-                <> · no lo buscás más</>
-              ) : cuando ? (
-                <>
-                  {resultado ? " · " : ""}lo llamás{" "}
-                  <b style={{ color: "var(--foreground)" }}>{leerCuando(proximaEn())}</b>
-                </>
-              ) : null}
-            </p>
-          )}
+          <p className="text-[12.5px] border-t border-gridline pt-3" style={{ color: GRIS_2 }}>
+            Queda:{" "}
+            {resultado && (
+              <b style={{ color: "var(--foreground)" }}>{metaResultado(resultado)?.texto}</b>
+            )}
+            {sinProxima ? (
+              <>{resultado ? " · " : ""}no lo llamás más</>
+            ) : (
+              <>
+                {resultado ? " · " : ""}lo llamás{" "}
+                <b style={{ color: "var(--foreground)" }}>{leerCuando(proximaEn())}</b>
+              </>
+            )}
+          </p>
 
           <div className="flex gap-2">
             <button
