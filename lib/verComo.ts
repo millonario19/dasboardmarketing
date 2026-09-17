@@ -60,3 +60,21 @@ export async function alcanceMirando(req: NextRequest): Promise<Mirada> {
   const suyo = await usuarioPorAgentId(pedido).catch(() => null);
   return { agentId: pedido, usuario: suyo?.usuario ?? null, prestado: true };
 }
+
+/**
+ * A nombre de quién se guarda lo que se acaba de hacer.
+ *
+ * Cuando la dirección entra al panel de un agente, el panel funciona: puede
+ * confirmar una bajada, reportar una llamada, mandar un mensaje. Eso tiene que
+ * quedar guardado a nombre del agente, no del director.
+ *
+ * Si quedara a nombre del director pasarían dos cosas feas a la vez: la tarea
+ * de mañana le saldría a él —que no va a llamar a ese cliente— y le
+ * desaparecería al agente, que es quien sí. Y el hilo del cliente diría que lo
+ * llamó alguien con quien nunca habló.
+ */
+export async function usuarioQueActua(req: NextRequest): Promise<string> {
+  const sesion = await sesionActual();
+  const mirada = await alcanceMirando(req);
+  return (mirada.prestado ? mirada.usuario : null) ?? sesion?.usuario ?? "";
+}

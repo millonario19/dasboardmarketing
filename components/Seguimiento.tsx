@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { agenteMirado } from "@/lib/mirando";
 
 import { BotonWhatsApp } from "@/components/ContactoRapido";
 import { BotonLlamar, ReporteLlamada } from "@/components/Llamada";
@@ -331,10 +332,16 @@ function queToca(dia: number): string {
  * las pestañas por día— porque cada uno vive bajo un paso distinto. Sin esto
  * serían tres barridos de GHL para la misma respuesta.
  */
-let enVuelo: { en: number; promesa: Promise<Datos> } | null = null;
+// La llave incluye a quién se está mirando: sin eso, la dirección abre a
+// Tatiana, vuelve, abre a Erik, y le sale el día de Tatiana por treinta
+// segundos.
+let enVuelo: { en: number; de: string | null; promesa: Promise<Datos> } | null = null;
 
 export function pedirSeguimiento(forzar = false): Promise<Datos> {
-  if (!forzar && enVuelo && Date.now() - enVuelo.en < 30_000) return enVuelo.promesa;
+  const de = agenteMirado();
+  if (!forzar && enVuelo && enVuelo.de === de && Date.now() - enVuelo.en < 30_000) {
+    return enVuelo.promesa;
+  }
   const promesa = fetch("/api/seguimiento")
     .then(async (r) => {
       if (!r.ok) throw new Error((await r.json()).error ?? "Error al armar el seguimiento");
@@ -344,7 +351,7 @@ export function pedirSeguimiento(forzar = false): Promise<Datos> {
       enVuelo = null;
       throw e;
     });
-  enVuelo = { en: Date.now(), promesa };
+  enVuelo = { en: Date.now(), de, promesa };
   return promesa;
 }
 

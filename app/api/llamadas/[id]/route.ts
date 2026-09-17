@@ -4,6 +4,7 @@ import { registrarAccion, programarTarea } from "@/lib/acciones";
 import { esResultado, metaResultado } from "@/lib/cuando";
 import { invalidarSeguimiento } from "@/lib/seguimiento";
 import { sesionActual } from "@/lib/sesion";
+import { usuarioQueActua } from "@/lib/verComo";
 
 export const dynamic = "force-dynamic";
 
@@ -46,7 +47,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const contesto = resultado !== "no-contesto";
 
   try {
-    const llamada = await reportarLlamada(id, sesion.usuario, {
+    // El usuario va en el WHERE de la consulta, así que tiene que ser el mismo
+    // con el que se guardó la llamada: si la dirección está adentro del panel
+    // de un agente, es el del agente.
+    const quienActua = await usuarioQueActua(req);
+    const llamada = await reportarLlamada(id, quienActua, {
       contesto,
       resultado,
       promesaEn: proxima,
@@ -60,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       contactId: llamada.contactId,
       nombre: llamada.nombre,
       telefono: llamada.telefono,
-      usuario: sesion.usuario,
+      usuario: quienActua,
     };
 
     // Al hilo. `registrarAccion` cierra de paso la tarea que estaba abierta:

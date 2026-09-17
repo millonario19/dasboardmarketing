@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PanelDeAgente } from "@/components/PanelDeAgente";
-import type { AgentProduction, AgentProductionRow } from "@/lib/metrics";
+import Link from "next/link";
+import type { AgentProduction } from "@/lib/metrics";
 import type { Oficina } from "@/lib/oficinas";
 
 /**
@@ -67,7 +67,6 @@ export function EquipoComercial() {
   const [rol, setRol] = useState<string | null>(null);
   const [prod, setProd] = useState<AgentProduction | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [abierto, setAbierto] = useState<AgentProductionRow | null>(null);
 
   useEffect(() => {
     fetch("/api/oficinas")
@@ -218,12 +217,10 @@ export function EquipoComercial() {
         )}
 
         {filas.map((r, i) => {
-          const suyo = abierto?.agentId === r.agentId;
           return (
             <div key={r.agentId ?? r.agent}>
-              <button
-                onClick={() => setAbierto(suyo ? null : r)}
-                aria-expanded={suyo}
+              <Link
+                href={`/equipo/${encodeURIComponent(r.agentId!)}`}
                 className="w-full flex items-center gap-3 px-4 sm:px-5 py-2.5 border-t border-gridline text-left hover:bg-page"
               >
                 <span
@@ -248,13 +245,10 @@ export function EquipoComercial() {
                 <Numero valor={r.leadsMes} />
                 <Numero valor={r.registrosMes} />
                 <Numero valor={r.ftdMes} verde />
-              </button>
-
-              {suyo && r.agentId && (
-                <div className="px-3 sm:px-4 py-3 border-t border-gridline bg-page">
-                  <PanelDeAgente agentId={r.agentId} nombre={r.agent} />
-                </div>
-              )}
+                <span className="text-[11px] shrink-0 hidden sm:inline" style={{ color: AZUL }}>
+                  abrir →
+                </span>
+              </Link>
             </div>
           );
         })}

@@ -5,6 +5,7 @@ import { esEstado } from "@/lib/leadStates";
 import { registrarAccion, enviadoHoy } from "@/lib/acciones";
 import { invalidarSeguimiento } from "@/lib/seguimiento";
 import { sesionActual } from "@/lib/sesion";
+import { usuarioQueActua } from "@/lib/verComo";
 
 export const dynamic = "force-dynamic";
 
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
       contactId,
       nombre: body.nombre ?? null,
       telefono: body.telefono ?? null,
-      usuario: sesion.usuario,
+      usuario: await usuarioQueActua(req),
     },
     dia === 1 ? "seg-d1" : dia === 2 ? "seg-d2" : "seg-d3",
     etiqueta ? `Plantilla del día ${dia} (${etiqueta})` : texto!.trim()

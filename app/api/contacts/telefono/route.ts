@@ -3,6 +3,7 @@ import { actualizarTelefonoContacto } from "@/lib/ghl";
 import { registrarAccion } from "@/lib/acciones";
 import { invalidarSeguimiento } from "@/lib/seguimiento";
 import { sesionActual } from "@/lib/sesion";
+import { usuarioQueActua } from "@/lib/verComo";
 import { normalizarTelefono } from "@/lib/telefono";
 
 export const dynamic = "force-dynamic";
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest) {
       contactId: body.contactId,
       nombre: body.nombre ?? null,
       telefono,
-      usuario: sesion.usuario,
+      usuario: await usuarioQueActua(req),
     },
     "escribi",
     `Me pasó su número: ${telefono}`

@@ -4,6 +4,7 @@ import { TAG_BAJADA_MANUAL } from "@/lib/leadStates";
 import { registrarAccion } from "@/lib/acciones";
 import { invalidarSeguimiento } from "@/lib/seguimiento";
 import { sesionActual } from "@/lib/sesion";
+import { usuarioQueActua } from "@/lib/verComo";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,7 @@ export async function POST(req: NextRequest) {
       contactId: body.contactId,
       nombre: body.nombre ?? null,
       telefono: body.telefono ?? null,
-      usuario: sesion.usuario,
+      usuario: await usuarioQueActua(req),
     },
     "escribi",
     "Me lo llevé a mi WhatsApp personal"

@@ -3,6 +3,7 @@ import { hiloDe, registrarAccion, programarTarea } from "@/lib/acciones";
 import { buscarConversacion, mensajesDeConversacion, llamadasDeContacto } from "@/lib/ghl";
 import { esTipo } from "@/lib/tiposAccion";
 import { sesionActual } from "@/lib/sesion";
+import { usuarioQueActua } from "@/lib/verComo";
 import { invalidarSeguimiento } from "@/lib/seguimiento";
 
 export const dynamic = "force-dynamic";
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest, { params }: { params: { contactId: 
     contactId: params.contactId,
     nombre: body.nombre ?? null,
     telefono: body.telefono ?? null,
-    usuario: sesion.usuario,
+    usuario: await usuarioQueActua(req),
   };
 
   try {
