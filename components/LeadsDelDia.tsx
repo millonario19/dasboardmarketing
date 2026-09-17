@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { BotonWhatsApp } from "@/components/ContactoRapido";
-import { BotonLlamar, BotonCrm, ReporteLlamada } from "@/components/Llamada";
+import { BotonLlamar, BotonCrm, ReporteLlamada, BotonAnotar } from "@/components/Llamada";
 import { pedirSeguimiento, olvidarSeguimiento } from "@/components/Seguimiento";
 import { EnviarWhatsApp } from "@/components/EnviarWhatsApp";
 import type { LeadDeSeguimiento } from "@/lib/seguimiento";
@@ -218,6 +218,7 @@ function Fila({
         {modo === "llamar" && (
           <span className="flex flex-wrap items-center gap-2 mt-1.5 empty:hidden">
             <ReporteLlamada contactId={lead.id} />
+            <BotonAnotar contactId={lead.id} nombre={lead.nombre} telefono={telefono} />
             <EnviarWhatsApp lead={lead} dia={1} onEnviado={olvidarSeguimiento} />
           </span>
         )}
@@ -245,7 +246,14 @@ function Fila({
           <BotonWhatsApp telefono={telefono} nombre={lead.nombre} tamano={28} />
         )}
         <BotonLlamar telefono={telefono} nombre={lead.nombre} contactId={lead.id} tamano={28} />
-        {modo === "llamar" && <BotonCrm crmUrl={lead.crmUrl} nombre={lead.nombre} />}
+        {modo === "llamar" && (
+          <BotonCrm
+            crmUrl={lead.crmUrl}
+            nombre={lead.nombre}
+            contactId={lead.id}
+            telefono={telefono}
+          />
+        )}
         <a
           href={lead.crmUrl}
           target="_blank"
