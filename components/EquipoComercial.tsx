@@ -174,6 +174,35 @@ export function EquipoComercial() {
           </span>
         </div>
 
+        {prod && filas.length > 0 && (
+          <div className="flex flex-wrap border-t border-gridline">
+            {[
+              { l: "Leads del mes", v: prod.totals.leadsMes },
+              { l: "Registros", v: prod.totals.registrosMes },
+              { l: "FTD del mes", v: prod.totals.ftdMes, bueno: true },
+              { l: "FTD hoy", v: prod.totals.ftdHoy, bueno: true },
+            ].map((c) => (
+              <div
+                key={c.l}
+                className="flex-1 min-w-[110px] px-4 sm:px-5 py-3 border-r border-gridline last:border-r-0"
+              >
+                <span
+                  className="block text-[9.5px] font-bold uppercase tracking-[.14em]"
+                  style={{ color: GRIS }}
+                >
+                  {c.l}
+                </span>
+                <div
+                  className="text-[26px] font-bold tracking-[-0.04em] leading-none tabular-nums mt-1"
+                  style={{ color: c.bueno && c.v > 0 ? VERDE : undefined }}
+                >
+                  {c.v}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <Cabecera etiquetas={["Leads", "Registros", "FTD"]} />
 
         {prod === null && (
@@ -230,34 +259,6 @@ export function EquipoComercial() {
           );
         })}
 
-        {prod && filas.length > 0 && (
-          <div className="flex flex-wrap border-t border-gridline">
-            {[
-              { l: "Leads del mes", v: prod.totals.leadsMes },
-              { l: "Registros", v: prod.totals.registrosMes },
-              { l: "FTD del mes", v: prod.totals.ftdMes, bueno: true },
-              { l: "FTD hoy", v: prod.totals.ftdHoy, bueno: true },
-            ].map((c) => (
-              <div
-                key={c.l}
-                className="flex-1 min-w-[110px] px-4 sm:px-5 py-3 border-r border-gridline last:border-r-0"
-              >
-                <span
-                  className="block text-[9.5px] font-bold uppercase tracking-[.14em]"
-                  style={{ color: GRIS }}
-                >
-                  {c.l}
-                </span>
-                <div
-                  className="text-[24px] font-bold tracking-[-0.035em] leading-none tabular-nums mt-1"
-                  style={{ color: c.bueno && c.v > 0 ? VERDE : undefined }}
-                >
-                  {c.v}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
     </>
   );
