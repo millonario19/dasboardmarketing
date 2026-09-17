@@ -221,12 +221,19 @@ function HojaQuePaso({
   subtitulo,
   guardar,
   cerrar,
+  exigeResultado = true,
 }: {
   titulo: string;
   subtitulo: string;
+  /**
+   * Reportar una llamada sin decir cómo salió no tiene sentido. Pero agendar
+   * una sí: el cliente dijo «llamame el viernes a las 10» y no hubo llamada
+   * que reportar. Ahí el resultado sobra y exigirlo obliga a inventar uno.
+   */
+  exigeResultado?: boolean;
   /** Devuelve el error, o null si salió bien. */
   guardar: (datos: {
-    resultado: string;
+    resultado: string | null;
     nota: string;
     proximaEn: string | null;
   }) => Promise<string | null>;
@@ -246,16 +253,41 @@ function HojaQuePaso({
     setCuando(metaResultado(id)?.cuando ?? null);
   };
 
+  /**
+   * «Otro día» no se abre en blanco.
+   *
+   * Un datetime-local vacío en el celular obliga a poner año, mes, día y hora
+   * a mano. Arrancando en mañana a las 9 casi siempre es mover una cosa.
+   */
+  const elegirCuando = (id: string) => {
+    setCuando(id);
+    if (id === "otro" && !fechaSuelta) {
+      const manana = new Date(Date.now() + 864e5);
+      manana.setHours(9, 0, 0, 0);
+      const dosDigitos = (n: number) => String(n).padStart(2, "0");
+      setFechaSuelta(
+        `${manana.getFullYear()}-${dosDigitos(manana.getMonth() + 1)}-${dosDigitos(
+          manana.getDate()
+        )}T09:00`
+      );
+    }
+  };
+
   const proximaEn = (): string | null => {
     if (!cuando || cuando === "nunca") return null;
     if (cuando === "otro") return fechaSuelta ? new Date(fechaSuelta).toISOString() : null;
     return opcionCuando(cuando)?.calcular() ?? null;
   };
 
-  const listo = resultado !== null && (cuando !== "otro" || fechaSuelta !== "");
+  const fechaLista = cuando !== null && cuando !== "otro" ? true : fechaSuelta !== "";
+  // Con resultado se puede guardar sin fecha («no le interesa»). Sin resultado
+  // —cuando solo se está agendando— hace falta la fecha, que es todo el punto.
+  const listo = exigeResultado
+    ? resultado !== null && fechaLista
+    : (resultado !== null && fechaLista) || (cuando !== null && cuando !== "nunca" && fechaLista);
 
   function enviar() {
-    if (!resultado) return;
+    if (exigeResultado && !resultado) return;
     setGuardando(true);
     setError(null);
     guardar({ resultado, nota, proximaEn: proximaEn() })
@@ -327,38 +359,41 @@ function HojaQuePaso({
             </p>
           </div>
 
-          {resultado && (
-            <div>
-              <p className="text-[9.5px] font-bold uppercase tracking-[.15em] mb-2" style={{ color: GRIS_2 }}>
-                ¿Cuándo lo volvés a buscar?
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {CUANDO.map((c) => (
-                  <button
-                    key={c.id}
-                    onClick={() => setCuando(c.id)}
-                    aria-pressed={cuando === c.id}
-                    className="rounded-full px-3 py-[7px] text-[12.5px] font-semibold"
-                    style={
-                      cuando === c.id
-                        ? { background: AZUL, color: "#fff" }
-                        : { background: "var(--page)", border: "1px solid var(--gridline)" }
-                    }
-                  >
-                    {c.texto}
-                  </button>
-                ))}
-              </div>
-              {cuando === "otro" && (
+          <div>
+            <p className="text-[9.5px] font-bold uppercase tracking-[.15em] mb-2" style={{ color: GRIS_2 }}>
+              ¿Cuándo lo volvés a buscar?
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {CUANDO.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => elegirCuando(c.id)}
+                  aria-pressed={cuando === c.id}
+                  className="rounded-full px-3 py-[7px] text-[12.5px] font-semibold"
+                  style={
+                    cuando === c.id
+                      ? { background: AZUL, color: "#fff" }
+                      : { background: "var(--page)", border: "1px solid var(--gridline)" }
+                  }
+                >
+                  {c.texto}
+                </button>
+              ))}
+            </div>
+            {cuando === "otro" && (
+              <>
                 <input
                   type="datetime-local"
                   value={fechaSuelta}
                   onChange={(e) => setFechaSuelta(e.target.value)}
                   className="mt-2 w-full rounded-xl border border-gridline bg-page px-3 py-2.5 text-[13px] outline-none"
                 />
-              )}
-            </div>
-          )}
+                <p className="text-[11px] mt-1" style={{ color: GRIS_2 }}>
+                  Elegí el día y la hora exacta. Ese día te sale de primero.
+                </p>
+              </>
+            )}
+          </div>
 
           {error && (
             <p className="text-[12.5px]" style={{ color: ROJO }}>
@@ -368,17 +403,20 @@ function HojaQuePaso({
 
           {/* Lo que va a quedar, escrito como se lee. Es la última mirada antes
               de guardar y evita la tarea puesta en el día que no era. */}
-          {resultado && (
+          {(resultado || cuando) && (
             <p className="text-[12.5px] border-t border-gridline pt-3" style={{ color: GRIS_2 }}>
-              Queda: <b style={{ color: "var(--foreground)" }}>{metaResultado(resultado)?.texto}</b>
+              Queda:{" "}
+              {resultado && (
+                <b style={{ color: "var(--foreground)" }}>{metaResultado(resultado)?.texto}</b>
+              )}
               {cuando === "nunca" ? (
                 <> · no lo buscás más</>
-              ) : (
+              ) : cuando ? (
                 <>
-                  {" "}
-                  · lo buscás <b style={{ color: "var(--foreground)" }}>{leerCuando(proximaEn())}</b>
+                  {resultado ? " · " : ""}lo llamás{" "}
+                  <b style={{ color: "var(--foreground)" }}>{leerCuando(proximaEn())}</b>
                 </>
-              )}
+              ) : null}
             </p>
           )}
 
@@ -412,7 +450,7 @@ export function ReporteLlamada({ contactId }: { contactId: string }) {
   const [abierto, setAbierto] = useState(false);
 
   const guardar = useCallback(
-    async (datos: { resultado: string; nota: string; proximaEn: string | null }) => {
+    async (datos: { resultado: string | null; nota: string; proximaEn: string | null }) => {
       if (!pendiente) return "No encontré la llamada";
       const r = await fetch(`/api/llamadas/${pendiente.id}`, {
         method: "POST",
@@ -477,13 +515,15 @@ export function BotonAnotar({
   const [guardado, setGuardado] = useState<string | null>(null);
 
   const guardar = useCallback(
-    async (datos: { resultado: string; nota: string; proximaEn: string | null }) => {
+    async (datos: { resultado: string | null; nota: string; proximaEn: string | null }) => {
       const r = await fetch(`/api/acciones/${encodeURIComponent(contactId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          tipo: "llame",
-          detalle: datos.nota || metaResultado(datos.resultado)?.texto || null,
+          // Sin resultado no hubo llamada que registrar: es solo una cita a
+          // futuro, y anotar una llamada que no pasó ensucia el marcador.
+          tipo: datos.resultado ? "llame" : undefined,
+          detalle: datos.nota || (datos.resultado ? metaResultado(datos.resultado)?.texto : null) || null,
           resultado: datos.resultado,
           nombre,
           telefono,
@@ -515,17 +555,18 @@ export function BotonAnotar({
     <>
       <button
         onClick={() => setAbierto(true)}
-        title="Anotar qué te dijo y cuándo lo volvés a buscar"
+        title="Anotar qué te dijo y dejar agendada la próxima llamada"
         className="rounded-full px-2.5 py-[5px] text-[11.5px] font-semibold whitespace-nowrap"
         style={{ background: AZUL_CLARO, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
       >
-        ✎ Anotar
+        ✎ Anotar o agendar
       </button>
 
       {abierto && (
         <HojaQuePaso
           titulo={nombre || "Ese lead"}
-          subtitulo="Anotá qué te dijo, aunque no lo hayas llamado desde acá"
+          subtitulo="Anotá qué te dijo, o solo dejá la llamada agendada"
+          exigeResultado={false}
           guardar={guardar}
           cerrar={() => setAbierto(false)}
         />
