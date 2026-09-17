@@ -623,7 +623,7 @@ export function ReportarInline({
   }
 
   return (
-    <span className="flex flex-wrap items-center gap-2 w-full">
+    <span className="flex flex-wrap items-center gap-2 w-full basis-full">
       <select
         value={resultado}
         onChange={(e) => elegir(e.target.value)}

@@ -149,7 +149,7 @@ function Fila({
   }
 
   return (
-    <article className="flex gap-3 items-start px-4 sm:px-5 py-2.5 border-t border-gridline">
+    <article className="flex flex-wrap gap-x-3 gap-y-2 items-start px-4 sm:px-5 py-2.5 border-t border-gridline">
       <span className="min-w-0 flex-1">
         <span className="block text-[13.5px] font-semibold leading-tight">{lead.nombre}</span>
         {telefono ? (
@@ -215,17 +215,6 @@ function Fila({
         {/* Al volver de la llamada, acá lo espera la pregunta. Es lo que
             convierte la lista en un seguimiento: sin esto la llamada se hace y
             no queda nada de lo que el cliente dijo. */}
-        {modo === "llamar" && (
-          <span className="flex flex-wrap items-center gap-2 mt-1.5 empty:hidden">
-            <ReportarInline
-              contactId={lead.id}
-              nombre={lead.nombre}
-              telefono={telefono}
-              onListo={olvidarSeguimiento}
-            />
-            <EnviarWhatsApp lead={lead} dia={1} onEnviado={olvidarSeguimiento} />
-          </span>
-        )}
       </span>
 
       <span className="flex items-center gap-1.5 shrink-0">
@@ -270,6 +259,18 @@ function Fila({
           ↗ CRM
         </a>
       </span>
+
+      {modo === "llamar" && (
+        <>
+          <ReportarInline
+            contactId={lead.id}
+            nombre={lead.nombre}
+            telefono={telefono}
+            onListo={olvidarSeguimiento}
+          />
+          <EnviarWhatsApp lead={lead} dia={1} onEnviado={olvidarSeguimiento} />
+        </>
+      )}
     </article>
   );
 }
