@@ -11,7 +11,7 @@
  */
 
 export const ESCALONES: [number, number][] = [
-  [35, 280],
+  [35, 200],
   [45, 360],
   [65, 585],
   [90, 850],
