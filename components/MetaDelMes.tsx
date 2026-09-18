@@ -291,11 +291,11 @@ function Reloj({
         />
       ))}
 
-      {[0, 0.25, 0.5, 0.75, 1].map((t) => {
-        const g = INICIO + t * BARRIDO;
+      {ESCALA_FTD.map((v) => {
+        const g = INICIO + (v / tope) * BARRIDO;
         const [ax, ay] = punto(g, R - GROSOR / 2 - 1);
         const [bx, by] = punto(g, R + GROSOR / 2 + 1);
-        return <line key={`c${t}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={FONDO} strokeWidth={3.5} />;
+        return <line key={`c${v}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={FONDO} strokeWidth={4} />;
       })}
 
       {marcas}
@@ -522,7 +522,32 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
    * decir los $850 de la tabla. Si le sumara lo vendido diría otro número y el
    * reloj dejaría de poderse leer contra la tabla, que es para lo que sirve.
    */
-  const plataMostrada = comisionPorFtd(Math.round(ftdMostrado)).pago;
+  const escalonMostrado = comisionPorFtd(Math.round(ftdMostrado));
+  const plataMostrada = escalonMostrado.pago;
+
+  /**
+   * De qué escalón sale ese monto.
+   *
+   * Es la línea que evita el malentendido: con 80 FTD la aguja queda pegada al
+   * 90 y el monto dice $585. Parece un error del reloj, pero es la tabla —el
+   * escalón es «al menos», así que de 65 a 89 se cobra lo mismo—. Decirlo con
+   * todas las letras lo arregla mejor que cualquier dibujo.
+   */
+  function leerEscalon(cuantos: number): string {
+    const { pago: p, escalon, siguiente: prox } = comisionPorFtd(cuantos);
+    const base = escalon === null
+      ? `con ${cuantos} FTD todavía no cobra`
+      : `con ${cuantos} FTD cobra ${plata(p)}`;
+    const detalle = escalon === null
+      ? prox
+        ? ` — el primer escalón son ${prox[0]}`
+        : ""
+      : cuantos === escalon
+        ? " — justo el escalón"
+        : ` — el escalón de ${escalon}`;
+    const salto = prox ? ` · con ${prox[0] - cuantos} más salta a ${plata(prox[1])}` : "";
+    return base + detalle + salto;
+  }
 
   if (!cargada) return null;
   const quedan = diasQueQuedan();
@@ -571,7 +596,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           metaUsd={objetivo}
           plataTexto={
             simulando
-              ? `con ${Math.round(ftdMostrado)} FTD cobra ${plata(plataMostrada)}`
+              ? leerEscalon(Math.round(ftdMostrado))
               : `lleva ${plata(ganado)}`
           }
           simulando={simulando}
@@ -662,7 +687,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           style={{ color: simulando ? AZUL : ganado > 0 ? VERDE : TINTA_3 }}
         >
           {simulando
-            ? `con ${Math.round(ftdMostrado)} FTD cobra ${plata(plataMostrada)}`
+            ? leerEscalon(Math.round(ftdMostrado))
             : `lleva ${plata(ganado)}`}
         </p>
       </div>
