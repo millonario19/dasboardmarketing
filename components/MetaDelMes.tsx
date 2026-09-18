@@ -127,6 +127,10 @@ const CX = 380;
 const CY = 330;
 const R = 230;
 const GROSOR = 32;
+/** Los escalones que se rotulan en el reloj. El último es el tope de la escala. */
+const ESCALA_FTD = [45, 65, 90, 120, 150];
+const TOPE_RELOJ = ESCALA_FTD[ESCALA_FTD.length - 1];
+
 const INICIO = 150;
 const BARRIDO = 240;
 
@@ -170,17 +174,25 @@ function arco(d1: number, d2: number, r: number): string {
 }
 
 function Reloj({
-  logrado,
-  meta,
+  ftd,
+  tope,
+  metaUsd,
+  plataTexto,
   simulando,
   chico,
 }: {
-  logrado: number;
-  meta: number;
+  /** Los FTD que marca la aguja. */
+  ftd: number;
+  /** El último escalón rotulado, que es el fin de la escala. */
+  tope: number;
+  /** La meta en plata, que es el número grande del centro. */
+  metaUsd: number;
+  /** El renglón de abajo, ya escrito: «lleva $350» o lo que simula. */
+  plataTexto: string;
   simulando: boolean;
   chico: boolean;
 }) {
-  const pct = meta > 0 ? Math.min(logrado / meta, 1) : 0;
+  const pct = tope > 0 ? Math.min(ftd / tope, 1) : 0;
   const ang = INICIO + pct * BARRIDO;
 
   // El arco de color va por tramos para que el degradado siga la curva: un
@@ -198,13 +210,24 @@ function Reloj({
     });
   }
 
+  /**
+   * La escala va en FTD, no en porcentaje.
+   *
+   * Un 0-25-50-75-100 obliga a traducir mentalmente: el agente no trabaja en
+   * porcentajes, trabaja en FTD. Los números rotulados son los escalones que
+   * pagan, así que la aguja además dice cuánto falta para que suba la
+   * comisión, que es la pregunta de todos los días.
+   *
+   * Van en su lugar real sobre la escala —45 no cae en el cuarto del arco sino
+   * donde le toca— porque lo contrario haría creer que de 45 a 65 hay tanto
+   * camino como de 120 a 150, y no lo hay.
+   */
+  const TOPE = tope;
   const marcas: ReactNode[] = [];
-  for (let v = 0; v <= 100; v += 2.5) {
-    const g = INICIO + (v / 100) * BARRIDO;
-    const grande = v % 25 === 0;
-    const media = v % 12.5 === 0;
+  for (let v = 0; v <= TOPE; v += TOPE / 40) {
+    const g = INICIO + (v / TOPE) * BARRIDO;
     const [x1, y1] = punto(g, R - GROSOR / 2 - 5);
-    const [x2, y2] = punto(g, R - GROSOR / 2 - (grande ? 22 : media ? 16 : 10));
+    const [x2, y2] = punto(g, R - GROSOR / 2 - 10);
     marcas.push(
       <line
         key={`m${v}`}
@@ -213,19 +236,31 @@ function Reloj({
         x2={x2}
         y2={y2}
         stroke={TINTA_3}
-        strokeWidth={grande ? 3 : media ? 2 : 1.4}
+        strokeWidth={1.4}
         strokeLinecap="round"
-        opacity={grande ? 0.8 : media ? 0.55 : 0.35}
+        opacity={0.35}
       />
     );
-    if (grande) {
-      const [lx, ly] = punto(g, R - GROSOR / 2 - 36);
-      marcas.push(
-        <text key={`t${v}`} x={lx} y={ly + 8} textAnchor="middle" fontSize={chico ? 34 : 24} fontWeight="700" fill={TINTA}>
-          {v}
-        </text>
-      );
-    }
+  }
+  for (const v of ESCALA_FTD) {
+    const g = INICIO + (v / TOPE) * BARRIDO;
+    const [x1, y1] = punto(g, R - GROSOR / 2 - 5);
+    const [x2, y2] = punto(g, R - GROSOR / 2 - 22);
+    const [lx, ly] = punto(g, R - GROSOR / 2 - 38);
+    marcas.push(
+      <line key={`e${v}`} x1={x1} y1={y1} x2={x2} y2={y2} stroke={TINTA_3} strokeWidth={3} strokeLinecap="round" opacity={0.8} />,
+      <text
+        key={`t${v}`}
+        x={lx}
+        y={ly + 8}
+        textAnchor="middle"
+        fontSize={chico ? 32 : 23}
+        fontWeight="700"
+        fill={TINTA}
+      >
+        {v}
+      </text>
+    );
   }
 
   const [px, py] = punto(ang, R - GROSOR / 2 - 24);
@@ -284,7 +319,7 @@ function Reloj({
         fill={TINTA}
         {...halo}
       >
-        {plata(meta)}
+        {plata(metaUsd)}
       </text>
       <text
         x={CX}
@@ -304,9 +339,9 @@ function Reloj({
         textAnchor="middle"
         fontSize={17}
         fontWeight="700"
-        fill={simulando ? AZUL : logrado > 0 ? VERDE : TINTA_3}
+        fill={simulando ? AZUL : ftd > 0 ? VERDE : TINTA_3}
       >
-        {simulando ? `si llega a ${plata(logrado)}` : `lleva ${plata(logrado)}`}
+        {plataTexto}
       </text>
         </>
       )}
@@ -464,8 +499,10 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const ganadoMembresias = usdDeMembresias(vendidas);
   const ganado = pago + ganadoMembresias;
   const objetivo = meta?.usd ?? 1500;
-  // La aguja y la barra suben juntas desde cero al abrir la pantalla.
-  const barrido = useBarrido(ganado);
+  // La aguja y la barra suben juntas desde cero al abrir la pantalla, y lo
+  // que suben son FTD: desde que el reloj está rotulado en escalones, medir
+  // plata ahí sería poner la aguja en una escala y los números en otra.
+  const barrido = useBarrido(ftdMes);
   /**
    * El agente puede arrastrar la barra para ver el reloj moverse.
    *
@@ -476,7 +513,10 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
    */
   const [simulado, setSimulado] = useState<number | null>(null);
   const simulando = simulado !== null;
-  const mostrado = simulando ? simulado : barrido;
+  /** Los FTD que marca la aguja: los de verdad, o los que está simulando. */
+  const ftdMostrado = simulando ? simulado : barrido;
+  /** Lo que cobraría con esos FTD, con las membresías que ya vendió. */
+  const plataMostrada = comisionPorFtd(Math.round(ftdMostrado)).pago + ganadoMembresias;
 
   if (!cargada) return null;
   const quedan = diasQueQuedan();
@@ -484,7 +524,8 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const faltaUsd = meta ? Math.max(meta.usd - ganado, 0) : 0;
   const pct = (a: number, b: number) => (b > 0 ? Math.min((a / b) * 100, 100) : 0);
   const porciento = Math.round(pct(ganado, objetivo));
-  const porcientoAnimado = pct(mostrado, objetivo);
+  const porcientoFtd = pct(ftdMostrado, TOPE_RELOJ);
+  const porcientoAnimado = porcientoFtd;
 
   return (
     <section
@@ -514,61 +555,22 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         </span>
       </div>
 
-      {/* En el teléfono solo el reloj: las tarjetas de los lados son ánimo, y
-          el ánimo no vale media pantalla de scroll. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[196px_1fr_196px] gap-4 items-center mt-1">
-        <div
-          className="hidden lg:block rounded-[20px] text-center px-4 py-6"
-          style={{ background: PANEL, border: `1px solid ${LINEA}` }}
-        >
-          <span className="block mb-5">
-            <MarcaNexus />
-          </span>
-          <Circulo>
-            <svg
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={TINTA_3}
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M8 21h8M12 17.5V21M7 3h10v6a5 5 0 0 1-10 0V3Z" />
-              <path d="M17 4.5h3.2v1.8a3.2 3.2 0 0 1-3.2 3.2M7 4.5H3.8v1.8A3.2 3.2 0 0 0 7 9.5" />
-            </svg>
-          </Circulo>
-          <p className="text-[10.5px] font-bold uppercase tracking-[.22em] leading-[2.1]" style={{ color: TINTA_2 }}>
-            Sigue avanzando
-            <br />
-            tu momento es ahora
-          </p>
-        </div>
-
-        <Reloj logrado={mostrado} meta={objetivo} simulando={simulando} chico={chico} />
-
-        <div
-          className="hidden lg:block rounded-[20px] text-center px-4 py-10"
-          style={{ background: PANEL, border: `1px solid ${LINEA}` }}
-        >
-          <Circulo>
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={AZUL} strokeWidth="1.5" strokeLinecap="round" aria-hidden>
-              <circle cx="12" cy="12" r="8.2" />
-              <circle cx="12" cy="12" r="4.4" />
-              <circle cx="12" cy="12" r="1.2" fill={AZUL} />
-              <path d="M12 1.6v2.6M12 19.8v2.6M22.4 12h-2.6M4.2 12H1.6" />
-            </svg>
-          </Circulo>
-          <p className="text-[10.5px] font-bold uppercase tracking-[.22em] leading-[2.1]" style={{ color: TINTA }}>
-            Disciplina
-            <br />
-            enfoque
-            <br />
-            resultados
-          </p>
-        </div>
+      {/* Solo el reloj. Las tarjetas de los lados —«Sigue avanzando» y
+          «Disciplina, enfoque, resultados»— ocupaban un tercio del ancho para
+          no decir nada que se pueda hacer hoy. */}
+      <div className="mt-1">
+        <Reloj
+          ftd={ftdMostrado}
+          tope={TOPE_RELOJ}
+          metaUsd={objetivo}
+          plataTexto={
+            simulando
+              ? `con ${Math.round(ftdMostrado)} FTD cobra ${plata(plataMostrada)}`
+              : `lleva ${plata(ganado)}`
+          }
+          simulando={simulando}
+          chico={chico}
+        />
       </div>
 
       <div className="mt-2">
@@ -592,11 +594,11 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           <input
             type="range"
             min={0}
-            max={Math.max(objetivo, 1)}
-            step={Math.max(Math.round(objetivo / 100), 1)}
-            value={Math.round(mostrado)}
+            max={TOPE_RELOJ}
+            step={1}
+            value={Math.round(ftdMostrado)}
             onChange={(e) => setSimulado(Number(e.target.value))}
-            aria-label="Mover para simular otra comisión"
+            aria-label="Mover para simular otra cantidad de FTD"
             className="relative w-full appearance-none bg-transparent cursor-grab active:cursor-grabbing
                        [&::-webkit-slider-runnable-track]:h-[15px] [&::-webkit-slider-runnable-track]:bg-transparent
                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[24px]
@@ -612,8 +614,8 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         </div>
 
         <div className="flex justify-between text-[12px] tabular-nums mt-1" style={{ color: TINTA_3 }}>
-          <span>$0</span>
-          <span>{plata(objetivo)}</span>
+          <span>0 FTD</span>
+          <span>{TOPE_RELOJ} FTD</span>
         </div>
 
         {/* Lo que convierte el arrastre en información: cuánto cuesta llegar. */}
@@ -621,12 +623,14 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           {simulando && (
             <span style={{ color: TINTA_2 }}>
               {(() => {
-                const escalon = ESCALONES.find(([, p]) => p >= (simulado ?? 0));
-                if (!escalon) return "Eso pasa el último escalón de la tabla.";
-                const faltan = Math.max(escalon[0] - ftdMes, 0);
-                return faltan === 0
-                  ? `Ya cobrás eso con tus ${ftdMes} FTD.`
-                  : `Necesitás ${escalon[0]} FTD — te faltan ${faltan} en ${quedan} días.`;
+                const simu = Math.round(simulado ?? 0);
+                const faltan = Math.max(simu - ftdMes, 0);
+                const { siguiente: proximo } = comisionPorFtd(simu);
+                if (faltan === 0) return `Eso ya lo cobra con sus ${ftdMes} FTD.`;
+                const empuje = proximo
+                  ? ` Con ${proximo[0] - simu} más el escalón sube a ${plata(proximo[1])}.`
+                  : "";
+                return `Le faltan ${faltan} FTD en ${quedan} días.${empuje}`;
               })()}{" "}
               <button onClick={() => setSimulado(null)} className="underline font-semibold" style={{ color: AZUL }}>
                 volver a mi número
@@ -651,7 +655,9 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           className="text-[14px] font-bold"
           style={{ color: simulando ? AZUL : ganado > 0 ? VERDE : TINTA_3 }}
         >
-          {simulando ? `si llega a ${plata(mostrado)}` : `lleva ${plata(ganado)}`}
+          {simulando
+            ? `con ${Math.round(ftdMostrado)} FTD cobra ${plata(plataMostrada)}`
+            : `lleva ${plata(ganado)}`}
         </p>
       </div>
 
