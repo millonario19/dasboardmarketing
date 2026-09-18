@@ -127,8 +127,32 @@ const CX = 380;
 const CY = 330;
 const R = 230;
 const GROSOR = 32;
-/** Los escalones que se rotulan en el reloj. El último es el tope de la escala. */
+/**
+ * Los escalones rotulados, repartidos en partes iguales del arco.
+ *
+ * No van en su lugar de una escala lineal: ahí el 35 y el 45 quedaban
+ * encimados en un rincón y el 120 y el 150 solos en el otro. Cada escalón es
+ * un paso de la tabla, y darles a todos el mismo pedazo del reloj es la forma
+ * de que se lean. La aguja interpola adentro de cada tramo, así que 80 FTD
+ * cae justo entre el 65 y el 90.
+ */
 const ESCALA_FTD = [0, 35, 45, 65, 90, 120, 150];
+
+/** Dónde cae esa cantidad de FTD sobre el arco, de 0 a 1. */
+function posicionEnEscala(ftd: number): number {
+  const ultimo = ESCALA_FTD.length - 1;
+  if (ftd <= 0) return 0;
+  if (ftd >= ESCALA_FTD[ultimo]) return 1;
+  for (let i = 0; i < ultimo; i++) {
+    const desde = ESCALA_FTD[i];
+    const hasta = ESCALA_FTD[i + 1];
+    if (ftd < hasta) {
+      const dentro = (ftd - desde) / (hasta - desde);
+      return (i + dentro) / ultimo;
+    }
+  }
+  return 1;
+}
 const TOPE_RELOJ = ESCALA_FTD[ESCALA_FTD.length - 1];
 
 const INICIO = 150;
@@ -175,7 +199,6 @@ function arco(d1: number, d2: number, r: number): string {
 
 function Reloj({
   ftd,
-  tope,
   metaUsd,
   plataTexto,
   simulando,
@@ -183,8 +206,6 @@ function Reloj({
 }: {
   /** Los FTD que marca la aguja. */
   ftd: number;
-  /** El último escalón rotulado, que es el fin de la escala. */
-  tope: number;
   /** La meta en plata, que es el número grande del centro. */
   metaUsd: number;
   /** El renglón de abajo, ya escrito: «lleva $350» o lo que simula. */
@@ -192,7 +213,7 @@ function Reloj({
   simulando: boolean;
   chico: boolean;
 }) {
-  const pct = tope > 0 ? Math.min(ftd / tope, 1) : 0;
+  const pct = posicionEnEscala(ftd);
   const ang = INICIO + pct * BARRIDO;
 
   // El arco de color va por tramos para que el degradado siga la curva: un
@@ -222,10 +243,9 @@ function Reloj({
    * donde le toca— porque lo contrario haría creer que de 45 a 65 hay tanto
    * camino como de 120 a 150, y no lo hay.
    */
-  const TOPE = tope;
   const marcas: ReactNode[] = [];
-  for (let v = 0; v <= TOPE; v += TOPE / 40) {
-    const g = INICIO + (v / TOPE) * BARRIDO;
+  for (let v = 0; v <= 40; v++) {
+    const g = INICIO + (v / 40) * BARRIDO;
     const [x1, y1] = punto(g, R - GROSOR / 2 - 5);
     const [x2, y2] = punto(g, R - GROSOR / 2 - 10);
     marcas.push(
@@ -242,8 +262,8 @@ function Reloj({
       />
     );
   }
-  for (const v of ESCALA_FTD) {
-    const g = INICIO + (v / TOPE) * BARRIDO;
+  ESCALA_FTD.forEach((v, i) => {
+    const g = INICIO + (i / (ESCALA_FTD.length - 1)) * BARRIDO;
     const [x1, y1] = punto(g, R - GROSOR / 2 - 5);
     const [x2, y2] = punto(g, R - GROSOR / 2 - 22);
     const [lx, ly] = punto(g, R - GROSOR / 2 - 38);
@@ -261,7 +281,7 @@ function Reloj({
         {v}
       </text>
     );
-  }
+  });
 
   const [px, py] = punto(ang, R - GROSOR / 2 - 24);
   const [b1x, b1y] = punto(ang + 90, 13);
@@ -278,7 +298,11 @@ function Reloj({
   };
 
   return (
-    <svg viewBox={chico ? "40 66 680 412" : "0 0 760 516"} className="w-full" aria-hidden>
+    <svg
+      viewBox={chico ? "40 66 680 412" : "0 0 760 516"}
+      className="w-full max-w-[420px] mx-auto block"
+      aria-hidden
+    >
       <path d={arco(INICIO, INICIO + BARRIDO, R)} stroke={RIEL} strokeWidth={GROSOR} fill="none" strokeLinecap="round" />
       {tramos.map((t, i) => (
         <path
@@ -291,8 +315,8 @@ function Reloj({
         />
       ))}
 
-      {ESCALA_FTD.map((v) => {
-        const g = INICIO + (v / tope) * BARRIDO;
+      {ESCALA_FTD.map((v, i) => {
+        const g = INICIO + (i / (ESCALA_FTD.length - 1)) * BARRIDO;
         const [ax, ay] = punto(g, R - GROSOR / 2 - 1);
         const [bx, by] = punto(g, R + GROSOR / 2 + 1);
         return <line key={`c${v}`} x1={ax} y1={ay} x2={bx} y2={by} stroke={FONDO} strokeWidth={4} />;
@@ -555,7 +579,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const faltaUsd = meta ? Math.max(meta.usd - ganado, 0) : 0;
   const pct = (a: number, b: number) => (b > 0 ? Math.min((a / b) * 100, 100) : 0);
   const porciento = Math.round(pct(ganado, objetivo));
-  const porcientoFtd = pct(ftdMostrado, TOPE_RELOJ);
+  const porcientoFtd = posicionEnEscala(ftdMostrado) * 100;
   const porcientoAnimado = porcientoFtd;
 
   return (
@@ -592,7 +616,6 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       <div className="mt-1">
         <Reloj
           ftd={ftdMostrado}
-          tope={TOPE_RELOJ}
           metaUsd={objetivo}
           plataTexto={
             simulando
