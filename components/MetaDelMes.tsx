@@ -25,7 +25,6 @@ const FONDO = "#ffffff";
 const RIEL = "#e3e6ec";
 const ORO = "#f5a623";
 const AZUL = "#2563eb";
-const ROJO = "#E10600";
 const VERDE = "#157F52";
 
 const CLAVE = "op_meta_abierta";
@@ -317,16 +316,44 @@ function Reloj({
   );
 }
 
-/** La marca de la casa, en lugar del logo prestado. */
+/**
+ * La marca de la casa: el monograma NX y la palabra.
+ *
+ * Es un dibujo de una sola línea —la N con su diagonal doblada y la X que
+ * baja a tocarle la punta al pie de la N— y no un archivo de imagen. Así
+ * queda nítido en cualquier tamaño y toma el color de la tinta del panel, que
+ * es lo que lo deja bien en claro y en oscuro sin tener dos versiones.
+ *
+ * La palabra va en mayúsculas espaciadas y en peso liviano, como en la marca:
+ * el monograma es lo que pesa, el nombre solo lo acompaña.
+ */
 function MarcaNexus() {
   return (
-    <span className="flex flex-col items-center gap-1.5">
-      <svg width="76" height="26" viewBox="0 0 76 26" aria-hidden>
-        <path d="M4 22 L20 4 h11 L15 22 Z" fill={ROJO} />
-        <path d="M24 22 L40 4 h11 L35 22 Z" fill={ROJO} opacity=".7" />
-        <path d="M44 22 L60 4 h11 L55 22 Z" fill={ROJO} opacity=".4" />
+    <span className="flex flex-col items-center gap-2.5" style={{ color: TINTA }}>
+      <svg
+        width="96"
+        height="48"
+        viewBox="0 0 110 56"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        aria-label="Nexus"
+        role="img"
+      >
+        {/* La N de un solo trazo: sube el palo izquierdo, baja la diagonal y
+            vuelve a subir el palo derecho. */}
+        <path d="M8 50 V16 L48 46 V6" />
+        {/* La segunda diagonal, paralela y corrida hacia arriba, que se pasa
+            de largo por abajo. Es el detalle que hace a esta marca esta marca
+            y no una N cualquiera. */}
+        <path d="M3 9 L54 47" />
+        {/* La X, que arranca justo donde esa diagonal termina. */}
+        <path d="M58 6 L104 50" />
+        <path d="M104 6 L58 50" />
       </svg>
-      <span className="text-[30px] font-black tracking-[-0.035em] leading-none">Nexus</span>
+      <span className="text-[15px] font-light tracking-[.38em] leading-none pl-[.38em]">
+        NEXUS
+      </span>
     </span>
   );
 }
