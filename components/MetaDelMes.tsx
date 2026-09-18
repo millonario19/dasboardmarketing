@@ -269,18 +269,6 @@ function Reloj({
       <circle cx={CX} cy={CY} r={29} fill={TINTA} />
       <circle cx={CX} cy={CY} r={17} fill={TINTA} stroke={ORO} strokeWidth={4} />
 
-      {!chico && (
-        <>
-          <text x={CX} y={226} textAnchor="middle" fontSize="21" fill={TINTA} {...halo}>
-            Un sueño necesita un plan
-          </text>
-          <text x={CX} y={256} textAnchor="middle" fontSize="21" fontWeight="700" fill={TINTA} {...halo}>
-            para despertarlo.
-          </text>
-          <rect x={CX - 26} y={271} width={52} height={3} rx={1.5} fill={ORO} />
-        </>
-      )}
-
       {/* Grande va la meta, no lo que lleva. Ver «$0» a principio de mes no
           mueve a nadie; ver a dónde va, sí. Lo que lleva lo dice la aguja, y
           el número chico de abajo lo pone en plata. */}
@@ -664,9 +652,6 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           style={{ color: simulando ? AZUL : ganado > 0 ? VERDE : TINTA_3 }}
         >
           {simulando ? `si llega a ${plata(mostrado)}` : `lleva ${plata(ganado)}`}
-        </p>
-        <p className="text-[13px] leading-snug mt-3" style={{ color: TINTA }}>
-          Un sueño necesita un plan <b className="font-bold">para despertarlo.</b>
         </p>
       </div>
 
