@@ -300,7 +300,7 @@ function Reloj({
   return (
     <svg
       viewBox={chico ? "40 66 680 412" : "0 0 760 516"}
-      className="w-full max-w-[420px] mx-auto block"
+      className="w-full max-w-[318px] sm:max-w-[352px] mx-auto block"
       aria-hidden
     >
       <path d={arco(INICIO, INICIO + BARRIDO, R)} stroke={RIEL} strokeWidth={GROSOR} fill="none" strokeLinecap="round" />
@@ -430,18 +430,18 @@ function Rotulo({ titulo, pie, derecha = false }: { titulo: string; pie: string;
   return (
     <span className={derecha ? "text-right" : undefined}>
       <span
-        className="block text-[10.5px] sm:text-[11.5px] font-extrabold uppercase tracking-[.26em] leading-[1.5]"
+        className="block text-[9px] sm:text-[10px] font-extrabold uppercase tracking-[.22em] leading-[1.45]"
         style={{ color: TINTA }}
       >
         {titulo}
       </span>
       <span
-        className="block text-[9px] sm:text-[10px] font-semibold uppercase tracking-[.26em] mt-1"
+        className="block text-[8px] sm:text-[8.5px] font-semibold uppercase tracking-[.22em] mt-0.5"
         style={{ color: TINTA_3 }}
       >
         {pie}
       </span>
-      <i className={`block w-[56px] h-[3px] rounded-sm mt-2.5 ${derecha ? "ml-auto" : ""}`} style={{ background: ORO }} />
+      <i className={`block w-[42px] h-[2px] rounded-sm mt-1.5 ${derecha ? "ml-auto" : ""}`} style={{ background: ORO }} />
     </span>
   );
 }
@@ -584,7 +584,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
 
   return (
     <section
-      className="rounded-[22px] overflow-hidden mb-6 px-4 sm:px-7 pt-5 sm:pt-6 pb-4"
+      className="rounded-[18px] overflow-hidden mb-4 px-3 sm:px-5 pt-3.5 sm:pt-4 pb-3"
       style={{
         border: `1px solid ${LINEA}`,
         background: `radial-gradient(900px 520px at 50% 8%, rgba(37,99,235,.045), transparent 62%), ${FONDO}`,
@@ -628,15 +628,15 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       </div>
 
       <div className="mt-2">
-        <div className="text-right text-[14px] font-extrabold tabular-nums mb-1.5">
+        <div className="text-right text-[12px] font-extrabold tabular-nums mb-1">
           {Math.round(porcientoAnimado)}%
         </div>
 
         {/* La barra se puede arrastrar y el reloj la sigue. Es un input de
             rango de verdad —no un div con eventos— así que también anda con el
             teclado y lo lee un lector de pantalla. */}
-        <div className="relative h-[26px] flex items-center">
-          <div className="absolute inset-x-0 h-[15px] rounded-full overflow-hidden" style={{ background: RIEL }}>
+        <div className="relative h-[20px] flex items-center">
+          <div className="absolute inset-x-0 h-[11px] rounded-full overflow-hidden" style={{ background: RIEL }}>
             <span
               className="block h-full rounded-full"
               style={{
@@ -654,26 +654,26 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             onChange={(e) => setSimulado(Number(e.target.value))}
             aria-label="Mover para simular otra cantidad de FTD"
             className="relative w-full appearance-none bg-transparent cursor-grab active:cursor-grabbing
-                       [&::-webkit-slider-runnable-track]:h-[15px] [&::-webkit-slider-runnable-track]:bg-transparent
-                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[24px]
-                       [&::-webkit-slider-thumb]:h-[24px] [&::-webkit-slider-thumb]:rounded-full
+                       [&::-webkit-slider-runnable-track]:h-[11px] [&::-webkit-slider-runnable-track]:bg-transparent
+                       [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[19px]
+                       [&::-webkit-slider-thumb]:h-[19px] [&::-webkit-slider-thumb]:rounded-full
                        [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-[3px]
                        [&::-webkit-slider-thumb]:border-[#16233f] [&::-webkit-slider-thumb]:shadow-md
                        [&::-webkit-slider-thumb]:mt-[-4.5px]
-                       [&::-moz-range-track]:h-[15px] [&::-moz-range-track]:bg-transparent
-                       [&::-moz-range-thumb]:w-[24px] [&::-moz-range-thumb]:h-[24px]
+                       [&::-moz-range-track]:h-[11px] [&::-moz-range-track]:bg-transparent
+                       [&::-moz-range-thumb]:w-[19px] [&::-moz-range-thumb]:h-[19px]
                        [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white
                        [&::-moz-range-thumb]:border-[3px] [&::-moz-range-thumb]:border-[#16233f]"
           />
         </div>
 
-        <div className="flex justify-between text-[12px] tabular-nums mt-1" style={{ color: TINTA_3 }}>
+        <div className="flex justify-between text-[10.5px] tabular-nums mt-0.5" style={{ color: TINTA_3 }}>
           <span>0 FTD</span>
           <span>{TOPE_RELOJ} FTD</span>
         </div>
 
         {/* Lo que convierte el arrastre en información: cuánto cuesta llegar. */}
-        <div className="h-[22px] mt-1.5 text-center text-[12px]">
+        <div className="h-[18px] mt-1 text-center text-[10.5px]">
           {simulando && (
             <span style={{ color: TINTA_2 }}>
               {(() => {
@@ -698,15 +698,15 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           arco mide unos 250 px y ahí no entra: baja acá, con tamaños de CSS
           que no dependen de cuánto se encoja el dibujo. */}
       <div className="sm:hidden text-center -mt-1">
-        <p className="text-[44px] font-black tracking-[-0.045em] leading-none tabular-nums">
+        <p className="text-[34px] font-black tracking-[-0.045em] leading-none tabular-nums">
           {plata(objetivo)}
         </p>
-        <p className="text-[10px] font-extrabold uppercase tracking-[.26em] mt-2" style={{ color: TINTA_2 }}>
+        <p className="text-[8.5px] font-extrabold uppercase tracking-[.22em] mt-1.5" style={{ color: TINTA_2 }}>
           Mi meta de {MES}
         </p>
-        <i className="block w-[52px] h-[3px] rounded-sm mx-auto my-2" style={{ background: ORO }} />
+        <i className="block w-[40px] h-[2px] rounded-sm mx-auto my-1.5" style={{ background: ORO }} />
         <p
-          className="text-[14px] font-bold"
+          className="text-[12px] font-bold"
           style={{ color: simulando ? AZUL : ganado > 0 ? VERDE : TINTA_3 }}
         >
           {simulando
@@ -715,12 +715,12 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         </p>
       </div>
 
-      <div className="flex items-center justify-center gap-3.5 mt-5">
-        <i className="hidden sm:block w-[76px] h-[2px] shrink-0" style={{ background: ORO, opacity: 0.75 }} />
-        <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-[.26em] text-center" style={{ color: TINTA_2 }}>
+      <div className="flex items-center justify-center gap-2.5 mt-3">
+        <i className="hidden sm:block w-[54px] h-[1.5px] shrink-0" style={{ background: ORO, opacity: 0.75 }} />
+        <span className="text-[8.5px] sm:text-[9.5px] font-bold uppercase tracking-[.22em] text-center" style={{ color: TINTA_2 }}>
           Grandes resultados se construyen día a día
         </span>
-        <i className="hidden sm:block w-[76px] h-[2px] shrink-0" style={{ background: ORO, opacity: 0.75 }} />
+        <i className="hidden sm:block w-[54px] h-[1.5px] shrink-0" style={{ background: ORO, opacity: 0.75 }} />
       </div>
 
       {editando ? (
@@ -856,7 +856,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           <button
             onClick={alternar}
             aria-expanded={abierta}
-            className="w-full mt-4 px-2 py-3 text-left"
+            className="w-full mt-3 px-2 py-2.5 text-left"
             style={{ borderTop: `1px solid ${LINEA}` }}
           >
             <span className="flex items-stretch justify-center flex-wrap">
@@ -872,17 +872,17 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               ].map((c, i) => (
                 <span
                   key={c.t}
-                  className="px-4 sm:px-6 text-center"
+                  className="px-3 sm:px-5 text-center"
                   style={{ borderLeft: i > 0 ? `1px solid ${LINEA}` : undefined }}
                 >
                   <span
-                    className="block text-[9px] font-bold uppercase tracking-[.16em] whitespace-nowrap"
+                    className="block text-[8px] font-bold uppercase tracking-[.14em] whitespace-nowrap"
                     style={{ color: TINTA_3 }}
                   >
                     {c.t}
                   </span>
                   <b
-                    className="block text-[17px] font-extrabold tracking-[-0.035em] tabular-nums leading-none mt-1.5 whitespace-nowrap"
+                    className="block text-[15px] font-extrabold tracking-[-0.035em] tabular-nums leading-none mt-1 whitespace-nowrap"
                     style={{ color: c.color ?? TINTA }}
                   >
                     {c.v}
