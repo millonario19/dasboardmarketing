@@ -207,14 +207,17 @@ function arco(d1: number, d2: number, r: number): string {
 function Reloj({
   ftd,
   metaUsd,
+  rotuloMeta,
   plataTexto,
   simulando,
   chico,
 }: {
   /** Los FTD que marca la aguja. */
   ftd: number;
-  /** La meta en plata, que es el número grande del centro. */
+  /** El número grande del centro: la meta, o lo proyectado mientras arrastra. */
   metaUsd: number;
+  /** El rótulo de abajo, que cambia cuando el número deja de ser la meta. */
+  rotuloMeta: string;
   /** El renglón de abajo, ya escrito: «lleva $350» o lo que simula. */
   plataTexto: string;
   simulando: boolean;
@@ -307,7 +310,7 @@ function Reloj({
   return (
     <svg
       viewBox={chico ? "40 66 680 412" : "0 0 760 516"}
-      className="w-full max-w-[330px] sm:max-w-[470px] mx-auto block"
+      className="w-full max-w-[360px] sm:max-w-[620px] mx-auto block"
       aria-hidden
     >
       <path d={arco(INICIO, INICIO + BARRIDO, R)} stroke={RIEL} strokeWidth={GROSOR} fill="none" strokeLinecap="round" />
@@ -361,7 +364,7 @@ function Reloj({
         letterSpacing={5}
         fill={TINTA_2}
       >
-        MI META DE {MES.toUpperCase()}
+        {rotuloMeta}
       </text>
       <rect x={CX - 26} y={476} width={52} height={3} rx={1.5} fill={ORO} />
       <text
@@ -557,6 +560,16 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const plataMostrada = escalonMostrado.pago;
 
   /**
+   * El número grande mientras se arrastra: lo que ganaría con ese escalón.
+   *
+   * Es la comisión del escalón más las membresías del plan. No es la meta más
+   * la comisión: la meta ya trae adentro el escalón que eligió —los $360 de
+   * los 45 FTD— y sumarla entera los contaría dos veces.
+   */
+  const membresiasDelPlan = usdDeMembresias(meta?.plan ?? plan);
+  const proyectado = plataMostrada + membresiasDelPlan;
+
+  /**
    * El renglón de abajo del reloj: la comisión y nada más.
    *
    * Tenía una explicación entera del escalón y era demasiado para el lugar
@@ -564,7 +577,8 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
    * el próximo escalón ya lo dice la línea de abajo de la barra.
    */
   function leerEscalon(cuantos: number): string {
-    return `Comisión ${plata(comisionPorFtd(cuantos).pago)}`;
+    const c = comisionPorFtd(cuantos).pago;
+    return `Comisión ${plata(c)} + ${plata(membresiasDelPlan)} de membresías`;
   }
 
 
@@ -612,7 +626,12 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       <div className="mt-1">
         <Reloj
           ftd={ftdMostrado}
-          metaUsd={objetivo}
+          metaUsd={simulando ? proyectado : objetivo}
+          rotuloMeta={
+            simulando
+              ? `SI LLEGO A ${Math.round(ftdMostrado)} FTD`
+              : `MI META DE ${MES.toUpperCase()}`
+          }
           plataTexto={
             simulando
               ? leerEscalon(Math.round(ftdMostrado))
@@ -695,10 +714,10 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           que no dependen de cuánto se encoja el dibujo. */}
       <div className="sm:hidden text-center -mt-1">
         <p className="text-[34px] font-black tracking-[-0.045em] leading-none tabular-nums">
-          {plata(objetivo)}
+          {plata(simulando ? proyectado : objetivo)}
         </p>
         <p className="text-[8.5px] font-extrabold uppercase tracking-[.22em] mt-1.5" style={{ color: TINTA_2 }}>
-          Mi meta de {MES}
+          {simulando ? `Si llego a ${Math.round(ftdMostrado)} FTD` : `Mi meta de ${MES}`}
         </p>
         <i className="block w-[40px] h-[2px] rounded-sm mx-auto my-1.5" style={{ background: ORO }} />
         <p
