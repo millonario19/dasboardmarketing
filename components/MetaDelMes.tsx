@@ -208,7 +208,6 @@ function Reloj({
   ftd,
   metaUsd,
   rotuloMeta,
-  plataTexto,
   simulando,
   chico,
 }: {
@@ -218,8 +217,6 @@ function Reloj({
   metaUsd: number;
   /** El rótulo de abajo, que cambia cuando el número deja de ser la meta. */
   rotuloMeta: string;
-  /** El renglón de abajo, ya escrito: «lleva $350» o lo que simula. */
-  plataTexto: string;
   simulando: boolean;
   chico: boolean;
 }) {
@@ -367,16 +364,6 @@ function Reloj({
         {rotuloMeta}
       </text>
       <rect x={CX - 26} y={476} width={52} height={3} rx={1.5} fill={ORO} />
-      <text
-        x={CX}
-        y={499}
-        textAnchor="middle"
-        fontSize={17}
-        fontWeight="700"
-        fill={simulando ? AZUL : ftd > 0 ? VERDE : TINTA_3}
-      >
-        {plataTexto}
-      </text>
         </>
       )}
     </svg>
@@ -578,19 +565,6 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const membresiasDelPlan = usdDeMembresias(meta?.plan ?? plan);
   const proyectado = plataMostrada + membresiasDelPlan;
 
-  /**
-   * El renglón de abajo del reloj: la comisión y nada más.
-   *
-   * Tenía una explicación entera del escalón y era demasiado para el lugar
-   * donde está —debajo del número grande, en letra chica—. Lo que falta para
-   * el próximo escalón ya lo dice la línea de abajo de la barra.
-   */
-  function leerEscalon(cuantos: number): string {
-    const c = comisionPorFtd(cuantos).pago;
-    return `Comisión ${plata(c)} + ${plata(membresiasDelPlan)} de membresías`;
-  }
-
-
 
   if (!cargada) return null;
   const quedan = diasQueQuedan();
@@ -641,14 +615,44 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               ? `SI LLEGO A ${Math.round(ftdMostrado)} FTD`
               : `MI META DE ${MES.toUpperCase()}`
           }
-          plataTexto={
-            simulando
-              ? leerEscalon(Math.round(ftdMostrado))
-              : `lleva ${plata(ganado)}`
-          }
           simulando={simulando}
           chico={chico}
         />
+      </div>
+
+      {/* De dónde sale la plata, en letra que se lee.
+          Adentro del arco decía «lleva $350» y nada más: el agente no tenía
+          cómo saber que esos $350 eran sus tres membresías anotadas y que sus
+          7 FTD todavía no pagan nada. Acá entra la cuenta entera, y entra
+          igual en el teléfono. */}
+      <div className="text-center mt-1">
+        <p
+          className="text-[19px] sm:text-[22px] font-extrabold tracking-[-0.03em] tabular-nums"
+          style={{ color: simulando ? AZUL : ganado > 0 ? VERDE : TINTA_3 }}
+        >
+          {simulando ? `Si llego: ${plata(proyectado)}` : `Llevo ${plata(ganado)}`}
+        </p>
+        <p className="text-[12px] sm:text-[13px] mt-1" style={{ color: TINTA_2 }}>
+          {simulando ? (
+            <>
+              {plata(plataMostrada)} por los {Math.round(ftdMostrado)} FTD
+              <span style={{ color: TINTA_3 }}> · </span>
+              {plata(membresiasDelPlan)} por las membresías del plan
+            </>
+          ) : (
+            <>
+              <b style={{ color: pago > 0 ? TINTA : TINTA_3 }}>{plata(pago)}</b> por mis{" "}
+              {ftdMes} FTD
+              {pago === 0 && siguiente ? ` (el primer escalón son ${siguiente[0]})` : ""}
+              <span style={{ color: TINTA_3 }}> · </span>
+              <b style={{ color: ganadoMembresias > 0 ? TINTA : TINTA_3 }}>
+                {plata(ganadoMembresias)}
+              </b>{" "}
+              por {unidadesDeMembresias(vendidas)}{" "}
+              {unidadesDeMembresias(vendidas) === 1 ? "membresía" : "membresías"}
+            </>
+          )}
+        </p>
       </div>
 
       <div className="mt-2">
@@ -735,14 +739,6 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           {simulando ? `Si llego a ${Math.round(ftdMostrado)} FTD` : `Mi meta de ${MES}`}
         </p>
         <i className="block w-[40px] h-[2px] rounded-sm mx-auto my-1.5" style={{ background: ORO }} />
-        <p
-          className="text-[12px] font-bold"
-          style={{ color: simulando ? AZUL : ganado > 0 ? VERDE : TINTA_3 }}
-        >
-          {simulando
-            ? leerEscalon(Math.round(ftdMostrado))
-            : `lleva ${plata(ganado)}`}
-        </p>
       </div>
 
       <div className="flex items-center justify-center gap-2.5 mt-3">
@@ -886,7 +882,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           <button
             onClick={alternar}
             aria-expanded={abierta}
-            className="w-full mt-3 px-2 py-2.5 text-left"
+            className="w-full mt-3 px-2 py-3.5 text-left"
             style={{ borderTop: `1px solid ${LINEA}` }}
           >
             <span className="flex items-stretch justify-center flex-wrap">
@@ -902,17 +898,17 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
               ].map((c, i) => (
                 <span
                   key={c.t}
-                  className="px-3 sm:px-5 text-center"
+                  className="px-3 sm:px-6 text-center"
                   style={{ borderLeft: i > 0 ? `1px solid ${LINEA}` : undefined }}
                 >
                   <span
-                    className="block text-[8px] font-bold uppercase tracking-[.14em] whitespace-nowrap"
+                    className="block text-[9.5px] font-bold uppercase tracking-[.14em] whitespace-nowrap"
                     style={{ color: TINTA_3 }}
                   >
                     {c.t}
                   </span>
                   <b
-                    className="block text-[15px] font-extrabold tracking-[-0.035em] tabular-nums leading-none mt-1 whitespace-nowrap"
+                    className="block text-[20px] sm:text-[23px] font-extrabold tracking-[-0.035em] tabular-nums leading-none mt-1.5 whitespace-nowrap"
                     style={{ color: c.color ?? TINTA }}
                   >
                     {c.v}
