@@ -128,7 +128,7 @@ const CY = 330;
 const R = 230;
 const GROSOR = 32;
 /** Los escalones que se rotulan en el reloj. El último es el tope de la escala. */
-const ESCALA_FTD = [45, 65, 90, 120, 150];
+const ESCALA_FTD = [0, 45, 65, 90, 120, 150];
 const TOPE_RELOJ = ESCALA_FTD[ESCALA_FTD.length - 1];
 
 const INICIO = 150;
@@ -515,8 +515,14 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const simulando = simulado !== null;
   /** Los FTD que marca la aguja: los de verdad, o los que está simulando. */
   const ftdMostrado = simulando ? simulado : barrido;
-  /** Lo que cobraría con esos FTD, con las membresías que ya vendió. */
-  const plataMostrada = comisionPorFtd(Math.round(ftdMostrado)).pago + ganadoMembresias;
+  /**
+   * Lo que paga la tabla con esos FTD, sola.
+   *
+   * Sin sumarle las membresías a propósito: mover la aguja a 90 tiene que
+   * decir los $850 de la tabla. Si le sumara lo vendido diría otro número y el
+   * reloj dejaría de poderse leer contra la tabla, que es para lo que sirve.
+   */
+  const plataMostrada = comisionPorFtd(Math.round(ftdMostrado)).pago;
 
   if (!cargada) return null;
   const quedan = diasQueQuedan();
