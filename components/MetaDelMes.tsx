@@ -138,6 +138,13 @@ const GROSOR = 32;
  */
 const ESCALA_FTD = [0, 35, 45, 65, 90, 120, 150];
 
+/** La marca del reloj más cercana a ese punto del arco. */
+function escalonEnPosicion(p: number): number {
+  const ultimo = ESCALA_FTD.length - 1;
+  const i = Math.round(Math.min(Math.max(p, 0), 1) * ultimo);
+  return ESCALA_FTD[i];
+}
+
 /** Dónde cae esa cantidad de FTD sobre el arco, de 0 a 1. */
 function posicionEnEscala(ftd: number): number {
   const ultimo = ESCALA_FTD.length - 1;
@@ -300,7 +307,7 @@ function Reloj({
   return (
     <svg
       viewBox={chico ? "40 66 680 412" : "0 0 760 516"}
-      className="w-full max-w-[318px] sm:max-w-[352px] mx-auto block"
+      className="w-full max-w-[330px] sm:max-w-[470px] mx-auto block"
       aria-hidden
     >
       <path d={arco(INICIO, INICIO + BARRIDO, R)} stroke={RIEL} strokeWidth={GROSOR} fill="none" strokeLinecap="round" />
@@ -550,28 +557,17 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const plataMostrada = escalonMostrado.pago;
 
   /**
-   * De qué escalón sale ese monto.
+   * El renglón de abajo del reloj: la comisión y nada más.
    *
-   * Es la línea que evita el malentendido: con 80 FTD la aguja queda pegada al
-   * 90 y el monto dice $585. Parece un error del reloj, pero es la tabla —el
-   * escalón es «al menos», así que de 65 a 89 se cobra lo mismo—. Decirlo con
-   * todas las letras lo arregla mejor que cualquier dibujo.
+   * Tenía una explicación entera del escalón y era demasiado para el lugar
+   * donde está —debajo del número grande, en letra chica—. Lo que falta para
+   * el próximo escalón ya lo dice la línea de abajo de la barra.
    */
   function leerEscalon(cuantos: number): string {
-    const { pago: p, escalon, siguiente: prox } = comisionPorFtd(cuantos);
-    const base = escalon === null
-      ? `con ${cuantos} FTD todavía no cobra`
-      : `con ${cuantos} FTD cobra ${plata(p)}`;
-    const detalle = escalon === null
-      ? prox
-        ? ` — el primer escalón son ${prox[0]}`
-        : ""
-      : cuantos === escalon
-        ? " — justo el escalón"
-        : ` — el escalón de ${escalon}`;
-    const salto = prox ? ` · con ${prox[0] - cuantos} más salta a ${plata(prox[1])}` : "";
-    return base + detalle + salto;
+    return `Comisión ${plata(comisionPorFtd(cuantos).pago)}`;
   }
+
+
 
   if (!cargada) return null;
   const quedan = diasQueQuedan();
@@ -648,10 +644,10 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
           <input
             type="range"
             min={0}
-            max={TOPE_RELOJ}
+            max={1000}
             step={1}
-            value={Math.round(ftdMostrado)}
-            onChange={(e) => setSimulado(Number(e.target.value))}
+            value={Math.round(posicionEnEscala(ftdMostrado) * 1000)}
+            onChange={(e) => setSimulado(escalonEnPosicion(Number(e.target.value) / 1000))}
             aria-label="Mover para simular otra cantidad de FTD"
             className="relative w-full appearance-none bg-transparent cursor-grab active:cursor-grabbing
                        [&::-webkit-slider-runnable-track]:h-[11px] [&::-webkit-slider-runnable-track]:bg-transparent
