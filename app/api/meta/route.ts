@@ -16,13 +16,21 @@ export async function POST(req: NextRequest) {
 
   const cuerpo = await req.json().catch(() => null);
   const ftd = Number(cuerpo?.ftd);
-  const usd = Number(cuerpo?.usd);
-  if (!Number.isFinite(ftd) || !Number.isFinite(usd)) {
-    return NextResponse.json({ error: "La meta tiene que ser un número" }, { status: 400 });
+  if (!Number.isFinite(ftd)) {
+    return NextResponse.json({ error: "La meta de FTD tiene que ser un número" }, { status: 400 });
   }
 
   try {
-    return NextResponse.json({ meta: await guardarMeta(sesion.usuario, ftd, usd) });
+    // El total en dólares no se recibe: lo calcula `guardarMeta` sumando el
+    // escalón de FTD y las membresías. Si viniera del navegador, un cliente
+    // viejo o tocado podría guardar una meta cuyas mitades no suman el total.
+    return NextResponse.json({
+      meta: await guardarMeta(sesion.usuario, {
+        ftd,
+        plan: cuerpo?.plan ?? null,
+        vendidas: cuerpo?.vendidas ?? null,
+      }),
+    });
   } catch (e) {
     const mensaje = e instanceof Error ? e.message : "No se pudo guardar la meta";
     return NextResponse.json({ error: mensaje }, { status: 500 });

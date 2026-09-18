@@ -3,6 +3,16 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { comisionPorFtd, ESCALONES } from "@/lib/comision";
 import type { Meta } from "@/lib/metas";
+import {
+  MEMBRESIAS,
+  SIN_MEMBRESIAS,
+  metaDiaria,
+  ritmoQueFalta,
+  usdDeMembresias,
+  unidadesDeMembresias,
+  type ClaseMembresia,
+  type Membresias,
+} from "@/lib/comision";
 
 /**
  * La meta del mes, arriba de todo.
@@ -395,7 +405,9 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const [abierta, setAbierta] = useState(false);
   const [editando, setEditando] = useState(false);
   const [ftd, setFtd] = useState("45");
-  const [usd, setUsd] = useState("1500");
+  // Las dos listas de membresías: la que piensa vender y la que lleva vendida.
+  const [plan, setPlan] = useState<Membresias>({ ...SIN_MEMBRESIAS });
+  const [vendidas, setVendidas] = useState<Membresias>({ ...SIN_MEMBRESIAS });
   const [guardando, setGuardando] = useState(false);
   const chico = useChico();
 
@@ -412,7 +424,8 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         setMeta(d.meta);
         if (d.meta) {
           setFtd(String(d.meta.ftd));
-          setUsd(String(d.meta.usd));
+          setPlan({ ...SIN_MEMBRESIAS, ...d.meta.plan });
+          setVendidas({ ...SIN_MEMBRESIAS, ...d.meta.vendidas });
         }
       })
       .catch(() => undefined)
@@ -430,29 +443,41 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
     });
   }
 
-  function guardar() {
+  function guardar(cierra = true, conVendidas = vendidas) {
     setGuardando(true);
     fetch("/api/meta", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ftd: Number(ftd), usd: Number(usd) }),
+      body: JSON.stringify({ ftd: Number(ftd), plan, vendidas: conVendidas }),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((d: { meta: Meta }) => {
         setMeta(d.meta);
-        setEditando(false);
+        if (cierra) setEditando(false);
       })
       .catch(() => undefined)
       .finally(() => setGuardando(false));
   }
 
+  /** Anotar una membresía vendida, que es el único dato que nadie más tiene. */
+  function anotarVenta(id: ClaseMembresia, delta: number) {
+    const proxima = { ...vendidas, [id]: Math.max(0, (vendidas[id] || 0) + delta) };
+    setVendidas(proxima);
+    guardar(false, proxima);
+  }
+
   // Los hooks van antes de cualquier return: mientras carga el componente
   // devolvía null, y al llegar la meta aparecía un hook nuevo. React cuenta
   // los hooks por render y esa diferencia tumba la pantalla entera.
+  // Las dos mitades de la comisión: el escalón de FTD que ya alcanzó, y lo
+  // que lleva vendido en membresías. El reloj muestra la suma, que es lo que
+  // le entra en el bolsillo a fin de mes.
   const { pago, siguiente } = comisionPorFtd(ftdMes);
+  const ganadoMembresias = usdDeMembresias(vendidas);
+  const ganado = pago + ganadoMembresias;
   const objetivo = meta?.usd ?? 1500;
   // La aguja y la barra suben juntas desde cero al abrir la pantalla.
-  const barrido = useBarrido(pago);
+  const barrido = useBarrido(ganado);
   /**
    * El agente puede arrastrar la barra para ver el reloj moverse.
    *
@@ -468,9 +493,9 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   if (!cargada) return null;
   const quedan = diasQueQuedan();
   const faltaFtd = meta ? Math.max(meta.ftd - ftdMes, 0) : 0;
-  const faltaUsd = meta ? Math.max(meta.usd - pago, 0) : 0;
+  const faltaUsd = meta ? Math.max(meta.usd - ganado, 0) : 0;
   const pct = (a: number, b: number) => (b > 0 ? Math.min((a / b) * 100, 100) : 0);
-  const porciento = Math.round(pct(pago, objetivo));
+  const porciento = Math.round(pct(ganado, objetivo));
   const porcientoAnimado = pct(mostrado, objetivo);
 
   return (
@@ -636,9 +661,9 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         <i className="block w-[52px] h-[3px] rounded-sm mx-auto my-2" style={{ background: ORO }} />
         <p
           className="text-[14px] font-bold"
-          style={{ color: simulando ? AZUL : pago > 0 ? VERDE : TINTA_3 }}
+          style={{ color: simulando ? AZUL : ganado > 0 ? VERDE : TINTA_3 }}
         >
-          {simulando ? `si llega a ${plata(mostrado)}` : `lleva ${plata(pago)}`}
+          {simulando ? `si llega a ${plata(mostrado)}` : `lleva ${plata(ganado)}`}
         </p>
         <p className="text-[13px] leading-snug mt-3" style={{ color: TINTA }}>
           Un sueño necesita un plan <b className="font-bold">para despertarlo.</b>
@@ -654,41 +679,117 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       </div>
 
       {editando ? (
-        <div className="flex items-end justify-center gap-3 flex-wrap px-2 py-4 mt-4" style={{ borderTop: `1px solid ${LINEA}` }}>
-          <label className="text-[11.5px]" style={{ color: TINTA_2 }}>
-            Meta de FTD
-            <input
-              type="number"
-              min={0}
-              value={ftd}
-              onChange={(e) => setFtd(e.target.value)}
-              className="block w-[92px] mt-1 rounded-lg px-2.5 py-1.5 text-[16px] font-bold text-right tabular-nums outline-none"
-              style={{ border: `1px solid ${LINEA}`, color: TINTA, background: PANEL }}
-            />
-          </label>
-          <label className="text-[11.5px]" style={{ color: TINTA_2 }}>
-            Quiero ganar (USD)
-            <input
-              type="number"
-              min={0}
-              step={50}
-              value={usd}
-              onChange={(e) => setUsd(e.target.value)}
-              className="block w-[110px] mt-1 rounded-lg px-2.5 py-1.5 text-[16px] font-bold text-right tabular-nums outline-none"
-              style={{ border: `1px solid ${LINEA}`, color: TINTA, background: PANEL }}
-            />
-          </label>
-          <button
-            onClick={guardar}
-            disabled={guardando}
-            className="rounded-full px-4 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
-            style={{ background: AZUL }}
+        <div className="px-2 py-4 mt-4" style={{ borderTop: `1px solid ${LINEA}` }}>
+          {/* Paso 1: el escalón. No se escribe un número suelto porque la
+              comisión no es proporcional — con 50 FTD se cobra el escalón de
+              45 igual que con 45. Elegir de la tabla evita ponerse una meta
+              que no paga nada más que la de abajo. */}
+          <p className="text-[12.5px] font-bold text-center" style={{ color: TINTA }}>
+            ¿Cuál es su meta de FTD este mes?
+          </p>
+          <p className="text-[11px] text-center mb-2.5" style={{ color: TINTA_3 }}>
+            Se paga por escalón alcanzado, no por FTD suelto
+          </p>
+          <div className="flex gap-1.5 flex-wrap justify-center">
+            {ESCALONES.map(([cantidad, monto]) => (
+              <button
+                key={cantidad}
+                onClick={() => setFtd(String(cantidad))}
+                aria-pressed={Number(ftd) === cantidad}
+                className="rounded-xl px-3 py-1.5 text-center min-w-[74px]"
+                style={
+                  Number(ftd) === cantidad
+                    ? { background: AZUL, color: "#fff" }
+                    : { background: PANEL, border: `1px solid ${LINEA}`, color: TINTA }
+                }
+              >
+                <b className="block text-[15px] font-extrabold tabular-nums leading-none">{cantidad}</b>
+                <span className="block text-[10.5px] tabular-nums opacity-75">{plata(monto)}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Paso 2: las membresías, que sí se pagan por unidad desde la
+              primera. */}
+          <p className="text-[12.5px] font-bold text-center mt-5" style={{ color: TINTA }}>
+            ¿Cuál es su meta de membresías?
+          </p>
+          <p className="text-[11px] text-center mb-2.5" style={{ color: TINTA_3 }}>
+            Ármela como la piensa lograr
+          </p>
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(188px,1fr))" }}>
+            {MEMBRESIAS.map((m) => (
+              <div
+                key={m.id}
+                className="flex items-center gap-2.5 rounded-xl px-3 py-2"
+                style={{ background: PANEL, border: `1px solid ${LINEA}` }}
+              >
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: m.color }} />
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[12.5px] font-semibold" style={{ color: TINTA }}>{m.nombre}</b>
+                  <span className="text-[10.5px] tabular-nums" style={{ color: TINTA_3 }}>
+                    {plata(m.usd)} cada una
+                  </span>
+                </span>
+                <button
+                  onClick={() => setPlan({ ...plan, [m.id]: Math.max(0, (plan[m.id] || 0) - 1) })}
+                  aria-label={`Menos ${m.nombre}`}
+                  className="w-7 h-7 rounded-full text-[16px] leading-none"
+                  style={{ border: `1px solid ${LINEA}`, color: TINTA }}
+                >
+                  −
+                </button>
+                <output className="w-6 text-center text-[15px] font-extrabold tabular-nums" style={{ color: TINTA }}>
+                  {plan[m.id] || 0}
+                </output>
+                <button
+                  onClick={() => setPlan({ ...plan, [m.id]: (plan[m.id] || 0) + 1 })}
+                  aria-label={`Más ${m.nombre}`}
+                  className="w-7 h-7 rounded-full text-[16px] leading-none"
+                  style={{ border: `1px solid ${LINEA}`, color: TINTA }}
+                >
+                  +
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* La suma, en vivo: es lo que hace que elegir un escalón más alto o
+              una membresía más se sienta antes de comprometerse. */}
+          <div
+            className="flex items-baseline gap-3 flex-wrap mt-4 pt-3.5"
+            style={{ borderTop: `1px solid ${LINEA}` }}
           >
-            {guardando ? "Guardando…" : "Guardar"}
-          </button>
-          <button onClick={() => setEditando(false)} className="rounded-full px-3 py-2 text-[12.5px]" style={{ color: TINTA_3 }}>
-            Cancelar
-          </button>
+            <span>
+              <span className="block text-[9.5px] font-bold uppercase tracking-[.16em]" style={{ color: TINTA_3 }}>
+                Su meta de {MES}
+              </span>
+              <b className="block text-[30px] font-extrabold tracking-[-0.05em] leading-none tabular-nums mt-1" style={{ color: TINTA }}>
+                {plata(comisionPorFtd(Number(ftd) || 0).pago + usdDeMembresias(plan))}
+              </b>
+            </span>
+            <span className="ml-auto text-right text-[11.5px] tabular-nums" style={{ color: TINTA_2 }}>
+              {ftd} FTD · {plata(comisionPorFtd(Number(ftd) || 0).pago)}
+              <br />
+              {unidadesDeMembresias(plan)} membresías · {plata(usdDeMembresias(plan))}
+              <br />
+              <b style={{ color: TINTA }}>{metaDiaria(Number(ftd) || 0)} FTD por día</b>
+            </span>
+          </div>
+
+          <div className="flex justify-center gap-2 mt-4">
+            <button
+              onClick={() => guardar()}
+              disabled={guardando}
+              className="rounded-full px-5 py-2 text-[12.5px] font-bold text-white disabled:opacity-50"
+              style={{ background: AZUL }}
+            >
+              {guardando ? "Guardando…" : "Guardar mi meta"}
+            </button>
+            <button onClick={() => setEditando(false)} className="rounded-full px-3 py-2 text-[12.5px]" style={{ color: TINTA_3 }}>
+              Cancelar
+            </button>
+          </div>
         </div>
       ) : !meta ? (
         <div className="text-center mt-4 pt-4" style={{ borderTop: `1px solid ${LINEA}` }}>
@@ -709,11 +810,12 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             style={{ borderTop: `1px solid ${LINEA}`, color: TINTA_3 }}
           >
             <span>
-              meta <b style={{ color: TINTA }}>{meta.ftd} FTD</b>
+              hoy le tocan <b style={{ color: AZUL }}>{metaDiaria(meta.ftd)} FTD</b>
             </span>
             <span style={{ color: RIEL }}>·</span>
             <span>
-              meta <b style={{ color: TINTA }}>{plata(meta.usd)}</b> facturado
+              meta <b style={{ color: TINTA }}>{plata(meta.usd)}</b> = {meta.ftd} FTD +{" "}
+              {unidadesDeMembresias(meta.plan)} membresías
             </span>
             <span className="text-[9px] opacity-60">{abierta ? "▲" : "▼"}</span>
           </button>
@@ -727,19 +829,19 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
                 color={`linear-gradient(90deg,#3E9E6C,${VERDE})`}
                 pie={
                   faltaFtd > 0
-                    ? `Faltan ${faltaFtd} · ${(faltaFtd / quedan).toFixed(1)} por día en los ${quedan} días que quedan`
+                    ? `Faltan ${faltaFtd} · ${ritmoQueFalta(meta.ftd, ftdMes)} por día en los ${quedan} días que quedan`
                     : "Meta cumplida 🎉"
                 }
               />
               <div className="mt-4">
                 <Barra
                   titulo="Comisión"
-                  valor={`${plata(pago)} de ${plata(meta.usd)}`}
-                  pct={pct(pago, meta.usd)}
+                  valor={`${plata(ganado)} de ${plata(meta.usd)}`}
+                  pct={pct(ganado, meta.usd)}
                   color="linear-gradient(90deg,#1b4fe0,#f5a623)"
                   pie={
                     siguiente
-                      ? `Con ${siguiente[0] - ftdMes} FTD más pasás al escalón de ${siguiente[0]} y cobrás ${plata(siguiente[1])}`
+                      ? `${plata(pago)} por FTD + ${plata(ganadoMembresias)} por membresías · con ${siguiente[0] - ftdMes} FTD más el escalón sube a ${plata(siguiente[1])}`
                       : faltaUsd > 0
                         ? `Faltan ${plata(faltaUsd)}`
                         : "Meta cumplida 🎉"
@@ -747,8 +849,67 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
                 />
               </div>
 
+              {/* Las membresías vendidas las anota él.
+                  No es pereza: no hay de dónde leerlas. Los FTD llegan de GHL
+                  y los registros también, pero una venta de Oro no deja rastro
+                  en ningún sistema que el tablero pueda consultar. Mientras no
+                  lo haya, el único que sabe es el agente — y si no tiene dónde
+                  anotarla, la mitad de su comisión no existe en la pantalla. */}
+              <div className="mt-5 pt-4" style={{ borderTop: `1px solid ${LINEA}` }}>
+                <p className="text-[11px] font-bold uppercase tracking-[.14em] text-center" style={{ color: TINTA_3 }}>
+                  Mis membresías vendidas
+                </p>
+                <div
+                  className="grid gap-1.5 mt-2.5"
+                  style={{ gridTemplateColumns: "repeat(auto-fit,minmax(176px,1fr))" }}
+                >
+                  {MEMBRESIAS.map((m) => {
+                    const hechas = vendidas[m.id] || 0;
+                    const pedidas = meta.plan[m.id] || 0;
+                    return (
+                      <div
+                        key={m.id}
+                        className="flex items-center gap-2 rounded-xl px-2.5 py-1.5"
+                        style={{ background: PANEL, border: `1px solid ${LINEA}` }}
+                      >
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: m.color }} />
+                        <span className="min-w-0 flex-1">
+                          <b className="block text-[12px] font-semibold leading-tight" style={{ color: TINTA }}>
+                            {m.nombre.replace("Miembro ", "")}
+                          </b>
+                          <span className="text-[10px] tabular-nums" style={{ color: TINTA_3 }}>
+                            {hechas} de {pedidas} · {plata(hechas * m.usd)}
+                          </span>
+                        </span>
+                        <button
+                          onClick={() => anotarVenta(m.id, -1)}
+                          disabled={guardando || hechas === 0}
+                          aria-label={`Quitar una venta de ${m.nombre}`}
+                          className="w-6 h-6 rounded-full text-[15px] leading-none disabled:opacity-30"
+                          style={{ border: `1px solid ${LINEA}`, color: TINTA }}
+                        >
+                          −
+                        </button>
+                        <button
+                          onClick={() => anotarVenta(m.id, 1)}
+                          disabled={guardando}
+                          aria-label={`Anotar una venta de ${m.nombre}`}
+                          className="w-6 h-6 rounded-full text-[15px] leading-none text-white disabled:opacity-40"
+                          style={{ background: VERDE }}
+                        >
+                          +
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="flex items-center justify-between gap-3 flex-wrap mt-4 text-[11px]" style={{ color: TINTA_3 }}>
-                <span>Solo cuenta la comisión por FTD — las ventas todavía no las registra el sistema.</span>
+                <span>
+                  Los FTD los trae el CRM. Las membresías las anota usted, hasta que haya de dónde
+                  leerlas.
+                </span>
                 <button onClick={() => setEditando(true)} className="underline font-semibold" style={{ color: AZUL }}>
                   Cambiar mi meta
                 </button>
