@@ -533,10 +533,19 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
   const ganadoMembresias = usdDeMembresias(vendidas);
   const ganado = pago + ganadoMembresias;
   const objetivo = meta?.usd ?? 1500;
-  // La aguja y la barra suben juntas desde cero al abrir la pantalla, y lo
-  // que suben son FTD: desde que el reloj está rotulado en escalones, medir
-  // plata ahí sería poner la aguja en una escala y los números en otra.
-  const barrido = useBarrido(ftdMes);
+  /**
+   * La aguja descansa en la meta, no en lo que lleva.
+   *
+   * Es la misma razón por la que el número grande es la meta: ver la aguja
+   * clavada en cero el día 3 del mes no mueve a nadie. El reloj dice a dónde
+   * va; lo que lleva lo dicen los cuatro datos de abajo y el renglón de la
+   * comisión, que son los que tienen que ser exactos.
+   *
+   * Y por eso al soltar el arrastre vuelve acá: a los 45 FTD que se puso, no
+   * a los 7 que lleva hoy.
+   */
+  const metaFtd = meta?.ftd ?? (Number(ftd) || 45);
+  const barrido = useBarrido(metaFtd);
   /**
    * El agente puede arrastrar la barra para ver el reloj moverse.
    *
@@ -643,8 +652,14 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       </div>
 
       <div className="mt-2">
-        <div className="text-right text-[12px] font-extrabold tabular-nums mb-1">
-          {Math.round(porcientoAnimado)}%
+        {/* Desde que la aguja descansa en la meta, el porcentaje del arco ya
+            no dice cómo va sino dónde cae la meta en el dibujo. El que sirve
+            es este: cuánto de su meta lleva hecho. */}
+        <div className="text-right text-[12px] tabular-nums mb-1" style={{ color: TINTA_3 }}>
+          <b className="font-extrabold" style={{ color: ftdMes > 0 ? VERDE : TINTA_3 }}>
+            {Math.round(pct(ftdMes, metaFtd))}%
+          </b>{" "}
+          de mi meta
         </div>
 
         {/* La barra se puede arrastrar y el reloj la sigue. Es un input de
@@ -702,7 +717,7 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
                 return `Le faltan ${faltan} FTD en ${quedan} días.${empuje}`;
               })()}{" "}
               <button onClick={() => setSimulado(null)} className="underline font-semibold" style={{ color: AZUL }}>
-                volver a mi número
+                volver a mi meta
               </button>
             </span>
           )}
