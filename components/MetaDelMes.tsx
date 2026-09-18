@@ -788,21 +788,51 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
         </div>
       ) : (
         <>
+          {/* Cuatro datos de FTD y nada más.
+              Antes este renglón mezclaba la meta del día, la plata del mes y
+              las membresías en una sola frase corrida, y decía dos veces lo
+              mismo. Acá solo se habla de FTD: la plata y las membresías tienen
+              su lugar abajo, al desplegar. */}
           <button
             onClick={alternar}
             aria-expanded={abierta}
-            className="w-full flex items-center justify-center gap-2.5 flex-wrap px-4 py-3 mt-4 text-[11.5px]"
-            style={{ borderTop: `1px solid ${LINEA}`, color: TINTA_3 }}
+            className="w-full mt-4 px-2 py-3 text-left"
+            style={{ borderTop: `1px solid ${LINEA}` }}
           >
-            <span>
-              hoy le tocan <b style={{ color: AZUL }}>{metaDiaria(meta.ftd)} FTD</b>
+            <span className="flex items-stretch justify-center flex-wrap">
+              {[
+                { t: "Mi meta hoy", v: `${metaDiaria(meta.ftd)} FTD`, color: AZUL },
+                { t: "Meta total", v: `${meta.ftd} FTD` },
+                { t: "Llevo", v: `${ftdMes} FTD`, color: ftdMes > 0 ? VERDE : undefined },
+                {
+                  t: "Me faltan",
+                  v: faltaFtd > 0 ? `${faltaFtd} FTD` : "cumplida",
+                  color: faltaFtd > 0 ? ORO : VERDE,
+                },
+              ].map((c, i) => (
+                <span
+                  key={c.t}
+                  className="px-4 sm:px-6 text-center"
+                  style={{ borderLeft: i > 0 ? `1px solid ${LINEA}` : undefined }}
+                >
+                  <span
+                    className="block text-[9px] font-bold uppercase tracking-[.16em] whitespace-nowrap"
+                    style={{ color: TINTA_3 }}
+                  >
+                    {c.t}
+                  </span>
+                  <b
+                    className="block text-[17px] font-extrabold tracking-[-0.035em] tabular-nums leading-none mt-1.5 whitespace-nowrap"
+                    style={{ color: c.color ?? TINTA }}
+                  >
+                    {c.v}
+                  </b>
+                </span>
+              ))}
             </span>
-            <span style={{ color: RIEL }}>·</span>
-            <span>
-              meta <b style={{ color: TINTA }}>{plata(meta.usd)}</b> = {meta.ftd} FTD +{" "}
-              {unidadesDeMembresias(meta.plan)} membresías
+            <span className="block text-center text-[9px] mt-2" style={{ color: TINTA_3 }}>
+              {abierta ? "▲ ocultar el detalle" : "▼ ver la comisión y las membresías"}
             </span>
-            <span className="text-[9px] opacity-60">{abierta ? "▲" : "▼"}</span>
           </button>
 
           {abierta && (
