@@ -128,7 +128,7 @@ const CY = 330;
 const R = 230;
 const GROSOR = 32;
 /** Los escalones que se rotulan en el reloj. El último es el tope de la escala. */
-const ESCALA_FTD = [0, 45, 65, 90, 120, 150];
+const ESCALA_FTD = [0, 35, 45, 65, 90, 120, 150];
 const TOPE_RELOJ = ESCALA_FTD[ESCALA_FTD.length - 1];
 
 const INICIO = 150;
