@@ -149,6 +149,21 @@ export function MiDia({
             />
           )}
 
+        {/* Sus números, arriba de los pasos.
+            En Mi día van sin el reloj: trabaja con las cifras a la vista sin
+            tener que volver al Home, y el reloj ocuparía media pantalla de
+            teléfono para repetir lo que ya vio al entrar. */}
+        {!esAdmin && parte === "pasos" && (
+          <MetaDelMes
+            compacto
+            ftdMes={data.totals.ftdMes}
+            ftdHoy={data.totals.ftdHoy}
+            registrosMes={data.totals.registrosMes}
+            registrosHoy={data.totals.registrosHoy}
+            leadsHoy={data.totals.leadsHoy}
+          />
+        )}
+
         {/* Los cuatro pasos como un recorrido: uno abierto, los otros tres
             enteros debajo, y un botón que lleva al siguiente. */}
         {parte !== "meta" && (

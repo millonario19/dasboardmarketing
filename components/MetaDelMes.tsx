@@ -531,6 +531,7 @@ export function MetaDelMes({
   registrosMes = 0,
   registrosHoy = 0,
   leadsHoy = 0,
+  compacto = false,
 }: {
   /** FTD del mes en curso: los que ya sumó la etiqueta ftd-efectuado. */
   ftdMes: number;
@@ -542,6 +543,14 @@ export function MetaDelMes({
   registrosHoy?: number;
   /** Leads de hoy: el primer eslabón, para saber si el problema es arriba. */
   leadsHoy?: number;
+  /**
+   * Solo los números, sin el reloj.
+   *
+   * Es lo que va arriba de los pasos en Mi día: el agente trabaja con sus
+   * cifras a la vista sin tener que volver al Home. El reloj no: ocupa media
+   * pantalla de teléfono y su lugar es el Home, que existe para eso.
+   */
+  compacto?: boolean;
 }) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [cargada, setCargada] = useState(false);
@@ -711,6 +720,73 @@ export function MetaDelMes({
   const pct = (a: number, b: number) => (b > 0 ? Math.min((a / b) * 100, 100) : 0);
   const porciento = Math.round(pct(ganado, objetivo));
   const porcientoFtd = posicionEnEscala(ftdMostrado) * 100;
+  const porcientoReal = Math.round(pct(ftdMes, metaFtd));
+
+  if (compacto) {
+    return (
+      <section
+        className="rounded-[16px] overflow-hidden mb-4 px-3 sm:px-4 pt-3 pb-3.5"
+        style={{ border: `1px solid ${LINEA}`, background: FONDO, color: TINTA }}
+      >
+        <div
+          className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden"
+          style={{ background: LINEA }}
+        >
+          {[
+            { t: "Registros", pie: "total", v: registrosMes, color: registrosMes > 0 ? AZUL : TINTA_3 },
+            { t: "FTDs", pie: "total", v: ftdMes, color: ftdMes > 0 ? VERDE : TINTA_3 },
+            { t: "FTDs", pie: "hoy", v: ftdHoy, color: ftdHoy > 0 ? VERDE : TINTA_3 },
+            { t: "Registros", pie: "hoy", v: registrosHoy, color: registrosHoy > 0 ? AZUL : TINTA_3 },
+          ].map((c) => (
+            <div key={`${c.t}-${c.pie}`} className="text-center py-2.5 px-2" style={{ background: PANEL }}>
+              <span
+                className="block text-[9.5px] font-bold uppercase tracking-[.14em]"
+                style={{ color: TINTA_2 }}
+              >
+                {c.t}
+              </span>
+              <b
+                className="block text-[22px] font-extrabold tracking-[-0.045em] tabular-nums leading-none mt-1"
+                style={{ color: c.color }}
+              >
+                {c.v}
+              </b>
+              <span
+                className="block text-[8.5px] font-bold uppercase tracking-[.16em] mt-0.5"
+                style={{ color: TINTA_3 }}
+              >
+                {c.pie}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* La barra no se arrastra acá: en Mi día es un indicador, no un
+            juguete. Simular otra comisión es del Home, que es la pantalla que
+            habla de la meta. */}
+        <div className="flex items-baseline justify-between gap-3 mt-3 text-[11.5px]">
+          <span style={{ color: TINTA_3 }}>
+            Mi meta hoy <b style={{ color: AZUL }}>{metaDiaria(metaFtd)} FTD</b>
+          </span>
+          <span style={{ color: TINTA_3 }}>
+            <b className="font-extrabold" style={{ color: ftdMes > 0 ? VERDE : TINTA_3 }}>
+              {porcientoReal}%
+            </b>{" "}
+            de mi meta
+          </span>
+        </div>
+        <div className="h-[9px] rounded-full overflow-hidden mt-1.5" style={{ background: RIEL }}>
+          <span
+            className="block h-full rounded-full"
+            style={{
+              width: `${pct(ftdMes, metaFtd)}%`,
+              background: "linear-gradient(90deg,#2e7bf6 0%,#1b4fe0 40%,#f5a623 100%)",
+            }}
+          />
+        </div>
+      </section>
+    );
+  }
   const porcientoAnimado = porcientoFtd;
 
   return (
