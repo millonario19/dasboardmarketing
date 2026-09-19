@@ -9,6 +9,7 @@ import { LeadsDelDia } from "@/components/LeadsDelDia";
 import { MetaDelMes } from "@/components/MetaDelMes";
 import { pedirSeguimiento } from "@/components/Seguimiento";
 import type { AgentProduction } from "@/lib/metrics";
+import type { Seguimiento } from "@/lib/seguimiento";
 
 /**
  * El día de trabajo: la meta y los cuatro pasos.
@@ -46,6 +47,9 @@ export function MiDia({
   // pregunta «¿llegó a su WhatsApp?» tiene que ser del mismo día que la
   // temperatura que la produjo.
   const [diaMirado, setDiaMirado] = useState<string | null>(null);
+  /** Qué paso está abierto. 0 = ninguno, cuando ya no queda nada pendiente. */
+  const [abierto, setAbierto] = useState<number | null>(null);
+  const [seg, setSeg] = useState<Seguimiento | null>(null);
 
   /**
    * Los pasos 3 y 4 se piden apenas abre la pantalla, no al hacer clic.
@@ -56,7 +60,9 @@ export function MiDia({
    */
   useEffect(() => {
     if (esAdmin) return;
-    pedirSeguimiento().catch(() => undefined);
+    pedirSeguimiento()
+      .then(setSeg)
+      .catch(() => undefined);
   }, [esAdmin]);
 
   const load = useCallback(() => {
@@ -76,6 +82,45 @@ export function MiDia({
     load();
     recargar?.(load);
   }, [load, recargar]);
+
+  /**
+   * Cuánto queda pendiente en cada paso.
+   *
+   * Los cuatro lo muestran sin abrirse. Antes el 3 y el 4 no decían nada y
+   * había que abrirlos a ciegas para saber si había gente esperando.
+   */
+  const pendientes: Record<number, number> = {
+    1: sinResponder ?? 0,
+    2: data?.panel.hoy.caliente ?? 0,
+    3: seg?.porConfirmar.length ?? 0,
+    4: seg?.hoy.length ?? 0,
+  };
+
+  /**
+   * Cuál abre: el primero con trabajo, mirando de atrás para adelante.
+   *
+   * No el 1 por ser el 1. El orden es 4, 3, 1, 2 porque la plata está al final
+   * del embudo: un agente puede registrar bien todo el mes y no cobrar un peso
+   * si no llama. Si el 4 está limpio, abre el que sí tenga gente esperando; si
+   * no queda nada, no abre ninguno y los cuatro se ven de un vistazo.
+   */
+  const ORDEN = [4, 3, 1, 2];
+  const sugerido = ORDEN.find((n) => pendientes[n] > 0) ?? 0;
+  const actual = abierto ?? sugerido;
+
+  /** Del abierto al siguiente que todavía tenga algo. */
+  function siguienteDe(n: number) {
+    const resto = ORDEN.filter((x) => x !== n && pendientes[x] > 0);
+    setAbierto(resto[0] ?? 0);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  const paso = (n: number) => ({
+    abierto: actual === n,
+    hecho: pendientes[n] === 0,
+    onAlternar: () => setAbierto(actual === n ? 0 : n),
+    onSiguiente: () => siguienteDe(n),
+  });
 
   return (
     <>
@@ -104,15 +149,15 @@ export function MiDia({
             />
           )}
 
-        {/* Los tres pasos, plegables y pegados: con los módulos abiertos uno
-            nunca ve los tres títulos juntos y parecen tres cosas sueltas. */}
+        {/* Los cuatro pasos como un recorrido: uno abierto, los otros tres
+            enteros debajo, y un botón que lleva al siguiente. */}
         {parte !== "meta" && (
         <>
         <PasoSistema
           numero={1}
           titulo="Quién escribió hoy"
           detalle="Y si alguien le respondió"
-          abiertoPorDefecto
+          {...paso(1)}
           resumen={
             sinResponder === null
               ? null
@@ -134,11 +179,16 @@ export function MiDia({
           numero={2}
           titulo="Está interesado"
           detalle="Frío, tibio o caliente, según lo que hizo"
-          resumen={{
-            texto: `${data.panel.hoy.caliente} caliente${data.panel.hoy.caliente === 1 ? "" : "s"}`,
-            fondo: "#FBE9E7",
-            color: "#C0392B",
-          }}
+          {...paso(2)}
+          resumen={
+            data.panel.hoy.caliente > 0
+              ? {
+                  texto: `${data.panel.hoy.caliente} caliente${data.panel.hoy.caliente === 1 ? "" : "s"}`,
+                  fondo: "#FBE9E7",
+                  color: "#C0392B",
+                }
+              : { texto: "ninguno caliente", fondo: "#F2F3F6", color: "#8E8C83" }
+          }
         >
           <PanelEstados datos={data.panel} propio={!esAdmin} onDia={setDiaMirado} />
         </PasoSistema>
@@ -162,7 +212,12 @@ export function MiDia({
                 ? "Bajar manual o bajar por LeadConnector · del día que eligió arriba"
                 : "Bajar manual o bajar por LeadConnector"
             }
-            abiertoPorDefecto
+            {...paso(3)}
+            resumen={
+              pendientes[3] > 0
+                ? { texto: `${pendientes[3]} sin confirmar`, fondo: "#FDF3E6", color: "#B5701F" }
+                : { texto: "nada por confirmar", fondo: "#F2F3F6", color: "#8E8C83" }
+            }
           >
             <ConfirmarBajadas dentroDePaso dia={diaMirado} />
             {/* En un div y no suelto: el paso le quita el borde de arriba a
@@ -181,6 +236,13 @@ export function MiDia({
             numero={4}
             titulo="Llamar inmediatamente a mis leads nuevos"
             detalle="Hay mayor conversión si llama de inmediato · lo que programe aparece mañana en Mis leads"
+            {...paso(4)}
+            textoSiguiente="Terminé mi día ✓"
+            resumen={
+              pendientes[4] > 0
+                ? { texto: `${pendientes[4]} para llamar`, fondo: "#FBE9E7", color: "#C0392B" }
+                : { texto: "sin leads hoy", fondo: "#F2F3F6", color: "#8E8C83" }
+            }
           >
             <LeadsDelDia modo="llamar" dia={diaMirado} />
           </PasoSistema>

@@ -15,7 +15,7 @@ import { nombreCorto } from "@/lib/nombre";
 import type { AgentProduction } from "@/lib/metrics";
 
 
-export default function MiDiaPage() {
+export default function MisLeadsPage() {
   const sesion = useSesion();
   // El agente no elige a quién mira: su sesión lo fija. El selector y el
   // recuerdo en el navegador quedan solo para la dirección, que sí necesita
@@ -26,6 +26,13 @@ export default function MiDiaPage() {
   // por él.
   // Lo informa el módulo de tareas cuando termina de cargar.
   const [porHacer, setPorHacer] = useState<number | null>(null);
+  const [abierto, setAbierto] = useState(1);
+
+  const paso = (n: number) => ({
+    abierto: abierto === n,
+    onAlternar: () => setAbierto(abierto === n ? 0 : n),
+    onSiguiente: n < 3 ? () => setAbierto(n + 1) : undefined,
+  });
   // La meta va en las dos pantallas: es lo único que habla de la plata del
   // agente y el motivo por el que abre el tablero, mire donde mire. Los FTD
   // salen del mismo endpoint que usa Dirección, ya recortados a su sesión.
@@ -119,7 +126,7 @@ export default function MiDiaPage() {
           numero={1}
           titulo="Llamadas para hoy"
           detalle="Pendientes de FTD, día 2 y día 3, y lo que usted agendó"
-          abiertoPorDefecto
+          {...paso(1)}
           resumen={
             porHacer === null
               ? null
@@ -137,8 +144,8 @@ export default function MiDiaPage() {
         <PasoSistema
           numero={2}
           titulo="En mi WhatsApp Business"
-          detalle="Calientes que ya bajaron y confirmaste · acá el sistema no ve nada, solo usted"
-          abiertoPorDefecto
+          detalle="Calientes que ya bajaron y confirmó · acá el sistema no ve nada, solo usted"
+          {...paso(2)}
         >
           <Seguimiento parte="business" />
         </PasoSistema>
@@ -147,6 +154,7 @@ export default function MiDiaPage() {
           numero={3}
           titulo="Todavía no bajaron a WhatsApp"
           detalle="Seguimiento por WhatsApp · fríos y tibios, hasta que bajen o hagan FTD"
+          {...paso(3)}
         >
           <Seguimiento parte="dias" />
         </PasoSistema>

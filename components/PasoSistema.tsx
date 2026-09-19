@@ -1,17 +1,19 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 /**
- * Un paso del tablero, plegable.
+ * Un paso del recorrido.
  *
- * La pantalla tiene un orden que no es decorativo: quién escribió, si está
- * interesado, y si ya llegó al WhatsApp del agente. Con los módulos abiertos
- * uno nunca ve los tres títulos juntos y parecen tres cosas sueltas; plegados
- * quedan pegados y se lee como lo que es, un procedimiento de tres pasos.
+ * Los cuatro pasos son un procedimiento, pero la pantalla los trataba como
+ * cajones sueltos: cada uno se abría y se cerraba por su cuenta, se podían
+ * abrir dos a la vez, y al terminar uno había que acordarse de cerrarlo y
+ * abrir el siguiente. En un teléfono —donde pasa el 90% del uso— eso es mucho
+ * trabajo para leer cuatro títulos.
  *
- * Los tres van del mismo color a propósito. Pintar uno distinto convierte un
- * índice en una alarma, y la urgencia ya la lleva el módulo de abajo.
+ * Ahora hay uno solo abierto y lo decide la pantalla de arriba, que es la que
+ * sabe cuál tiene trabajo. Este componente ya no recuerda nada: recibe si le
+ * toca estar abierto y avisa cuando lo tocan.
  */
 
 const AZUL = "#17457F";
@@ -21,7 +23,11 @@ export function PasoSistema({
   titulo,
   detalle,
   resumen,
-  abiertoPorDefecto = false,
+  abierto,
+  hecho = false,
+  onAlternar,
+  onSiguiente,
+  textoSiguiente,
   children,
 }: {
   numero: number;
@@ -29,40 +35,30 @@ export function PasoSistema({
   detalle?: string;
   /** Lo que pasa en este paso, sin abrirlo: «5 pendientes», «2 calientes». */
   resumen?: { texto: string; fondo: string; color: string } | null;
-  abiertoPorDefecto?: boolean;
+  abierto: boolean;
+  /** Ya no tiene nada pendiente: se apaga y muestra su visto. */
+  hecho?: boolean;
+  onAlternar: () => void;
+  /** Cierra este y abre el que sigue. Sin esto no se dibuja el botón. */
+  onSiguiente?: () => void;
+  textoSiguiente?: string;
   children: ReactNode;
 }) {
-  const clave = `op_paso_${numero}`;
-  const [abierto, setAbierto] = useState(abiertoPorDefecto);
-
-  useEffect(() => {
-    try {
-      const guardado = localStorage.getItem(clave);
-      if (guardado !== null) setAbierto(guardado === "1");
-    } catch {
-      /* modo privado: queda el valor por defecto */
-    }
-  }, [clave]);
-
-  function alternar() {
-    setAbierto((v) => {
-      try {
-        localStorage.setItem(clave, v ? "0" : "1");
-      } catch {
-        /* modo privado */
-      }
-      return !v;
-    });
-  }
+  const alternar = onAlternar;
 
   return (
     <>
       <button
         onClick={alternar}
         aria-expanded={abierto}
-        className={`w-full flex items-center gap-3.5 px-4 sm:px-5 py-3 text-left bg-surface border border-gridline hover:bg-page ${
-          abierto ? "rounded-t-[18px] mb-0" : "rounded-[18px] mb-4 sm:mb-5"
+        className={`w-full flex items-center gap-3.5 px-4 sm:px-5 py-3.5 sm:py-3 text-left bg-surface border hover:bg-page ${
+          abierto ? "rounded-t-[18px] mb-0" : "rounded-[18px] mb-3 sm:mb-4"
         }`}
+        style={
+          abierto
+            ? { borderColor: AZUL, boxShadow: `0 0 0 2px ${AZUL}1a` }
+            : { borderColor: "var(--gridline)", opacity: hecho ? 0.62 : 1 }
+        }
       >
         <span
           className="text-[34px] sm:text-[38px] font-light leading-none tracking-[-0.06em] tabular-nums shrink-0 w-[26px]"
@@ -107,8 +103,24 @@ export function PasoSistema({
       {/* El módulo va debajo del encabezado, pegado: sin el margen de arriba
           los dos se leen como una sola pieza. */}
       {abierto && (
-        <div className="mb-4 sm:mb-5 [&>section]:rounded-t-none [&>section]:border-t-0 [&>section]:mb-0">
+        <div
+          className="mb-3 sm:mb-4 rounded-b-[18px] border border-t-0 border-gridline overflow-hidden [&>section]:rounded-none [&>section]:border-0 [&>section]:mb-0"
+          style={{ borderColor: AZUL, boxShadow: `0 0 0 2px ${AZUL}1a` }}
+        >
           {children}
+          {/* Cerrar este y abrir el que sigue, de un toque.
+              Sin esto el agente termina un paso y tiene que acordarse de
+              plegarlo y desplegar el otro: dos toques y un scroll para algo
+              que la pantalla ya sabe. */}
+          {onSiguiente && (
+            <button
+              onClick={onSiguiente}
+              className="block w-full text-center text-white px-4 py-3.5 text-[15px] font-bold active:scale-[.995] transition-transform"
+              style={{ background: AZUL }}
+            >
+              {textoSiguiente ?? "Listo, siguiente →"}
+            </button>
+          )}
         </div>
       )}
     </>
