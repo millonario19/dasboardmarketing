@@ -168,16 +168,19 @@ export function MiDia({
               ftdHoy={data.totals.ftdHoy}
               registrosMes={data.totals.registrosMes}
               registrosHoy={data.totals.registrosHoy}
-              leadsHoy={data.totals.leadsHoy}
+              leadsMes={data.totals.leadsMes}
+            leadsHoy={data.totals.leadsHoy}
             />
           )}
+
+        {/* La fecha de toda la pantalla, antes que nada: lo primero es saber
+            de qué día se está hablando. */}
+        {parte !== "meta" && <BarraDeDia dia={dia} onCambiar={setDia} onRecargar={load} />}
 
         {/* Sus números, arriba de los pasos.
             En Mi día van sin el reloj: trabaja con las cifras a la vista sin
             tener que volver al Home, y el reloj ocuparía media pantalla de
             teléfono para repetir lo que ya vio al entrar. */}
-        {parte !== "meta" && <BarraDeDia dia={dia} onCambiar={setDia} onRecargar={load} />}
-
         {!esAdmin && parte === "pasos" && (
           <MetaDelMes
             compacto
@@ -186,7 +189,8 @@ export function MiDia({
             ftdHoy={data.totals.ftdHoy}
             registrosMes={data.totals.registrosMes}
             registrosHoy={data.totals.registrosHoy}
-            leadsHoy={data.totals.leadsHoy}
+            leadsMes={data.totals.leadsMes}
+              leadsHoy={data.totals.leadsHoy}
           />
         )}
 

@@ -37,6 +37,9 @@ const RIEL = "#e3e6ec";
 const ORO = "#f5a623";
 const AZUL = "#2563eb";
 const VERDE = "#157F52";
+// Los leads son el primer eslabón y no son mérito del agente: los reparte la
+// pauta. Por eso no llevan ni el azul de registros ni el verde de FTD.
+const GRIS_LEAD = "#5b6782";
 
 const CLAVE = "op_meta_abierta";
 
@@ -530,6 +533,7 @@ export function MetaDelMes({
   ftdHoy = 0,
   registrosMes = 0,
   registrosHoy = 0,
+  leadsMes = 0,
   leadsHoy = 0,
   compacto = false,
   dia = null,
@@ -542,7 +546,9 @@ export function MetaDelMes({
   registrosMes?: number;
   /** Los de hoy, que es lo que todavía está en sus manos. */
   registrosHoy?: number;
-  /** Leads de hoy: el primer eslabón, para saber si el problema es arriba. */
+  /** Leads del mes: el primer eslabón, para saber si el problema es arriba. */
+  leadsMes?: number;
+  /** Los del día que se está mirando. */
   leadsHoy?: number;
   /**
    * Solo los números, sin el reloj.
@@ -731,6 +737,20 @@ export function MetaDelMes({
   const porcientoFtd = posicionEnEscala(ftdMostrado) * 100;
   const porcientoReal = Math.round(pct(ftdMes, metaFtd));
 
+  /**
+   * El embudo, en seis casillas: entran leads, algunos se registran, algunos
+   * depositan. Primero el mes, después el día, en el mismo orden las dos
+   * veces — leer la fila de abajo es leer el mismo camino, más corto.
+   */
+  const casillas = (elDia: string) => [
+    { t: "Leads", pie: "total", v: leadsMes, color: leadsMes > 0 ? GRIS_LEAD : TINTA_3 },
+    { t: "Registros", pie: "total", v: registrosMes, color: registrosMes > 0 ? AZUL : TINTA_3 },
+    { t: "FTDs", pie: "total", v: ftdMes, color: ftdMes > 0 ? VERDE : TINTA_3 },
+    { t: "Leads", pie: elDia, v: leadsHoy, color: leadsHoy > 0 ? GRIS_LEAD : TINTA_3 },
+    { t: "Registros", pie: elDia, v: registrosHoy, color: registrosHoy > 0 ? AZUL : TINTA_3 },
+    { t: "FTDs", pie: elDia, v: ftdHoy, color: ftdHoy > 0 ? VERDE : TINTA_3 },
+  ];
+
   if (compacto) {
     // «hoy» mientras sea hoy; el día, cuando el agente eligió otro.
     const elDia = dia ? dia.slice(8, 10) + "/" + dia.slice(5, 7) : "hoy";
@@ -739,16 +759,14 @@ export function MetaDelMes({
         className="rounded-[16px] md:rounded-[20px] overflow-hidden mb-4 md:mb-5 px-3 sm:px-4 md:px-5 pt-3 md:pt-4 pb-3.5 md:pb-5"
         style={{ border: `1px solid ${LINEA}`, background: FONDO, color: TINTA }}
       >
+        {/* Tres y tres en el teléfono —el mes arriba, el día abajo— y las seis
+            en un renglón desde sm. Seis casillas en una fila de 375 px dejan
+            62 px cada una y «REGISTROS» no entra. */}
         <div
-          className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden"
+          className="grid grid-cols-3 md:grid-cols-6 gap-px rounded-xl overflow-hidden"
           style={{ background: LINEA }}
         >
-          {[
-            { t: "Registros", pie: "total", v: registrosMes, color: registrosMes > 0 ? AZUL : TINTA_3 },
-            { t: "FTDs", pie: "total", v: ftdMes, color: ftdMes > 0 ? VERDE : TINTA_3 },
-            { t: "FTDs", pie: elDia, v: ftdHoy, color: ftdHoy > 0 ? VERDE : TINTA_3 },
-            { t: "Registros", pie: elDia, v: registrosHoy, color: registrosHoy > 0 ? AZUL : TINTA_3 },
-          ].map((c) => (
+          {casillas(elDia).map((c) => (
             <div key={`${c.t}-${c.pie}`} className="text-center py-2.5 md:py-4 px-2" style={{ background: PANEL }}>
               <span
                 className="block text-[9.5px] md:text-[11px] font-bold uppercase tracking-[.14em]"
@@ -886,27 +904,22 @@ export function MetaDelMes({
           sale, y el agente no tenía cómo ver en qué parte del camino se le
           traba el mes. */}
       <div
-        className="grid grid-cols-2 sm:grid-cols-4 gap-px mt-3.5 rounded-2xl overflow-hidden"
+        className="grid grid-cols-3 md:grid-cols-6 gap-px mt-3.5 rounded-2xl overflow-hidden"
         style={{ background: LINEA }}
       >
         {/* El nombre arriba, el período abajo. «Registros hoy» en un renglón
             hacía que el título dijera dos cosas y el subtexto repitiera una;
             separados, las cuatro celdas se leen como una tabla. */}
-        {[
-          { t: "Registros", pie: "total", v: registrosMes, color: registrosMes > 0 ? AZUL : TINTA_3 },
-          { t: "FTDs", pie: "total", v: ftdMes, color: ftdMes > 0 ? VERDE : TINTA_3 },
-          { t: "FTDs", pie: "hoy", v: ftdHoy, color: ftdHoy > 0 ? VERDE : TINTA_3 },
-          { t: "Registros", pie: "hoy", v: registrosHoy, color: registrosHoy > 0 ? AZUL : TINTA_3 },
-        ].map((c) => (
+        {casillas("hoy").map((c) => (
           <div key={`${c.t}-${c.pie}`} className="text-center py-3 px-2" style={{ background: PANEL }}>
             <span
-              className="block text-[10px] sm:text-[11px] font-bold uppercase tracking-[.14em]"
+              className="block text-[9.5px] sm:text-[10.5px] font-bold uppercase tracking-[.12em]"
               style={{ color: TINTA_2 }}
             >
               {c.t}
             </span>
             <b
-              className="block text-[24px] sm:text-[29px] font-extrabold tracking-[-0.045em] tabular-nums leading-none mt-1.5"
+              className="block text-[21px] sm:text-[26px] font-extrabold tracking-[-0.045em] tabular-nums leading-none mt-1.5"
               style={{ color: c.color }}
             >
               {c.v}
