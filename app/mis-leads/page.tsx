@@ -49,14 +49,14 @@ export default function MisLeadsPage() {
 
 
   return (
-    <main className="max-w-[960px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <main className="max-w-[960px] lg:max-w-[1180px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
       {/* La misma cabecera que Dirección: eran dos pantallas del mismo tablero
           con dos identidades distintas —una gris con degradados de colores y un
           saludo gigante, la otra blanca— y al cambiar de pestaña parecía que
           uno se había ido a otro producto. */}
       <div className="flex flex-col items-center text-center gap-3 mb-8 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left sm:gap-4">
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
-          <h1 className="text-[21px] sm:text-[25px] font-semibold text-ink-primary tracking-tight leading-[1.15]">
+          <h1 className="text-[21px] sm:text-[25px] md:text-[31px] font-semibold text-ink-primary tracking-tight leading-[1.15]">
             CRM - Marketing
           </h1>
           <div className="flex items-center gap-2">

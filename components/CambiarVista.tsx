@@ -33,13 +33,13 @@ export function CambiarVista({
   ];
 
   return (
-    <nav className="inline-flex flex-wrap justify-center rounded-full border border-gridline overflow-hidden text-sm">
+    <nav className="inline-flex flex-wrap justify-center rounded-full border border-gridline overflow-hidden text-sm md:text-[15px]">
       {opciones.map((o) => (
         <Link
           key={o.id}
           href={o.href}
           aria-current={actual === o.id ? "page" : undefined}
-          className={`px-3.5 sm:px-4 py-2.5 sm:py-2 ${
+          className={`px-3.5 sm:px-4 md:px-5 py-2.5 sm:py-2 md:py-2.5 ${
             actual === o.id
               ? "bg-header text-header-ink font-medium"
               : "bg-surface text-ink-secondary hover:bg-page"

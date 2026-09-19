@@ -725,7 +725,7 @@ export function MetaDelMes({
   if (compacto) {
     return (
       <section
-        className="rounded-[16px] overflow-hidden mb-4 px-3 sm:px-4 pt-3 pb-3.5"
+        className="rounded-[16px] md:rounded-[20px] overflow-hidden mb-4 md:mb-5 px-3 sm:px-4 md:px-5 pt-3 md:pt-4 pb-3.5 md:pb-5"
         style={{ border: `1px solid ${LINEA}`, background: FONDO, color: TINTA }}
       >
         <div
@@ -738,21 +738,21 @@ export function MetaDelMes({
             { t: "FTDs", pie: "hoy", v: ftdHoy, color: ftdHoy > 0 ? VERDE : TINTA_3 },
             { t: "Registros", pie: "hoy", v: registrosHoy, color: registrosHoy > 0 ? AZUL : TINTA_3 },
           ].map((c) => (
-            <div key={`${c.t}-${c.pie}`} className="text-center py-2.5 px-2" style={{ background: PANEL }}>
+            <div key={`${c.t}-${c.pie}`} className="text-center py-2.5 md:py-4 px-2" style={{ background: PANEL }}>
               <span
-                className="block text-[9.5px] font-bold uppercase tracking-[.14em]"
+                className="block text-[9.5px] md:text-[11px] font-bold uppercase tracking-[.14em]"
                 style={{ color: TINTA_2 }}
               >
                 {c.t}
               </span>
               <b
-                className="block text-[22px] font-extrabold tracking-[-0.045em] tabular-nums leading-none mt-1"
+                className="block text-[22px] md:text-[34px] font-extrabold tracking-[-0.045em] tabular-nums leading-none mt-1 md:mt-1.5"
                 style={{ color: c.color }}
               >
                 {c.v}
               </b>
               <span
-                className="block text-[8.5px] font-bold uppercase tracking-[.16em] mt-0.5"
+                className="block text-[8.5px] md:text-[10px] font-bold uppercase tracking-[.16em] mt-0.5 md:mt-1"
                 style={{ color: TINTA_3 }}
               >
                 {c.pie}
@@ -764,7 +764,7 @@ export function MetaDelMes({
         {/* La barra no se arrastra acá: en Mi día es un indicador, no un
             juguete. Simular otra comisión es del Home, que es la pantalla que
             habla de la meta. */}
-        <div className="flex items-baseline justify-between gap-3 mt-3 text-[11.5px]">
+        <div className="flex items-baseline justify-between gap-3 mt-3 md:mt-4 text-[11.5px] md:text-[14px]">
           <span style={{ color: TINTA_3 }}>
             Mi meta hoy <b style={{ color: AZUL }}>{metaDiaria(metaFtd)} FTD</b>
           </span>
@@ -775,7 +775,7 @@ export function MetaDelMes({
             de mi meta
           </span>
         </div>
-        <div className="h-[9px] rounded-full overflow-hidden mt-1.5" style={{ background: RIEL }}>
+        <div className="h-[9px] md:h-[12px] rounded-full overflow-hidden mt-1.5 md:mt-2" style={{ background: RIEL }}>
           <span
             className="block h-full rounded-full"
             style={{

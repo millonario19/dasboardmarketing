@@ -51,8 +51,8 @@ export function PasoSistema({
       <button
         onClick={alternar}
         aria-expanded={abierto}
-        className={`w-full flex items-center gap-3.5 px-4 sm:px-5 py-3.5 sm:py-3 text-left bg-surface border hover:bg-page ${
-          abierto ? "rounded-t-[18px] mb-0" : "rounded-[18px] mb-3 sm:mb-4"
+        className={`w-full flex items-center gap-3.5 md:gap-5 px-4 sm:px-5 md:px-7 py-3.5 sm:py-3 md:py-5 text-left bg-surface border hover:bg-page ${
+          abierto ? "rounded-t-[18px] md:rounded-t-[22px] mb-0" : "rounded-[18px] md:rounded-[22px] mb-3 sm:mb-4 md:mb-5"
         }`}
         style={
           abierto
@@ -61,21 +61,21 @@ export function PasoSistema({
         }
       >
         <span
-          className="text-[34px] sm:text-[38px] font-light leading-none tracking-[-0.06em] tabular-nums shrink-0 w-[26px]"
+          className="text-[34px] sm:text-[38px] md:text-[48px] font-light leading-none tracking-[-0.06em] tabular-nums shrink-0 w-[26px] md:w-[36px]"
           style={{ color: AZUL }}
         >
           {numero}
         </span>
-        <span className="w-px h-9 shrink-0" style={{ background: "var(--gridline)" }} />
+        <span className="w-px h-9 md:h-12 shrink-0" style={{ background: "var(--gridline)" }} />
         <span className="min-w-0 flex-1">
-          <span className="block text-[9.5px] font-bold uppercase tracking-[.18em]" style={{ color: AZUL }}>
+          <span className="block text-[9.5px] md:text-[11px] font-bold uppercase tracking-[.18em]" style={{ color: AZUL }}>
             Paso {numero}
           </span>
-          <span className="block text-[15px] sm:text-[16.5px] font-semibold tracking-[-0.025em] leading-tight text-balance">
+          <span className="block text-[15px] sm:text-[16.5px] md:text-[21px] font-semibold tracking-[-0.025em] leading-tight text-balance">
             {titulo}
           </span>
           {detalle && (
-            <span className="hidden sm:block text-[11.5px] text-ink-muted mt-0.5">{detalle}</span>
+            <span className="hidden sm:block text-[11.5px] md:text-[13.5px] text-ink-muted mt-0.5 md:mt-1">{detalle}</span>
           )}
           {/* En el teléfono el resumen no cabe al lado del título: puesto en la
               fila le dejaba 113 px y el título se partía en tres renglones.
@@ -91,20 +91,20 @@ export function PasoSistema({
         </span>
         {resumen && (
           <span
-            className="text-[11px] font-bold rounded-full px-2.5 py-1 whitespace-nowrap shrink-0 hidden sm:inline"
+            className="text-[11px] md:text-[13px] font-bold rounded-full px-2.5 md:px-3.5 py-1 md:py-1.5 whitespace-nowrap shrink-0 hidden sm:inline"
             style={{ background: resumen.fondo, color: resumen.color }}
           >
             {resumen.texto}
           </span>
         )}
-        <span className="text-[10px] text-ink-muted shrink-0">{abierto ? "▲" : "▼"}</span>
+        <span className="text-[10px] md:text-[13px] text-ink-muted shrink-0">{abierto ? "▲" : "▼"}</span>
       </button>
 
       {/* El módulo va debajo del encabezado, pegado: sin el margen de arriba
           los dos se leen como una sola pieza. */}
       {abierto && (
         <div
-          className="mb-3 sm:mb-4 rounded-b-[18px] border border-t-0 border-gridline overflow-hidden [&>section]:rounded-none [&>section]:border-0 [&>section]:mb-0"
+          className="mb-3 sm:mb-4 md:mb-5 rounded-b-[18px] md:rounded-b-[22px] border border-t-0 border-gridline overflow-hidden [&>section]:rounded-none [&>section]:border-0 [&>section]:mb-0"
           style={{ borderColor: AZUL, boxShadow: `0 0 0 2px ${AZUL}1a` }}
         >
           {children}
@@ -115,7 +115,7 @@ export function PasoSistema({
           {onSiguiente && (
             <button
               onClick={onSiguiente}
-              className="block w-full text-center text-white px-4 py-3.5 text-[15px] font-bold active:scale-[.995] transition-transform"
+              className="block w-full text-center text-white px-4 py-3.5 md:py-4 text-[15px] md:text-[17px] font-bold active:scale-[.995] transition-transform"
               style={{ background: AZUL }}
             >
               {textoSiguiente ?? "Listo, siguiente →"}
