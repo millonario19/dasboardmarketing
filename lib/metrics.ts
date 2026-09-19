@@ -215,7 +215,12 @@ function calcularPanel(
   nombrePorAgente: Map<string, string>,
   ahoraMs: number,
   todayFromMs: number,
-  todayToMs: number
+  todayToMs: number,
+  // El mes va aparte del día porque ya no son el mismo período: cuando el
+  // agente mira un día pasado, la búsqueda trae más de un mes y sin este
+  // recorte «este mes» sumaría también lo del mes anterior.
+  monthFromMs: number,
+  monthToMs: number
 ): Omit<PanelEstados, "rango"> {
   const hoy = conteoVacio();
   const mes = conteoVacio();
@@ -237,7 +242,7 @@ function calcularPanel(
     const enPanel = !yaDeposito(contacto);
     if (enPanel) {
       const estado = estadoDeLead(contacto);
-      mes[estado] += 1;
+      if (t >= monthFromMs && t < monthToMs) mes[estado] += 1;
       if (t >= todayFromMs && t < todayToMs) hoy[estado] += 1;
     }
 
@@ -395,26 +400,41 @@ function ensureRow(counts: Map<string, MutableRow>, agent: string, agentId: stri
  */
 export async function computeAgentProduction(
   soloAgente?: string | null,
-  soloEstos?: string[] | null
+  soloEstos?: string[] | null,
+  dia?: string | null
 ): Promise<AgentProduction> {
   const now = Date.now();
-  const today = bogotaRange(now, "day");
+  // El día que se está mirando. Sin `dia`, hoy. El mediodía evita que un
+  // «2026-09-18» interpretado en UTC caiga en el 17 de Bogotá.
+  const diaMs = dia ? Date.parse(`${dia}T12:00:00-05:00`) : now;
+  const today = bogotaRange(Number.isNaN(diaMs) ? now : diaMs, "day");
   const month = bogotaRange(now, "month");
   const todayFromMs = new Date(today.from).getTime();
   const todayToMs = new Date(today.to).getTime();
+  const monthFromMs = new Date(month.from).getTime();
+  const monthToMs = new Date(month.to).getTime();
+
+  // Lo que hay que pedirle a GHL: el mes en curso y, si el día elegido cae
+  // fuera de él, también ese día. Las sumas del mes se siguen recortando al
+  // mes; esto solo ensancha la búsqueda para que el día pedido venga en la
+  // misma respuesta y no cueste tres consultas más.
+  const ventana = {
+    from: today.from < month.from ? today.from : month.from,
+    to: today.to > month.to ? today.to : month.to,
+  };
 
   const [todosLeads, todosRegistros, todosFtd] = await Promise.all([
     searchContacts([
       { field: "tags", operator: "contains", value: LEAD_TAG() },
-      { field: "dateAdded", operator: "range", value: { gte: month.from, lte: month.to } },
+      { field: "dateAdded", operator: "range", value: { gte: ventana.from, lte: ventana.to } },
     ]),
     searchContacts([
       { field: "tags", operator: "contains", value: REGISTRO_TAG() },
-      { field: "dateAdded", operator: "range", value: { gte: month.from, lte: month.to } },
+      { field: "dateAdded", operator: "range", value: { gte: ventana.from, lte: ventana.to } },
     ]),
     searchContacts([
       { field: "tags", operator: "contains", value: FTD_TAG() },
-      { field: "dateUpdated", operator: "range", value: { gte: month.from, lte: month.to } },
+      { field: "dateUpdated", operator: "range", value: { gte: ventana.from, lte: ventana.to } },
     ]),
   ]);
 
@@ -430,7 +450,7 @@ export async function computeAgentProduction(
     const t = new Date(contact.dateAdded).getTime();
     const { agent, agentId, office } = await extractAttribution(contact);
     const row = ensureRow(counts, agent, agentId, office);
-    row.leadsMes += 1;
+    if (t >= monthFromMs && t < monthToMs) row.leadsMes += 1;
     if (t >= todayFromMs && t < todayToMs) row.leadsHoy += 1;
   }
 
@@ -439,7 +459,7 @@ export async function computeAgentProduction(
     const t = new Date(contact.dateAdded).getTime();
     const { agent, agentId, office } = await extractAttribution(contact);
     const row = ensureRow(counts, agent, agentId, office);
-    row.registrosMes += 1;
+    if (t >= monthFromMs && t < monthToMs) row.registrosMes += 1;
     if (t >= todayFromMs && t < todayToMs) row.registrosHoy += 1;
   }
 
@@ -448,7 +468,7 @@ export async function computeAgentProduction(
     const t = updatedMs(contact);
     const { agent, agentId, office } = await extractAttribution(contact);
     const row = ensureRow(counts, agent, agentId, office);
-    row.ftdMes += 1;
+    if (t >= monthFromMs && t < monthToMs) row.ftdMes += 1;
     if (t >= todayFromMs && t < todayToMs) row.ftdHoy += 1;
   }
 
@@ -480,7 +500,9 @@ export async function computeAgentProduction(
       nombrePorAgente,
       now,
       todayFromMs,
-      todayToMs
+      todayToMs,
+      monthFromMs,
+      monthToMs
     ),
     rango: { hoy: today, mes: month },
   };

@@ -6,6 +6,7 @@ import { formatearTelefono } from "@/components/ContactoRapido";
 import { nombreCorto } from "@/lib/nombre";
 import type { Interaccion, LeadInteraccion, Turno } from "@/lib/interaccion";
 import type { Hito } from "@/lib/hitos";
+import { diaBogota } from "@/lib/dia";
 
 const AZUL = "#17457F";
 const AZUL_CLARO = "#EEF3FA";
@@ -20,17 +21,7 @@ const VERDE_SUAVE = "#EEF7F2";
 const GRIS = "#9A998F";
 const GRIS_2 = "#5E5C56";
 
-// Un azul más claro que el del encabezado: sobre el azul oscuro, el mismo
-// tono desaparecería.
-const AZUL_BOTON = "#2A6FB8";
-
 const CLAVE_LISTA = "op_interaccion_abierta";
-
-const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
-
-function hoyBogota(): string {
-  return new Date(Date.now() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
-}
 
 /** Verde hasta 5 minutos, ámbar hasta una hora, rojo de ahí en adelante. */
 function tono(min: number | null | undefined): { color: string; fondo: string } {
@@ -81,7 +72,7 @@ function fechaLarga(iso: string): string {
 
 /** El día calendario en Bogotá, para saber cuándo cambia dentro del hilo. */
 function diaDe(iso: string): string {
-  return new Date(new Date(iso).getTime() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
+  return diaBogota(iso);
 }
 
 function iniciales(nombre: string): string {
@@ -432,20 +423,25 @@ export function InteraccionLeads({
   esAdmin,
   agentes,
   onResumen,
+  dia = null,
 }: {
   esAdmin: boolean;
   agentes: { id: string; nombre: string }[];
   /** Cuántos quedaron sin responder, para el encabezado del paso. */
   onResumen?: (sinResponder: number) => void;
+  /**
+   * El día que manda en toda la pantalla. `null` es hoy.
+   *
+   * Este paso tenía su propio selector de fecha y no se lo contaba a nadie:
+   * elegir el 18 acá movía este paso y dejaba los otros tres en hoy. La fecha
+   * ahora vive arriba, en «Mi día», y los cuatro pasos leen de ella.
+   */
+  dia?: string | null;
 }) {
   const [datos, setDatos] = useState<Interaccion | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [agente, setAgente] = useState("todos");
-  // El día que se está mirando. `fecha` es lo que dice el selector; `dia` es
-  // lo que ya se cargó, y es null mientras se mira hoy.
-  const [fecha, setFecha] = useState(hoyBogota);
-  const [dia, setDia] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<string | null>(null);
   // La lista arranca plegada: arriba quedan los números, y el detalle se abre
   // cuando hace falta. La elección se recuerda para no tener que repetirla
@@ -486,7 +482,6 @@ export function InteraccionLeads({
       .then((d: Interaccion) => {
         setDatos(d);
         setAbierto(null);
-        setDia(cuando);
         onResumen?.(d.resumen.sinResponder);
       })
       .catch((e) => setError(e.message))
@@ -503,8 +498,8 @@ export function InteraccionLeads({
   }, []);
 
   useEffect(() => {
-    cargar(agente, null);
-  }, [agente, cargar]);
+    cargar(agente, dia);
+  }, [agente, dia, cargar]);
 
   const enTabla = datos?.leads ?? [];
   const lead = enTabla.find((l) => l.id === abierto) ?? null;
@@ -559,26 +554,8 @@ export function InteraccionLeads({
             >
               {cargando ? "Leyendo…" : "↻ Actualizar"}
             </button>
-
-            {/* Un día puntual. En móvil el botón dice «Ver»: «Consultar» más
-                el selector de fecha no caben en el mismo renglón. */}
-            <input
-              type="date"
-              value={fecha}
-              max={hoyBogota()}
-              onChange={(e) => setFecha(e.target.value)}
-              className="rounded-full px-2 py-[3px] text-[11px] outline-none w-[112px]"
-              style={{ background: "rgba(255,255,255,.14)", color: "#fff", border: "1px solid rgba(255,255,255,.28)" }}
-            />
-            <button
-              onClick={() => cargar(agente, fecha === hoyBogota() ? null : fecha)}
-              disabled={cargando}
-              className="rounded-full px-2.5 py-[3px] text-[11px] font-semibold text-white disabled:opacity-50 hover:opacity-90"
-              style={{ background: AZUL_BOTON }}
-            >
-              <span className="sm:hidden">Ver</span>
-              <span className="hidden sm:inline">Consultar</span>
-            </button>
+            {/* Sin selector de fecha: la fecha de toda la pantalla está
+                arriba, en una sola barra, y este paso la sigue. */}
           </div>
         </div>
 
@@ -586,7 +563,7 @@ export function InteraccionLeads({
             cinco, esconde justo el caso que hay que ver. */}
         <div className="flex flex-wrap border-y border-gridline">
           {[
-            { r: "Leads", v: r?.leads, n: "recibidos hoy" },
+            { r: "Leads", v: r?.leads, n: dia ? "recibidos ese día" : "recibidos hoy" },
             { r: "Te escribieron", v: r?.escribieron, n: "levantaron la mano" },
             { r: "Esperaron +5 minutos", v: r?.masDe5Min, n: "sin ser atendidos", malo: true },
             { r: "Sin responder", v: r?.sinResponder, n: "ahora mismo", malo: true },

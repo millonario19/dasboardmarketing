@@ -10,6 +10,8 @@ import { MetaDelMes } from "@/components/MetaDelMes";
 import { pedirSeguimiento } from "@/components/Seguimiento";
 import type { AgentProduction } from "@/lib/metrics";
 import type { Seguimiento } from "@/lib/seguimiento";
+import { BarraDeDia } from "@/components/BarraDeDia";
+import { diaBogota, hoyBogota } from "@/lib/dia";
 
 /**
  * El día de trabajo: la meta y los cuatro pasos.
@@ -43,10 +45,17 @@ export function MiDia({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sinResponder, setSinResponder] = useState<number | null>(null);
-  // El día que se está mirando en el paso 2. Los pasos 3 y 4 lo siguen: la
-  // pregunta «¿llegó a su WhatsApp?» tiene que ser del mismo día que la
-  // temperatura que la produjo.
-  const [diaMirado, setDiaMirado] = useState<string | null>(null);
+  /**
+   * El día que manda en toda la pantalla. `null` es hoy.
+   *
+   * Antes había dos selectores —uno en el paso 1 y otro en el paso 2— y los
+   * pasos 3 y 4 seguían al del paso 2. Elegir el 18 en el primero movía el
+   * primero y nada más: los cuatro pasos hablaban de días distintos y la
+   * pantalla se contradecía a sí misma. Ahora la fecha vive acá arriba, sola,
+   * y los cuatro leen de ella.
+   */
+  const [dia, setDia] = useState<string | null>(null);
+  const diaVer = dia ?? hoyBogota();
   /** Qué paso está abierto. 0 = ninguno, cuando ya no queda nada pendiente. */
   const [abierto, setAbierto] = useState<number | null>(null);
   const [seg, setSeg] = useState<Seguimiento | null>(null);
@@ -68,7 +77,7 @@ export function MiDia({
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetch("/api/metrics/production")
+    fetch("/api/metrics/production" + (dia ? `?dia=${encodeURIComponent(dia)}` : ""))
       .then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error ?? "Error al cargar métricas");
         return res.json();
@@ -76,12 +85,18 @@ export function MiDia({
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [dia]);
 
   useEffect(() => {
     load();
     recargar?.(load);
   }, [load, recargar]);
+
+  // Al cambiar el día, la cuenta del paso 1 es del día anterior. Se borra hasta
+  // que el paso la vuelva a pedir: una píldora vieja miente peor que ninguna.
+  useEffect(() => {
+    setSinResponder(null);
+  }, [dia]);
 
   /**
    * Cuánto queda pendiente en cada paso.
@@ -91,9 +106,14 @@ export function MiDia({
    */
   const pendientes: Record<number, number> = {
     1: sinResponder ?? 0,
+    // `panel.hoy` ya viene del día elegido: la consulta sale firmada con él.
     2: data?.panel.hoy.caliente ?? 0,
-    3: seg?.porConfirmar.length ?? 0,
-    4: seg?.hoy.length ?? 0,
+    // Los clics de WhatsApp vienen de toda la ventana y se recortan acá, igual
+    // que adentro del paso 3, para que la píldora y la lista digan lo mismo.
+    3: (seg?.porConfirmar ?? []).filter(
+      (p) => p.clicEn && diaBogota(p.clicEn) === diaVer && p.confirmado === null
+    ).length,
+    4: (dia ? (seg?.porDia[dia] ?? []) : (seg?.hoy ?? [])).length,
   };
 
   /**
@@ -153,9 +173,12 @@ export function MiDia({
             En Mi día van sin el reloj: trabaja con las cifras a la vista sin
             tener que volver al Home, y el reloj ocuparía media pantalla de
             teléfono para repetir lo que ya vio al entrar. */}
+        {parte !== "meta" && <BarraDeDia dia={dia} onCambiar={setDia} />}
+
         {!esAdmin && parte === "pasos" && (
           <MetaDelMes
             compacto
+            dia={dia}
             ftdMes={data.totals.ftdMes}
             ftdHoy={data.totals.ftdHoy}
             registrosMes={data.totals.registrosMes}
@@ -182,6 +205,7 @@ export function MiDia({
           }
         >
           <InteraccionLeads
+            dia={dia}
             esAdmin={esAdmin}
             agentes={data.rows
               .filter((r) => r.agentId)
@@ -205,7 +229,7 @@ export function MiDia({
               : { texto: "ninguno caliente", fondo: "#F2F3F6", color: "#8E8C83" }
           }
         >
-          <PanelEstados datos={data.panel} propio={!esAdmin} onDia={setDiaMirado} />
+          <PanelEstados datos={data.panel} propio={!esAdmin} dia={dia} />
         </PasoSistema>
         </>
         )}
@@ -222,11 +246,7 @@ export function MiDia({
           <PasoSistema
             numero={3}
             titulo="WhatsApp Business"
-            detalle={
-              diaMirado
-                ? "Bajar manual o bajar por LeadConnector · del día que eligió arriba"
-                : "Bajar manual o bajar por LeadConnector"
-            }
+            detalle="Bajar manual o bajar por LeadConnector"
             {...paso(3)}
             resumen={
               pendientes[3] > 0
@@ -234,12 +254,12 @@ export function MiDia({
                 : { texto: "nada por confirmar", fondo: "#F2F3F6", color: "#8E8C83" }
             }
           >
-            <ConfirmarBajadas dentroDePaso dia={diaMirado} />
+            <ConfirmarBajadas dentroDePaso dia={dia} />
             {/* En un div y no suelto: el paso le quita el borde de arriba a
                 las secciones que son hijas directas, y la segunda quedaría
                 pegada a la primera sin nada que las separe. */}
             <div className="mt-4 [&>section]:mb-0">
-              <LeadsDelDia modo="bajar" dia={diaMirado} />
+              <LeadsDelDia modo="bajar" dia={dia} />
             </div>
           </PasoSistema>
         )}
@@ -259,7 +279,7 @@ export function MiDia({
                 : { texto: "sin leads hoy", fondo: "#F2F3F6", color: "#8E8C83" }
             }
           >
-            <LeadsDelDia modo="llamar" dia={diaMirado} />
+            <LeadsDelDia modo="llamar" dia={dia} />
           </PasoSistema>
         )}
 

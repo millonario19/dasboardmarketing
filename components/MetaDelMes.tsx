@@ -532,6 +532,7 @@ export function MetaDelMes({
   registrosHoy = 0,
   leadsHoy = 0,
   compacto = false,
+  dia = null,
 }: {
   /** FTD del mes en curso: los que ya sumó la etiqueta ftd-efectuado. */
   ftdMes: number;
@@ -551,6 +552,14 @@ export function MetaDelMes({
    * pantalla de teléfono y su lugar es el Home, que existe para eso.
    */
   compacto?: boolean;
+  /**
+   * El día que se está mirando, si no es hoy.
+   *
+   * No cambia los totales del mes —el mes es el mes— pero sí el rótulo de las
+   * dos columnas del día: decir «hoy» encima de las cifras del 18 es lo único
+   * que la pantalla no puede hacer.
+   */
+  dia?: string | null;
 }) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [cargada, setCargada] = useState(false);
@@ -723,6 +732,8 @@ export function MetaDelMes({
   const porcientoReal = Math.round(pct(ftdMes, metaFtd));
 
   if (compacto) {
+    // «hoy» mientras sea hoy; el día, cuando el agente eligió otro.
+    const elDia = dia ? dia.slice(8, 10) + "/" + dia.slice(5, 7) : "hoy";
     return (
       <section
         className="rounded-[16px] md:rounded-[20px] overflow-hidden mb-4 md:mb-5 px-3 sm:px-4 md:px-5 pt-3 md:pt-4 pb-3.5 md:pb-5"
@@ -735,8 +746,8 @@ export function MetaDelMes({
           {[
             { t: "Registros", pie: "total", v: registrosMes, color: registrosMes > 0 ? AZUL : TINTA_3 },
             { t: "FTDs", pie: "total", v: ftdMes, color: ftdMes > 0 ? VERDE : TINTA_3 },
-            { t: "FTDs", pie: "hoy", v: ftdHoy, color: ftdHoy > 0 ? VERDE : TINTA_3 },
-            { t: "Registros", pie: "hoy", v: registrosHoy, color: registrosHoy > 0 ? AZUL : TINTA_3 },
+            { t: "FTDs", pie: elDia, v: ftdHoy, color: ftdHoy > 0 ? VERDE : TINTA_3 },
+            { t: "Registros", pie: elDia, v: registrosHoy, color: registrosHoy > 0 ? AZUL : TINTA_3 },
           ].map((c) => (
             <div key={`${c.t}-${c.pie}`} className="text-center py-2.5 md:py-4 px-2" style={{ background: PANEL }}>
               <span
@@ -766,7 +777,7 @@ export function MetaDelMes({
             habla de la meta. */}
         <div className="flex items-baseline justify-between gap-3 mt-3 md:mt-4 text-[11.5px] md:text-[14px]">
           <span style={{ color: TINTA_3 }}>
-            Mi meta hoy <b style={{ color: AZUL }}>{metaDiaria(metaFtd)} FTD</b>
+            Mi meta {dia ? "diaria" : "hoy"} <b style={{ color: AZUL }}>{metaDiaria(metaFtd)} FTD</b>
           </span>
           <span style={{ color: TINTA_3 }}>
             <b className="font-extrabold" style={{ color: ftdMes > 0 ? VERDE : TINTA_3 }}>

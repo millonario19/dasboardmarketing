@@ -16,9 +16,16 @@ export async function GET(req: NextRequest) {
     // entonces el recorte de oficina sobra: ya está mirando a uno solo.
     const mirada = await alcanceMirando(req);
     const oficina = mirada.prestado ? null : await alcanceDeOficina();
+    // El día que eligió el agente arriba de «Mi día». Sin `?dia=`, hoy. Lo que
+    // cambia no es el mes —ese sigue siendo el mes— sino las columnas del día:
+    // leads, registros y FTD de esa fecha, y la temperatura de esos leads.
+    const dia = /^\d{4}-\d{2}-\d{2}$/.test(req.nextUrl.searchParams.get("dia") ?? "")
+      ? req.nextUrl.searchParams.get("dia")
+      : null;
     const data = await computeAgentProduction(
       mirada.agentId,
-      oficina ? await agentesDeOficina(oficina) : null
+      oficina ? await agentesDeOficina(oficina) : null,
+      dia
     );
     return NextResponse.json(data);
   } catch (err) {

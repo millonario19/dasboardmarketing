@@ -13,27 +13,10 @@ const SEVERIDAD = {
   media: { borde: "#E0A800", fondo: "#FDF8E7", texto: "#8A6800" },
 } as const;
 
-const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
-
-function hoyBogota(): string {
-  return new Date(Date.now() - BOGOTA_OFFSET_MS).toISOString().slice(0, 10);
-}
-
-function ayerBogota(): string {
-  return new Date(Date.now() - BOGOTA_OFFSET_MS - 864e5).toISOString().slice(0, 10);
-}
-
 function enEspanol(iso: string): string {
   const [a, m, d] = iso.split("-");
   return `${d}/${m}/${a}`;
 }
-
-type Dia = {
-  fecha: string;
-  conteos: Record<EstadoLead, number>;
-  total: number;
-  depositaron: number;
-};
 
 // Cuando el tablero está filtrado a un agente, todo lo que se compara sale de
 // sus propios leads. Decirle "lo habitual de la oficina" a un número que es su
@@ -41,21 +24,22 @@ type Dia = {
 export function PanelEstados({
   datos,
   propio = false,
-  onDia,
+  dia = null,
 }: {
   datos: Datos;
   propio?: boolean;
   /**
-   * Qué día está mirando el agente, para que el paso 3 hable del mismo.
-   * Null cuando mira «hoy» o «este mes» y no un día puntual.
+   * El día que manda en toda la pantalla. `null` es hoy.
+   *
+   * Este panel tenía su propio selector y hacía su propia consulta. Ahora el
+   * día viene firmado desde arriba y `datos.hoy` ya es el del día elegido: el
+   * servidor lo cuenta con el mismo recorte que usa para los leads, los
+   * registros y los FTD, así que las cuatro casillas y las tres temperaturas
+   * no pueden discrepar.
    */
-  onDia?: (fecha: string | null) => void;
+  dia?: string | null;
 }) {
   const [ventana, setVentana] = useState<"hoy" | "mes">("hoy");
-  const [fecha, setFecha] = useState(ayerBogota);
-  const [dia, setDia] = useState<Dia | null>(null);
-  const [cargando, setCargando] = useState(false);
-  const [errorDia, setErrorDia] = useState<string | null>(null);
 
   // La tarjeta abierta y su lista. Solo una a la vez: dos tablas largas
   // abiertas obligan a bajar hasta el final para comparar.
@@ -63,26 +47,6 @@ export function PanelEstados({
   const [leads, setLeads] = useState<{ leads: LeadDeEstado[]; total: number } | null>(null);
   const [cargandoLeads, setCargandoLeads] = useState(false);
   const [errorLeads, setErrorLeads] = useState<string | null>(null);
-
-  // El día elegido se pide aparte: el panel por defecto solo trae hoy y el mes.
-  const verDia = useCallback(() => {
-    const desde = new Date(`${fecha}T00:00:00-05:00`);
-    const hasta = new Date(desde);
-    hasta.setDate(hasta.getDate() + 1);
-    setCargando(true);
-    setErrorDia(null);
-    fetch(`/api/metrics/estados?from=${encodeURIComponent(desde.toISOString())}&to=${encodeURIComponent(hasta.toISOString())}`)
-      .then(async (r) => {
-        if (!r.ok) throw new Error((await r.json()).error ?? "Error al consultar el día");
-        return r.json();
-      })
-      .then((d) => {
-        setDia({ fecha, ...d });
-        cerrarLista();
-      })
-      .catch((e) => setErrorDia(e.message))
-      .finally(() => setCargando(false));
-  }, [fecha]);
 
   const cerrarLista = useCallback(() => {
     setAbierto(null);
@@ -92,15 +56,10 @@ export function PanelEstados({
 
   // El rango que está mirando la pantalla ahora mismo: el día consultado, o
   // la ventana de hoy / del mes que ya viene calculada desde el servidor.
-  const rangoActual = useCallback(() => {
-    if (dia) {
-      const desde = new Date(`${dia.fecha}T00:00:00-05:00`);
-      const hasta = new Date(desde);
-      hasta.setDate(hasta.getDate() + 1);
-      return { from: desde.toISOString(), to: hasta.toISOString() };
-    }
-    return ventana === "hoy" ? datos.rango.hoy : datos.rango.mes;
-  }, [dia, ventana, datos.rango]);
+  const rangoActual = useCallback(
+    () => (ventana === "hoy" ? datos.rango.hoy : datos.rango.mes),
+    [ventana, datos.rango]
+  );
 
   const verLeads = useCallback(
     (estado: EstadoLead) => {
@@ -156,13 +115,12 @@ export function PanelEstados({
     );
   }, []);
 
-  // El paso 3 sigue el mismo día que este panel: si el agente consultó el 14,
-  // la pregunta «¿llegó a tu WhatsApp?» tiene que ser sobre los clics del 14.
+  // Al cambiar el día, la lista abierta era del día anterior.
   useEffect(() => {
-    onDia?.(dia?.fecha ?? null);
-  }, [dia, onDia]);
+    cerrarLista();
+  }, [dia, cerrarLista]);
 
-  const conteos = dia ? dia.conteos : datos[ventana];
+  const conteos = datos[ventana];
   const total = ESTADOS.reduce((s, e) => s + conteos[e], 0);
 
   const { tasaHoy, madurosHoy, baseline, diasValidos } = datos.interaccion;
@@ -174,7 +132,8 @@ export function PanelEstados({
           <div className="flex items-baseline justify-center gap-3 sm:justify-start">
             {/* El encabezado del paso ya nombra esta sección. */}
             <span className="text-[13px] text-ink-secondary">
-              {total} {dia ? `del ${enEspanol(dia.fecha)}` : ventana === "hoy" ? "hoy" : "este mes"}
+              {total}{" "}
+              {ventana === "mes" ? "este mes" : dia ? `del ${enEspanol(dia)}` : "hoy"}
             </span>
           </div>
           {/* Sin esta aclaración el panel parece contradecir a Métricas: acá
@@ -185,6 +144,9 @@ export function PanelEstados({
             Solo leads de la pauta que todavía no depositaron — los que ya depositaron están en FTD, arriba.
           </p>
         </div>
+        {/* Sin selector de fecha: la elige la barra de arriba, una sola vez
+            para los cuatro pasos. Queda el «día / este mes», que no es una
+            fecha sino cuánto período se mira. */}
         <div className="flex items-center justify-center gap-2 flex-wrap sm:justify-end">
           <div className="flex rounded-full border border-gridline overflow-hidden text-[13px]">
             {(["hoy", "mes"] as const).map((v) => (
@@ -192,69 +154,20 @@ export function PanelEstados({
                 key={v}
                 onClick={() => {
                   setVentana(v);
-                  setDia(null);
                   cerrarLista();
                 }}
                 className={`px-4 py-1.5 ${
-                  !dia && ventana === v
+                  ventana === v
                     ? "bg-header text-header-ink font-medium"
                     : "bg-surface text-ink-secondary hover:bg-page"
                 }`}
               >
-                {v === "hoy" ? "Hoy" : "Este mes"}
+                {v === "hoy" ? (dia ? enEspanol(dia) : "Hoy") : "Este mes"}
               </button>
             ))}
           </div>
-
-          {/* Un día puntual: "¿cómo estuvo la pauta del 9?" */}
-          <input
-            type="date"
-            value={fecha}
-            max={hoyBogota()}
-            onChange={(e) => setFecha(e.target.value)}
-            className="border border-gridline rounded-full px-3 py-1.5 text-[13px] bg-surface text-ink-secondary"
-          />
-          <button
-            onClick={verDia}
-            disabled={cargando}
-            className="rounded-full px-4 py-1.5 text-[13px] font-medium text-white hover:opacity-90 disabled:opacity-50"
-            style={{ background: "#17457F" }}
-          >
-            {cargando ? (
-              "…"
-            ) : (
-              <>
-                <span className="sm:hidden">Ver</span>
-                <span className="hidden sm:inline">Consultar</span>
-              </>
-            )}
-          </button>
         </div>
       </div>
-
-      {errorDia && (
-        <div className="rounded-xl bg-surface border border-series2 text-series2 px-4 py-3 mb-3 text-[13px]">
-          {errorDia}
-        </div>
-      )}
-
-      {dia && (
-        <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl px-4 py-2.5 mb-3 bg-[#fdeee7]">
-          <span className="text-[13px] font-medium text-[#b5501f]">
-            📅 Leads que entraron el {enEspanol(dia.fecha)} — {dia.total} en total
-            {dia.depositaron > 0 && `, de los cuales ${dia.depositaron} ya depositaron`}
-          </span>
-          <button
-            onClick={() => {
-              setDia(null);
-              cerrarLista();
-            }}
-            className="border border-gridline bg-surface text-header-ink rounded-lg px-3 py-1 text-[12.5px] font-medium hover:bg-page"
-          >
-            × Volver
-          </button>
-        </div>
-      )}
 
       {/* La lista vive dentro de la grilla, justo detrás de su tarjeta, y se
           acomoda sola a cada pantalla:
@@ -292,7 +205,7 @@ export function PanelEstados({
         ))}
       </div>
 
-      {!dia && (
+      {!dia && ventana === "hoy" && (
       <div className="rounded-xl border border-gridline bg-surface px-4 py-3 mb-4">
         <p className="text-[13px] text-ink-secondary">
           <span className="font-medium text-ink-primary">Interacción real de hoy: </span>
