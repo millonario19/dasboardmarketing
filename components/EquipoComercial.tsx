@@ -238,35 +238,42 @@ export function EquipoComercial() {
             <div key={r.agentId ?? r.agent}>
               <Link
                 href={`/equipo/${encodeURIComponent(r.agentId!)}`}
-                className="w-full flex items-center gap-2 px-4 sm:px-5 py-2.5 border-t border-gridline text-left hover:bg-page"
+                className="w-full flex flex-wrap items-center gap-x-2 gap-y-1 px-4 sm:px-5 py-2.5 border-t border-gridline text-left hover:bg-page"
               >
-                <span
-                  className="w-[22px] shrink-0 text-center text-[13px] font-bold tabular-nums"
-                  style={{ color: i < 3 ? ORO : GRIS }}
-                >
-                  {MEDALLAS[i] ?? i + 1}
-                </span>
-                <span
-                  className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold"
-                  style={{ background: CELESTE, color: AZUL }}
-                >
-                  {iniciales(r.agent)}
-                </span>
-                <span className="min-w-0 flex-1 pr-2">
-                  <span className="block text-[13.5px] font-semibold leading-tight">{r.agent}</span>
-                  <span className="block text-[11px]" style={{ color: GRIS }}>
-                    {r.leadsHoy > 0 ? `${r.leadsHoy} leads hoy` : "sin leads hoy"}
-                    {r.ftdHoy > 0 ? ` · ${r.ftdHoy} FTD hoy` : ""}
+                <span className="flex items-center gap-2 min-w-0 basis-full sm:basis-auto sm:flex-1">
+                  <span
+                    className="w-[22px] shrink-0 text-center text-[13px] font-bold tabular-nums"
+                    style={{ color: i < 3 ? ORO : GRIS }}
+                  >
+                    {MEDALLAS[i] ?? i + 1}
+                  </span>
+                  <span
+                    className="w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-[11px] font-bold"
+                    style={{ background: CELESTE, color: AZUL }}
+                  >
+                    {iniciales(r.agent)}
+                  </span>
+                  <span className="min-w-0 flex-1 pr-2">
+                    <span className="block text-[13.5px] font-semibold leading-tight">{r.agent}</span>
+                    <span className="block text-[11px]" style={{ color: GRIS }}>
+                      {r.leadsHoy > 0 ? `${r.leadsHoy} leads hoy` : "sin leads hoy"}
+                      {r.ftdHoy > 0 ? ` · ${r.ftdHoy} FTD hoy` : ""}
+                    </span>
                   </span>
                 </span>
-                <Numero valor={r.leadsMes} />
-                <Numero valor={r.registrosMes} />
-                <Numero valor={r.ftdMes} verde />
-                <span
-                  className={`${ANCHO_ABRIR} shrink-0 text-right text-[11px] hidden sm:block`}
-                  style={{ color: AZUL }}
-                >
-                  abrir →
+                {/* En el teléfono estos tres arrancan desde la izquierda del
+                    renglón, así que el `ml-auto` los empuja a la derecha, bajo
+                    sus encabezados. */}
+                <span className="flex items-center gap-2 ml-auto shrink-0">
+                  <Numero valor={r.leadsMes} />
+                  <Numero valor={r.registrosMes} />
+                  <Numero valor={r.ftdMes} verde />
+                  <span
+                    className={`${ANCHO_ABRIR} shrink-0 text-right text-[11px] hidden sm:block`}
+                    style={{ color: AZUL }}
+                  >
+                    abrir →
+                  </span>
                 </span>
               </Link>
             </div>
