@@ -42,7 +42,7 @@ export default function MiDiaPage() {
 
 
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <main className="max-w-[880px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* La misma cabecera que Dirección: eran dos pantallas del mismo tablero
           con dos identidades distintas —una gris con degradados de colores y un
           saludo gigante, la otra blanca— y al cambiar de pestaña parecía que

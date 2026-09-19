@@ -26,7 +26,7 @@ export default function DashboardPage() {
   // las tarjetas, que es justo lo que le falta a un nombre largo para no
   // cortarse.
   return (
-    <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <main className="max-w-[880px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
       {/* En móvil la cabecera se apila y se centra: el título en un renglón, el
           nombre debajo y los botones al pie. En una sola fila, «Marketing y
           Ventas» más el nombre completo no caben en 375 px y empujaban el
