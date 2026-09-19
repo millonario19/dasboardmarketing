@@ -90,6 +90,7 @@ export function MiDia({
               ftdMes={data.totals.ftdMes}
               ftdHoy={data.totals.ftdHoy}
               registrosMes={data.totals.registrosMes}
+              registrosHoy={data.totals.registrosHoy}
             />
           )}
 

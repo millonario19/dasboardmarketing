@@ -447,6 +447,7 @@ export function MetaDelMes({
   ftdMes,
   ftdHoy = 0,
   registrosMes = 0,
+  registrosHoy = 0,
 }: {
   /** FTD del mes en curso: los que ya sumó la etiqueta ftd-efectuado. */
   ftdMes: number;
@@ -454,6 +455,8 @@ export function MetaDelMes({
   ftdHoy?: number;
   /** Registros del mes: cada etiqueta de registro suma uno. */
   registrosMes?: number;
+  /** Los de hoy, que es lo que todavía está en sus manos. */
+  registrosHoy?: number;
 }) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [cargada, setCargada] = useState(false);
@@ -680,9 +683,13 @@ export function MetaDelMes({
           depositan. Sin esto el reloj decía cuánta plata va pero no de dónde
           sale, y el agente no tenía cómo ver en qué parte del camino se le
           traba el mes. */}
-      <div className="grid grid-cols-3 gap-px mt-3.5 rounded-2xl overflow-hidden" style={{ background: LINEA }}>
+      <div
+        className="grid grid-cols-2 sm:grid-cols-4 gap-px mt-3.5 rounded-2xl overflow-hidden"
+        style={{ background: LINEA }}
+      >
         {[
-          { t: "Registros", v: registrosMes, pie: MES, color: AZUL },
+          { t: "Registros", v: registrosMes, pie: MES, color: registrosMes > 0 ? AZUL : TINTA_3 },
+          { t: "Registros hoy", v: registrosHoy, pie: "hoy", color: registrosHoy > 0 ? AZUL : TINTA_3 },
           { t: "FTD total", v: ftdMes, pie: MES, color: ftdMes > 0 ? VERDE : TINTA_3 },
           { t: "FTD hoy", v: ftdHoy, pie: "hoy", color: ftdHoy > 0 ? VERDE : TINTA_3 },
         ].map((c) => (
@@ -694,7 +701,7 @@ export function MetaDelMes({
               {c.t}
             </span>
             <b
-              className="block text-[26px] sm:text-[32px] font-extrabold tracking-[-0.045em] tabular-nums leading-none mt-1.5"
+              className="block text-[24px] sm:text-[29px] font-extrabold tracking-[-0.045em] tabular-nums leading-none mt-1.5"
               style={{ color: c.color }}
             >
               {c.v}
