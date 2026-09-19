@@ -23,7 +23,7 @@ export default function EquipoPage() {
   const puedeVer = sesion?.rol === "admin" || sesion?.rol === "director";
 
   return (
-    <main className="max-w-[880px] mx-auto px-6 py-8">
+    <main className="max-w-[960px] mx-auto px-6 py-8">
       <div className="flex flex-col items-center text-center gap-3 mb-7 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left sm:gap-4">
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
           <h1 className="text-[21px] sm:text-[25px] font-semibold text-ink-primary tracking-tight leading-[1.15]">

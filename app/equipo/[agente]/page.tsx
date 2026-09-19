@@ -38,7 +38,7 @@ export default function PanelDeAgentePage({ params }: { params: { agente: string
   }, [params.agente, puede]);
 
   return (
-    <main className="max-w-[880px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <main className="max-w-[960px] mx-auto px-4 sm:px-6 py-6 sm:py-8">
       <div className="flex flex-col items-center text-center gap-3 mb-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:text-left sm:gap-4">
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:gap-3">
           <Link

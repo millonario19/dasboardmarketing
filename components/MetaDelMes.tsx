@@ -308,7 +308,7 @@ function Reloj({
   return (
     <svg
       viewBox={chico ? "40 66 680 412" : "0 0 760 516"}
-      className="w-full max-w-[320px] sm:max-w-[470px] mx-auto block"
+      className="w-full max-w-[330px] sm:max-w-[510px] mx-auto block"
       aria-hidden
     >
       <path d={arco(INICIO, INICIO + BARRIDO, R)} stroke={RIEL} strokeWidth={GROSOR} fill="none" strokeLinecap="round" />
