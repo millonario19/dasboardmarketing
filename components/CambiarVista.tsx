@@ -3,15 +3,21 @@
 import Link from "next/link";
 import { useSesion } from "@/components/useSesion";
 
-// Las tres pantallas del tablero, separadas por para qué sirven y no por tema:
-// el día del agente, los tres pasos de la operación, y los números del mes.
-// Las métricas viven aparte porque se miran una vez y no cambian nada de hoy —
-// tenerlas abajo de los pasos hacía que la pantalla de trabajo terminara en un
-// informe.
+// Las pantallas del tablero, separadas por la pregunta que contesta cada una:
+//
+//   Home      — cómo voy (la meta y la comisión)
+//   Mi día    — qué hago ahora (los cuatro pasos)
+//   Mis leads — el seguimiento de los días que siguen
+//   Métricas  — los números del mes
+//   Mi equipo — quién, para la dirección
+//
+// Home y Mi día estaban juntas en una sola. En el teléfono, que es donde pasa
+// el 90% del uso, había que bajar media pantalla de meta antes de llegar al
+// primer paso del trabajo.
 export function CambiarVista({
   actual,
 }: {
-  actual: "mi-dia" | "direccion" | "metricas" | "equipo";
+  actual: "home" | "mi-dia" | "mis-leads" | "metricas" | "equipo";
 }) {
   const sesion = useSesion();
   // «Mi equipo» solo para quien tiene equipo. Un agente que la ve y no puede
@@ -19,20 +25,21 @@ export function CambiarVista({
   const dirige = sesion?.rol === "admin" || sesion?.rol === "director";
 
   const opciones = [
-    { id: "mi-dia" as const, href: "/mi-dia", texto: "Mis leads" },
-    { id: "direccion" as const, href: "/", texto: "Mi día" },
+    { id: "home" as const, href: "/", texto: "Home" },
+    { id: "mi-dia" as const, href: "/mi-dia", texto: "Mi día" },
+    { id: "mis-leads" as const, href: "/mis-leads", texto: "Mis leads" },
     { id: "metricas" as const, href: "/metricas", texto: "Métricas" },
     ...(dirige ? [{ id: "equipo" as const, href: "/equipo", texto: "Mi equipo" }] : []),
   ];
 
   return (
-    <nav className="inline-flex rounded-full border border-gridline overflow-hidden text-sm shrink-0">
+    <nav className="inline-flex flex-wrap justify-center rounded-full border border-gridline overflow-hidden text-sm">
       {opciones.map((o) => (
         <Link
           key={o.id}
           href={o.href}
           aria-current={actual === o.id ? "page" : undefined}
-          className={`px-4 py-2 ${
+          className={`px-3.5 sm:px-4 py-2.5 sm:py-2 ${
             actual === o.id
               ? "bg-header text-header-ink font-medium"
               : "bg-surface text-ink-secondary hover:bg-page"

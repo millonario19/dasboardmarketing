@@ -23,9 +23,18 @@ import type { AgentProduction } from "@/lib/metrics";
  */
 export function MiDia({
   esAdmin = false,
+  parte = "todo",
   recargar,
 }: {
   esAdmin?: boolean;
+  /**
+   * Qué mitad se dibuja.
+   *
+   * Son dos pantallas y un solo componente porque las dos salen de la misma
+   * consulta: partirlo en dos archivos haría que el Home y Mi día pidieran los
+   * mismos números por separado, y que un cambio en uno se olvidara en el otro.
+   */
+  parte?: "todo" | "meta" | "pasos";
   /** Para que la cabecera de la página pueda disparar la recarga. */
   recargar?: (fn: () => void) => void;
 }) {
@@ -85,7 +94,7 @@ export function MiDia({
         {/* Arriba de todo, antes que los pasos: es lo único de la pantalla
             que habla de la plata del agente, y es el motivo por el que abre
             el tablero. Para la dirección no va — la meta es personal. */}
-        {!esAdmin && (
+        {!esAdmin && parte !== "pasos" && (
             <MetaDelMes
               ftdMes={data.totals.ftdMes}
               ftdHoy={data.totals.ftdHoy}
@@ -97,6 +106,8 @@ export function MiDia({
 
         {/* Los tres pasos, plegables y pegados: con los módulos abiertos uno
             nunca ve los tres títulos juntos y parecen tres cosas sueltas. */}
+        {parte !== "meta" && (
+        <>
         <PasoSistema
           numero={1}
           titulo="Quién escribió hoy"
@@ -131,6 +142,8 @@ export function MiDia({
         >
           <PanelEstados datos={data.panel} propio={!esAdmin} onDia={setDiaMirado} />
         </PasoSistema>
+        </>
+        )}
 
         {/* Los pasos 3 y 4 eran uno solo mal partido: los dos contestan la
             misma pregunta —¿este lead ya está en mi WhatsApp?— por los dos
@@ -140,7 +153,7 @@ export function MiDia({
 
             Es del agente, no de la dirección: nadie más puede saber si el
             cliente apareció en el WhatsApp de otro. */}
-        {!esAdmin && (
+        {!esAdmin && parte !== "meta" && (
           <PasoSistema
             numero={3}
             titulo="WhatsApp Business"
@@ -163,7 +176,7 @@ export function MiDia({
 
         {/* Llamar va acá y no en Mis leads porque habla de los que entraron
             hoy; Mis leads es el seguimiento de los días que siguen. */}
-        {!esAdmin && (
+        {!esAdmin && parte !== "meta" && (
           <PasoSistema
             numero={4}
             titulo="Llamar inmediatamente a mis leads nuevos"
