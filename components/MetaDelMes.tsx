@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { comisionPorFtd, ESCALONES } from "@/lib/comision";
 import type { Meta } from "@/lib/metas";
+import type { Pulso } from "@/lib/pulso";
 import {
   MEMBRESIAS,
   SIN_MEMBRESIAS,
@@ -443,11 +444,93 @@ function Rotulo({ titulo, pie, derecha = false }: { titulo: string; pie: string;
   );
 }
 
+
+/**
+ * El mentor: una sola frase, la que más importa hoy.
+ *
+ * El tablero ya sabía contar; lo que no hacía era mirar sus propios números y
+ * sacar una conclusión. «Entraron siete leads hoy y ninguno se registró» es un
+ * dato que ya estaba en pantalla, repartido en tres celdas, y que nadie leía
+ * junto.
+ *
+ * Las reglas están en orden de urgencia y se devuelve la primera que aplica.
+ * Una sola: un panel con cinco avisos no guía a nadie, y el agente pidió
+ * justo lo contrario de llenarlo de letra.
+ */
+function consejoDelDia(datos: {
+  pulso: Pulso | null;
+  leadsHoy: number;
+  registrosHoy: number;
+  ftdHoy: number;
+  registrosMes: number;
+  ftdMes: number;
+  metaFtd: number;
+  faltan: number;
+  quedan: number;
+}): { texto: string; tono: "bueno" | "alerta" | "normal" } | null {
+  const { pulso, leadsHoy, registrosHoy, ftdHoy, registrosMes, ftdMes, metaFtd, faltan, quedan } =
+    datos;
+
+  if (ftdHoy > 0) {
+    return {
+      texto: `Hoy ya cerró ${ftdHoy} FTD. Así se construye el mes.`,
+      tono: "bueno",
+    };
+  }
+
+  // Lo más caro que le puede pasar: registros que no terminan en depósito.
+  const sinFtd = pulso?.diasSinFtd ?? null;
+  if (sinFtd !== null && sinFtd >= 3) {
+    const recientes = (pulso?.dias ?? []).slice(0, 3);
+    const reg = recientes.reduce((n, d) => n + d.registros, 0);
+    return {
+      texto:
+        reg > 0
+          ? `Hace ${sinFtd} días que no cierra un FTD, y en esos días entraron ${reg} registros. Ahí está su plata.`
+          : `Hace ${sinFtd} días que no cierra un FTD.`,
+      tono: "alerta",
+    };
+  }
+  if (sinFtd === null && registrosMes > 0 && ftdMes === 0) {
+    return {
+      texto: `Lleva ${registrosMes} registros este mes y ningún depósito. Ese es el paso que falta.`,
+      tono: "alerta",
+    };
+  }
+
+  if (registrosHoy > 0) {
+    return {
+      texto: `${registrosHoy} ${registrosHoy === 1 ? "registro" : "registros"} hoy y todavía sin depósito. Llámelos antes de que se enfríen.`,
+      tono: "alerta",
+    };
+  }
+
+  if (leadsHoy > 0) {
+    return {
+      texto: `Entraron ${leadsHoy} ${leadsHoy === 1 ? "lead" : "leads"} hoy y ninguno se registró todavía.`,
+      tono: "normal",
+    };
+  }
+
+  if (leadsHoy === 0) {
+    return { texto: "Todavía no entra ningún lead hoy.", tono: "normal" };
+  }
+
+  if (faltan > 0) {
+    return {
+      texto: `Para llegar a ${metaFtd} le faltan ${faltan}: ${Math.ceil(faltan / Math.max(1, quedan))} por día en los ${quedan} que quedan.`,
+      tono: "normal",
+    };
+  }
+  return null;
+}
+
 export function MetaDelMes({
   ftdMes,
   ftdHoy = 0,
   registrosMes = 0,
   registrosHoy = 0,
+  leadsHoy = 0,
 }: {
   /** FTD del mes en curso: los que ya sumó la etiqueta ftd-efectuado. */
   ftdMes: number;
@@ -457,6 +540,8 @@ export function MetaDelMes({
   registrosMes?: number;
   /** Los de hoy, que es lo que todavía está en sus manos. */
   registrosHoy?: number;
+  /** Leads de hoy: el primer eslabón, para saber si el problema es arriba. */
+  leadsHoy?: number;
 }) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [cargada, setCargada] = useState(false);
@@ -476,6 +561,11 @@ export function MetaDelMes({
     } catch {
       /* modo privado */
     }
+    fetch("/api/pulso")
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setPulso)
+      .catch(() => undefined);
+
     fetch("/api/meta")
       .then((r) => (r.ok ? r.json() : { meta: null }))
       .then((d: { meta: Meta | null }) => {
@@ -526,6 +616,7 @@ export function MetaDelMes({
    * plata, y la plata no se anota sin querer.
    */
   const [porAnotar, setPorAnotar] = useState<ClaseMembresia | null>(null);
+  const [pulso, setPulso] = useState<Pulso | null>(null);
 
   function anotarVenta(id: ClaseMembresia, delta: number) {
     const proxima = { ...vendidas, [id]: Math.max(0, (vendidas[id] || 0) + delta) };
@@ -586,6 +677,30 @@ export function MetaDelMes({
    * los 45 FTD— y sumarla entera los contaría dos veces.
    */
   const membresiasDelPlan = usdDeMembresias(meta?.plan ?? plan);
+
+  const consejo = consejoDelDia({
+    pulso,
+    leadsHoy,
+    registrosHoy,
+    ftdHoy,
+    registrosMes,
+    ftdMes,
+    metaFtd: meta?.ftd ?? 45,
+    faltan: Math.max(0, (meta?.ftd ?? 45) - ftdMes),
+    quedan: diasQueQuedan(),
+  });
+
+  /** Los últimos tres días sumados: el respaldo del consejo. */
+  const ultimos3 = pulso && pulso.dias.length > 0
+    ? pulso.dias.slice(0, 3).reduce(
+        (a, d) => ({
+          leads: a.leads + d.leads,
+          registros: a.registros + d.registros,
+          ftd: a.ftd + d.ftd,
+        }),
+        { leads: 0, registros: 0, ftd: 0 }
+      )
+    : null;
   const proyectado = plataMostrada + membresiasDelPlan;
 
 
@@ -938,49 +1053,60 @@ export function MetaDelMes({
         </div>
       ) : (
         <>
-          {/* Cuatro datos de FTD y nada más.
-              Antes este renglón mezclaba la meta del día, la plata del mes y
-              las membresías en una sola frase corrida, y decía dos veces lo
-              mismo. Acá solo se habla de FTD: la plata y las membresías tienen
-              su lugar abajo, al desplegar. */}
+          {/* La meta de hoy y una frase. Y nada más.
+              Acá había cuatro columnas de FTD que repetían la pantalla: «llevo
+              7» ya estaba en el cuadro de arriba y «meta 90» ya la marca la
+              aguja. Lo único que no estaba en ningún lado era la meta del día
+              —y lo que el tablero piensa de cómo viene. */}
           <button
             onClick={alternar}
             aria-expanded={abierta}
-            className="w-full mt-3 px-2 py-3.5 text-left"
+            className="w-full mt-3 px-3 py-4 text-left"
             style={{ borderTop: `1px solid ${LINEA}` }}
           >
-            <span className="flex items-stretch justify-center flex-wrap">
-              {[
-                { t: "Mi meta hoy", v: `${metaDiaria(meta.ftd)} FTD`, color: AZUL },
-                { t: "Meta total", v: `${meta.ftd} FTD` },
-                { t: "Llevo", v: `${ftdMes} FTD`, color: ftdMes > 0 ? VERDE : undefined },
-                {
-                  t: "Me faltan",
-                  v: faltaFtd > 0 ? `${faltaFtd} FTD` : "cumplida",
-                  color: faltaFtd > 0 ? ORO : VERDE,
-                },
-              ].map((c, i) => (
+            <span className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center">
+              <span className="text-center shrink-0">
                 <span
-                  key={c.t}
-                  className="px-3 sm:px-6 text-center"
-                  style={{ borderLeft: i > 0 ? `1px solid ${LINEA}` : undefined }}
+                  className="block text-[9.5px] font-bold uppercase tracking-[.16em] whitespace-nowrap"
+                  style={{ color: TINTA_3 }}
                 >
-                  <span
-                    className="block text-[9.5px] font-bold uppercase tracking-[.14em] whitespace-nowrap"
-                    style={{ color: TINTA_3 }}
-                  >
-                    {c.t}
-                  </span>
-                  <b
-                    className="block text-[20px] sm:text-[23px] font-extrabold tracking-[-0.035em] tabular-nums leading-none mt-1.5 whitespace-nowrap"
-                    style={{ color: c.color ?? TINTA }}
-                  >
-                    {c.v}
-                  </b>
+                  Mi meta hoy
                 </span>
-              ))}
+                <b
+                  className="block text-[26px] sm:text-[30px] font-extrabold tracking-[-0.04em] tabular-nums leading-none mt-1"
+                  style={{ color: AZUL }}
+                >
+                  {metaDiaria(metaFtd)} FTD
+                </b>
+              </span>
+
+              {consejo && (
+                <span
+                  className="flex-1 min-w-[220px] max-w-[46ch] text-[13.5px] sm:text-[15px] leading-snug text-center sm:text-left"
+                  style={{
+                    color:
+                      consejo.tono === "alerta" ? ORO : consejo.tono === "bueno" ? VERDE : TINTA_2,
+                  }}
+                >
+                  {consejo.texto}
+                </span>
+              )}
             </span>
-            <span className="block text-center text-[9px] mt-2" style={{ color: TINTA_3 }}>
+
+            {/* Los últimos tres días, chiquito: el respaldo de la frase.
+                Sin esto el consejo es una opinión; con esto se puede verificar
+                de un vistazo. */}
+            {ultimos3 && (
+              <span
+                className="block text-center text-[10.5px] tabular-nums mt-2.5"
+                style={{ color: TINTA_3 }}
+              >
+                Últimos 3 días · {ultimos3.leads} leads · {ultimos3.registros} registros ·{" "}
+                {ultimos3.ftd} FTD
+              </span>
+            )}
+
+            <span className="block text-center text-[9.5px] mt-2" style={{ color: TINTA_3 }}>
               {abierta ? "▲ ocultar el detalle" : "▼ ver la comisión y las membresías"}
             </span>
           </button>
