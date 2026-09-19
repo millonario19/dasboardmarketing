@@ -687,16 +687,19 @@ export function MetaDelMes({
         className="grid grid-cols-2 sm:grid-cols-4 gap-px mt-3.5 rounded-2xl overflow-hidden"
         style={{ background: LINEA }}
       >
+        {/* El nombre arriba, el período abajo. «Registros hoy» en un renglón
+            hacía que el título dijera dos cosas y el subtexto repitiera una;
+            separados, las cuatro celdas se leen como una tabla. */}
         {[
-          { t: "Registros", v: registrosMes, pie: MES, color: registrosMes > 0 ? AZUL : TINTA_3 },
-          { t: "Registros hoy", v: registrosHoy, pie: "hoy", color: registrosHoy > 0 ? AZUL : TINTA_3 },
-          { t: "FTD total", v: ftdMes, pie: MES, color: ftdMes > 0 ? VERDE : TINTA_3 },
-          { t: "FTD hoy", v: ftdHoy, pie: "hoy", color: ftdHoy > 0 ? VERDE : TINTA_3 },
+          { t: "Registros", pie: "total", v: registrosMes, color: registrosMes > 0 ? AZUL : TINTA_3 },
+          { t: "FTDs", pie: "total", v: ftdMes, color: ftdMes > 0 ? VERDE : TINTA_3 },
+          { t: "FTDs", pie: "hoy", v: ftdHoy, color: ftdHoy > 0 ? VERDE : TINTA_3 },
+          { t: "Registros", pie: "hoy", v: registrosHoy, color: registrosHoy > 0 ? AZUL : TINTA_3 },
         ].map((c) => (
-          <div key={c.t} className="text-center py-3 px-2" style={{ background: PANEL }}>
+          <div key={`${c.t}-${c.pie}`} className="text-center py-3 px-2" style={{ background: PANEL }}>
             <span
-              className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-[.16em]"
-              style={{ color: TINTA_3 }}
+              className="block text-[10px] sm:text-[11px] font-bold uppercase tracking-[.14em]"
+              style={{ color: TINTA_2 }}
             >
               {c.t}
             </span>
@@ -706,7 +709,10 @@ export function MetaDelMes({
             >
               {c.v}
             </b>
-            <span className="block text-[9.5px] mt-1" style={{ color: TINTA_3 }}>
+            <span
+              className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-[.16em] mt-1"
+              style={{ color: TINTA_3 }}
+            >
               {c.pie}
             </span>
           </div>
