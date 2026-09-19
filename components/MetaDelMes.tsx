@@ -503,7 +503,16 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
       .finally(() => setGuardando(false));
   }
 
-  /** Anotar una membresía vendida, que es el único dato que nadie más tiene. */
+  /**
+   * Anotar una membresía vendida, que es el único dato que nadie más tiene.
+   *
+   * Pide confirmar antes de sumar. El botón verde es grande y está a un toque
+   * del resto del panel: tocándolo de curiosidad quedaron siete ventas de Oro
+   * anotadas y el tablero mostró $1.400 que nadie había hecho. Una venta es
+   * plata, y la plata no se anota sin querer.
+   */
+  const [porAnotar, setPorAnotar] = useState<ClaseMembresia | null>(null);
+
   function anotarVenta(id: ClaseMembresia, delta: number) {
     const proxima = { ...vendidas, [id]: Math.max(0, (vendidas[id] || 0) + delta) };
     setVendidas(proxima);
@@ -991,15 +1000,38 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
                         >
                           −
                         </button>
-                        <button
-                          onClick={() => anotarVenta(m.id, 1)}
-                          disabled={guardando}
-                          aria-label={`Anotar una venta de ${m.nombre}`}
-                          className="w-6 h-6 rounded-full text-[15px] leading-none text-white disabled:opacity-40"
-                          style={{ background: VERDE }}
-                        >
-                          +
-                        </button>
+                        {porAnotar === m.id ? (
+                          <span className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              onClick={() => {
+                                anotarVenta(m.id, 1);
+                                setPorAnotar(null);
+                              }}
+                              disabled={guardando}
+                              className="rounded-full px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-40 whitespace-nowrap"
+                              style={{ background: VERDE }}
+                            >
+                              Sí, vendí una
+                            </button>
+                            <button
+                              onClick={() => setPorAnotar(null)}
+                              className="text-[11px]"
+                              style={{ color: TINTA_3 }}
+                            >
+                              No
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setPorAnotar(m.id)}
+                            disabled={guardando}
+                            aria-label={`Anotar una venta de ${m.nombre}`}
+                            className="w-6 h-6 rounded-full text-[15px] leading-none text-white disabled:opacity-40 shrink-0"
+                            style={{ background: VERDE }}
+                          >
+                            +
+                          </button>
+                        )}
                       </div>
                     );
                   })}
