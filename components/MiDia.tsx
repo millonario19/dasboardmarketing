@@ -77,6 +77,9 @@ export function MiDia({
   const load = useCallback(() => {
     setLoading(true);
     setError(null);
+    // El seguimiento va en el mismo viaje: es de donde salen los pasos 3 y 4,
+    // y actualizar solo la mitad de la pantalla no es actualizar.
+    if (!esAdmin) pedirSeguimiento(true).then(setSeg).catch(() => undefined);
     fetch("/api/metrics/production" + (dia ? `?dia=${encodeURIComponent(dia)}` : ""))
       .then(async (res) => {
         if (!res.ok) throw new Error((await res.json()).error ?? "Error al cargar métricas");
@@ -85,7 +88,7 @@ export function MiDia({
       .then(setData)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [dia]);
+  }, [dia, esAdmin]);
 
   useEffect(() => {
     load();
@@ -173,7 +176,7 @@ export function MiDia({
             En Mi día van sin el reloj: trabaja con las cifras a la vista sin
             tener que volver al Home, y el reloj ocuparía media pantalla de
             teléfono para repetir lo que ya vio al entrar. */}
-        {parte !== "meta" && <BarraDeDia dia={dia} onCambiar={setDia} />}
+        {parte !== "meta" && <BarraDeDia dia={dia} onCambiar={setDia} onRecargar={load} />}
 
         {!esAdmin && parte === "pasos" && (
           <MetaDelMes

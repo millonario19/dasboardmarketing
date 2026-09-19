@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 import { DIAS_ATRAS_MAX, diaLargo, diaMasViejo, hoyBogota } from "@/lib/dia";
 
 /**
@@ -22,14 +24,34 @@ const AZUL = "#17457F";
 export function BarraDeDia({
   dia,
   onCambiar,
+  onRecargar,
 }: {
   /** Día en Bogotá, «2026-09-18». `null` es hoy. */
   dia: string | null;
   onCambiar: (dia: string | null) => void;
+  /** Volver a pedir el día que ya está en pantalla. */
+  onRecargar?: () => void;
 }) {
   const hoy = hoyBogota();
   const actual = dia ?? hoy;
   const viejo = diaMasViejo();
+
+  /**
+   * Lo que dice el selector, que no es todavía lo que muestra la pantalla.
+   *
+   * El calendario no consulta al tocarlo: elegir el día y traerlo son dos
+   * cosas distintas, y el navegador dispara el cambio mientras uno todavía
+   * está eligiendo el mes. Se consulta con el botón.
+   */
+  const [fecha, setFecha] = useState(actual);
+
+  // Si el día cambia por otro camino —las flechas, «Hoy»— el selector tiene
+  // que decir lo mismo que la pantalla.
+  useEffect(() => {
+    setFecha(actual);
+  }, [actual]);
+
+  const sinTraer = fecha !== actual;
 
   /** Corre la fecha n días, sin salirse de la ventana que hay datos. */
   function correr(n: number) {
@@ -40,8 +62,17 @@ export function BarraDeDia({
     onCambiar(iso === hoy ? null : iso);
   }
 
-  const paso = (v: string) => (v === hoy || v === "" ? null : v);
   const esHoy = actual === hoy;
+
+  /** Traer lo que dice el selector. */
+  function consultar() {
+    if (!fecha) return;
+    if (fecha === actual) {
+      onRecargar?.();
+      return;
+    }
+    onCambiar(fecha === hoy ? null : fecha);
+  }
 
   return (
     <div
@@ -71,24 +102,38 @@ export function BarraDeDia({
 
         <input
           type="date"
-          value={actual}
+          value={fecha}
           min={viejo}
           max={hoy}
-          onChange={(e) => onCambiar(paso(e.target.value))}
-          className="border border-gridline rounded-full px-2.5 py-1 md:py-1.5 text-[12px] md:text-[13.5px] bg-surface text-ink-secondary"
+          onChange={(e) => setFecha(e.target.value)}
+          className="border rounded-full px-2.5 py-1 md:py-1.5 text-[12px] md:text-[13.5px] bg-surface text-ink-secondary"
+          style={{ borderColor: sinTraer ? AZUL : "var(--gridline)" }}
         />
 
-        {/* Solo cuando hay algo que deshacer: un botón «Hoy» que no hace nada
-            enseña a ignorarlo. */}
-        {!esHoy && (
-          <button
-            onClick={() => onCambiar(null)}
-            className="rounded-full px-3 py-1 md:py-1.5 text-[12px] md:text-[13.5px] font-semibold text-white hover:opacity-90"
-            style={{ background: AZUL }}
-          >
-            Hoy
-          </button>
-        )}
+        {/* Elegir la fecha no consulta: consulta este botón. Mientras el
+            selector diga algo que la pantalla todavía no muestra, se pinta
+            para que no quede una fecha elegida y sin traer. */}
+        <button
+          onClick={consultar}
+          className="rounded-full px-3 md:px-4 py-1 md:py-1.5 text-[12px] md:text-[13.5px] font-semibold hover:opacity-90"
+          style={
+            sinTraer
+              ? { background: AZUL, color: "#fff" }
+              : { background: "var(--surface-1)", color: AZUL, border: `1px solid ${AZUL}` }
+          }
+        >
+          Consultar
+        </button>
+
+        {/* «Hoy» siempre, no solo cuando se fue a otro día: estando en hoy
+            vuelve a traerlo, que es lo que uno quiere al volver del almuerzo. */}
+        <button
+          onClick={() => (esHoy ? onRecargar?.() : onCambiar(null))}
+          className="rounded-full px-3 md:px-4 py-1 md:py-1.5 text-[12px] md:text-[13.5px] font-semibold text-white hover:opacity-90"
+          style={{ background: esHoy ? "#5E5C56" : AZUL }}
+        >
+          Hoy
+        </button>
       </span>
 
       {!esHoy && (
