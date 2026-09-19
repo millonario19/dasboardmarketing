@@ -85,7 +85,13 @@ export function MiDia({
         {/* Arriba de todo, antes que los pasos: es lo único de la pantalla
             que habla de la plata del agente, y es el motivo por el que abre
             el tablero. Para la dirección no va — la meta es personal. */}
-        {!esAdmin && <MetaDelMes ftdMes={data.totals.ftdMes} />}
+        {!esAdmin && (
+            <MetaDelMes
+              ftdMes={data.totals.ftdMes}
+              ftdHoy={data.totals.ftdHoy}
+              registrosMes={data.totals.registrosMes}
+            />
+          )}
 
         {/* Los tres pasos, plegables y pegados: con los módulos abiertos uno
             nunca ve los tres títulos juntos y parecen tres cosas sueltas. */}

@@ -443,7 +443,18 @@ function Rotulo({ titulo, pie, derecha = false }: { titulo: string; pie: string;
   );
 }
 
-export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
+export function MetaDelMes({
+  ftdMes,
+  ftdHoy = 0,
+  registrosMes = 0,
+}: {
+  /** FTD del mes en curso: los que ya sumó la etiqueta ftd-efectuado. */
+  ftdMes: number;
+  /** Los de hoy, que son los que todavía puede mover. */
+  ftdHoy?: number;
+  /** Registros del mes: cada etiqueta de registro suma uno. */
+  registrosMes?: number;
+}) {
   const [meta, setMeta] = useState<Meta | null>(null);
   const [cargada, setCargada] = useState(false);
   const [abierta, setAbierta] = useState(false);
@@ -662,6 +673,37 @@ export function MetaDelMes({ ftdMes }: { ftdMes: number }) {
             </>
           )}
         </p>
+      </div>
+
+      {/* La ruta, en tres números.
+          Es el camino completo: entran leads, algunos se registran, algunos
+          depositan. Sin esto el reloj decía cuánta plata va pero no de dónde
+          sale, y el agente no tenía cómo ver en qué parte del camino se le
+          traba el mes. */}
+      <div className="grid grid-cols-3 gap-px mt-3.5 rounded-2xl overflow-hidden" style={{ background: LINEA }}>
+        {[
+          { t: "Registros", v: registrosMes, pie: MES, color: AZUL },
+          { t: "FTD total", v: ftdMes, pie: MES, color: ftdMes > 0 ? VERDE : TINTA_3 },
+          { t: "FTD hoy", v: ftdHoy, pie: "hoy", color: ftdHoy > 0 ? VERDE : TINTA_3 },
+        ].map((c) => (
+          <div key={c.t} className="text-center py-3 px-2" style={{ background: PANEL }}>
+            <span
+              className="block text-[9px] sm:text-[10px] font-bold uppercase tracking-[.16em]"
+              style={{ color: TINTA_3 }}
+            >
+              {c.t}
+            </span>
+            <b
+              className="block text-[26px] sm:text-[32px] font-extrabold tracking-[-0.045em] tabular-nums leading-none mt-1.5"
+              style={{ color: c.color }}
+            >
+              {c.v}
+            </b>
+            <span className="block text-[9.5px] mt-1" style={{ color: TINTA_3 }}>
+              {c.pie}
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="mt-2">
