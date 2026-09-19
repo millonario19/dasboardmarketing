@@ -170,7 +170,7 @@ function Fila({
             <button
               onClick={guardarTelefono}
               disabled={guardando || !escrito.trim()}
-              className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-white disabled:opacity-40"
+              className="rounded-full min-h-[40px] sm:min-h-0 px-3.5 sm:px-2.5 py-1 text-[11.5px] font-semibold text-white disabled:opacity-40"
               style={{ background: VERDE }}
             >
               {guardando ? "…" : "Guardar"}
@@ -220,7 +220,7 @@ function Fila({
       <span className="flex items-center gap-1.5 shrink-0">
         {modo === "bajar" && lead.enMiWhatsApp ? (
           <span
-            className="rounded-full px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap"
+            className="rounded-full min-h-[40px] sm:min-h-0 px-3.5 sm:px-2.5 py-1 text-[11.5px] font-semibold whitespace-nowrap inline-flex items-center"
             style={{ background: "#EEF7F2", color: VERDE }}
           >
             ✓ ya lo tiene
@@ -260,7 +260,7 @@ function Fila({
             target="_blank"
             rel="noopener noreferrer"
             title="Abrir la ficha en el CRM"
-            className="inline-flex items-center gap-1 rounded-full px-2.5 py-[3px] text-[11px] font-semibold whitespace-nowrap"
+            className="inline-flex items-center gap-1 rounded-full min-h-[40px] sm:min-h-0 px-3.5 sm:px-2.5 py-[3px] text-[11.5px] font-semibold whitespace-nowrap"
             style={{ background: CELESTE, color: AZUL, border: "1px solid rgba(23,69,127,.18)" }}
           >
             ↗ CRM

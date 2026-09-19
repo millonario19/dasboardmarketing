@@ -984,7 +984,7 @@ export function MetaDelMes({
                 <button
                   onClick={() => setPlan({ ...plan, [m.id]: Math.max(0, (plan[m.id] || 0) - 1) })}
                   aria-label={`Menos ${m.nombre}`}
-                  className="w-7 h-7 rounded-full text-[16px] leading-none"
+                  className="w-10 h-10 sm:w-7 sm:h-7 shrink-0 rounded-full text-[18px] sm:text-[16px] leading-none"
                   style={{ border: `1px solid ${LINEA}`, color: TINTA }}
                 >
                   −
@@ -995,7 +995,7 @@ export function MetaDelMes({
                 <button
                   onClick={() => setPlan({ ...plan, [m.id]: (plan[m.id] || 0) + 1 })}
                   aria-label={`Más ${m.nombre}`}
-                  className="w-7 h-7 rounded-full text-[16px] leading-none"
+                  className="w-10 h-10 sm:w-7 sm:h-7 shrink-0 rounded-full text-[18px] sm:text-[16px] leading-none"
                   style={{ border: `1px solid ${LINEA}`, color: TINTA }}
                 >
                   +
@@ -1176,7 +1176,7 @@ export function MetaDelMes({
                           onClick={() => anotarVenta(m.id, -1)}
                           disabled={guardando || hechas === 0}
                           aria-label={`Quitar una venta de ${m.nombre}`}
-                          className="w-6 h-6 rounded-full text-[15px] leading-none disabled:opacity-30"
+                          className="w-10 h-10 sm:w-6 sm:h-6 shrink-0 rounded-full text-[17px] sm:text-[15px] leading-none disabled:opacity-30"
                           style={{ border: `1px solid ${LINEA}`, color: TINTA }}
                         >
                           −
@@ -1189,7 +1189,7 @@ export function MetaDelMes({
                                 setPorAnotar(null);
                               }}
                               disabled={guardando}
-                              className="rounded-full px-2.5 py-1 text-[11px] font-bold text-white disabled:opacity-40 whitespace-nowrap"
+                              className="rounded-full min-h-[40px] sm:min-h-0 px-3.5 sm:px-2.5 py-1 text-[11.5px] font-bold text-white disabled:opacity-40 whitespace-nowrap"
                               style={{ background: VERDE }}
                             >
                               Sí, vendí una
@@ -1207,7 +1207,7 @@ export function MetaDelMes({
                             onClick={() => setPorAnotar(m.id)}
                             disabled={guardando}
                             aria-label={`Anotar una venta de ${m.nombre}`}
-                            className="w-6 h-6 rounded-full text-[15px] leading-none text-white disabled:opacity-40 shrink-0"
+                            className="w-10 h-10 sm:w-6 sm:h-6 shrink-0 rounded-full text-[17px] sm:text-[15px] leading-none text-white disabled:opacity-40"
                             style={{ background: VERDE }}
                           >
                             +

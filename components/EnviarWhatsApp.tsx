@@ -168,7 +168,7 @@ export function EnviarWhatsApp({
         target="_blank"
         rel="noopener noreferrer"
         title="Pasaron más de 24 horas desde su último mensaje: Meta solo entrega plantillas aprobadas, y esas se mandan desde el CRM"
-        className="inline-flex items-center gap-1 rounded-full px-2.5 py-[5px] text-[11.5px] font-semibold whitespace-nowrap"
+        className="inline-flex items-center gap-1 rounded-full min-h-[40px] sm:min-h-0 px-3.5 sm:px-2.5 py-[5px] text-[11.5px] font-semibold whitespace-nowrap"
         style={{ background: "var(--page)", color: GRIS_2, border: "1px solid var(--gridline)" }}
       >
         🔒 Ventana cerrada · escribirle en el CRM
@@ -180,7 +180,7 @@ export function EnviarWhatsApp({
     return (
       <button
         onClick={abrir}
-        className="rounded-full px-3 py-[5px] text-[11.5px] font-bold text-white whitespace-nowrap hover:opacity-90"
+        className="rounded-full min-h-[40px] sm:min-h-0 px-4 sm:px-3 py-[5px] text-[11.5px] font-bold text-white whitespace-nowrap hover:opacity-90 inline-flex items-center"
         style={{ background: VERDE_WA }}
       >
         ✎ Escribirle por {canalNombre}

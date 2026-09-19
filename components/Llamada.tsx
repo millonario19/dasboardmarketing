@@ -154,7 +154,7 @@ export function BotonLlamar({
       onClick={registrar}
       aria-label={nombre ? `Llamar a ${nombre}` : "Llamar"}
       title="Llamar"
-      className="inline-flex items-center justify-center rounded-full text-white shrink-0 transition-transform hover:scale-110"
+      className="inline-flex items-center justify-center rounded-full text-white shrink-0 transition-transform hover:scale-110 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
       style={{ background: AZUL, width: tamano, height: tamano }}
     >
       <IconoTelefono tamano={Math.round(tamano * 0.56)} />
@@ -211,7 +211,7 @@ export function BotonCrm({
       rel="noopener noreferrer"
       onClick={registrar}
       title={`Llamar a ${nombre ?? "este lead"} por el número de la oficina · queda grabada`}
-      className="inline-flex items-center gap-1 rounded-full px-2.5 py-[5px] text-[11.5px] font-bold whitespace-nowrap text-white hover:opacity-90"
+      className="inline-flex items-center gap-1 rounded-full min-h-[40px] sm:min-h-0 px-3.5 sm:px-2.5 py-[5px] text-[11.5px] font-bold whitespace-nowrap text-white hover:opacity-90"
       style={{ background: AZUL }}
     >
       ✆ CRM
@@ -491,7 +491,7 @@ export function ReporteLlamada({ contactId }: { contactId: string }) {
     <>
       <button
         onClick={() => setAbierto(true)}
-        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-bold whitespace-nowrap hover:opacity-85"
+        className="inline-flex items-center gap-1.5 rounded-full min-h-[40px] sm:min-h-0 px-3.5 sm:px-2.5 py-1 text-[11.5px] font-bold whitespace-nowrap hover:opacity-85"
         style={{ background: AMBAR, color: "#fff" }}
       >
         📞 {hora(pendiente.llamadaEn)} — ¿qué pasó?
@@ -616,7 +616,7 @@ export function ReportarInline({
     return (
       <button
         onClick={() => setAbierto(true)}
-        className="rounded-full px-2.5 py-[5px] text-[11.5px] font-bold whitespace-nowrap"
+        className="rounded-full min-h-[40px] sm:min-h-0 px-3.5 sm:px-2.5 py-[5px] text-[11.5px] font-bold whitespace-nowrap inline-flex items-center"
         style={
           pendiente
             ? { background: AMBAR, color: "#fff" }

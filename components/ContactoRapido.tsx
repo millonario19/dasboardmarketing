@@ -62,7 +62,7 @@ export function BotonWhatsApp({
       rel="noreferrer"
       aria-label={nombre ? `Escribir a ${nombre} por WhatsApp` : "Escribir por WhatsApp"}
       title="Escribir por WhatsApp"
-      className="inline-flex items-center justify-center rounded-full text-white shrink-0 transition-transform hover:scale-110"
+      className="inline-flex items-center justify-center rounded-full text-white shrink-0 transition-transform hover:scale-110 min-w-[44px] min-h-[44px] sm:min-w-0 sm:min-h-0"
       style={{ background: VERDE_WA, width: tamano, height: tamano }}
     >
       <IconoWhatsApp tamano={Math.round(tamano * 0.62)} />
